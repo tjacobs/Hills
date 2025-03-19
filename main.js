@@ -218,8 +218,21 @@ function animate() {
             let newX = camera.position.x - Math.sin(cameraAngle) * velocity.forward;
             let newZ = camera.position.z - Math.cos(cameraAngle) * velocity.forward;
             
-            // Clamp to boundaries but allow sliding
-            const boundary = size/2 - 1;
+            // Calculate distance from center as a percentage of the boundary
+            const boundary = size * 0.4;
+            const distanceFromCenterX = Math.abs(newX) / boundary;
+            const distanceFromCenterZ = Math.abs(newZ) / boundary;
+            
+            // Calculate slowdown factor (1 at center, approaches 0 at boundary)
+            const slowdownX = Math.max(0, 1 - Math.pow(distanceFromCenterX, 2));
+            const slowdownZ = Math.max(0, 1 - Math.pow(distanceFromCenterZ, 2));
+            const slowdown = Math.min(slowdownX, slowdownZ);
+            
+            // Apply movement with slowdown
+            newX = camera.position.x - Math.sin(cameraAngle) * velocity.forward * slowdown;
+            newZ = camera.position.z - Math.cos(cameraAngle) * velocity.forward * slowdown;
+            
+            // Final boundary check
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
