@@ -302,11 +302,12 @@ function getTerrainHeight(x, z) {
 
 // Ball parameters
 const ballRadius = 0.5;
-const gravity = -0.1;
-const rollSpeed = 0.5;
-const friction = 0.01;
-const minVelocity = 0.005;
+const gravity = -0.05; // Reduced gravity
+const rollSpeed = 0.1; // Reduced roll speed
+const friction = 0.03; // Adjusted friction
+const minVelocity = 0.001; // Lower minimum velocity threshold
 const groundCheckOffset = 0.1;
+const maxVelocity = 0.3; // Added maximum velocity cap
 
 // Ball management
 const balls = [];
@@ -325,16 +326,20 @@ function createNewBall() {
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     
     // Random position within a reasonable area
-    const x = (Math.random() - 0.5) * 40; // -20 to 20
-    const z = (Math.random() - 0.5) * 40; // -20 to 20
-    const y = 50; // Start high in the sky
+    const x = (Math.random() - 0.5) * 40;
+    const z = (Math.random() - 0.5) * 40;
+    const y = 50;
     
     ball.position.set(x, y, z);
     scene.add(ball);
     balls.push(ball);
     
-    // Initialize velocity
-    ballVelocities.push(new THREE.Vector3(0, 0, 0));
+    // Initialize velocity with slight random offset
+    ballVelocities.push(new THREE.Vector3(
+        (Math.random() - 0.5) * 0.1,
+        0,
+        (Math.random() - 0.5) * 0.1
+    ));
 }
 
 function animate() {
@@ -432,8 +437,10 @@ function animate() {
         const ball = balls[i];
         const ballVelocity = ballVelocities[i];
 
-        // Ball physics
+        // Apply gravity
         ballVelocity.y += gravity;
+
+        // Update position
         ball.position.x += ballVelocity.x;
         ball.position.y += ballVelocity.y;
         ball.position.z += ballVelocity.z;
@@ -446,12 +453,15 @@ function animate() {
             ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
             ballVelocity.y = 0;
 
-            // Calculate slopes with a larger check distance
-            const checkDist = 0.2;
+            // Calculate slopes with larger check distance for smoother gradient detection
+            const checkDist = 0.5; // Increased check distance
             const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + checkDist) - ballTerrainHeight;
             const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - checkDist) - ballTerrainHeight;
             const slopeLeft = getTerrainHeight(ball.position.x - checkDist, ball.position.z) - ballTerrainHeight;
             const slopeRight = getTerrainHeight(ball.position.x + checkDist, ball.position.z) - ballTerrainHeight;
+
+            // Calculate average slope for smoother movement
+            const avgSlope = (Math.abs(slopeFront) + Math.abs(slopeBack) + Math.abs(slopeLeft) + Math.abs(slopeRight)) / 4;
 
             // Find steepest downward slope
             let steepestSlope = 0;
@@ -474,21 +484,37 @@ function animate() {
                 rollDirection.set(1, 0, 0);
             }
 
-            // Apply rolling physics if on a slope
+            // Apply rolling physics with improved slope handling
             if (steepestSlope < -0.01) {
-                const slopeFactor = Math.abs(steepestSlope) * 2;
+                // Calculate rolling force based on slope steepness
+                const slopeFactor = Math.min(Math.abs(steepestSlope), 0.5); // Limited slope effect
+                
+                // Gradually add to current velocity
                 const rollForce = rollSpeed * slopeFactor;
                 ballVelocity.x += rollDirection.x * rollForce;
                 ballVelocity.z += rollDirection.z * rollForce;
-            }
 
-            // Apply friction
-            ballVelocity.x *= (1 - friction);
-            ballVelocity.z *= (1 - friction);
+                // Apply additional friction on steeper slopes
+                const slopeFriction = friction * (1 + avgSlope);
+                ballVelocity.x *= (1 - slopeFriction);
+                ballVelocity.z *= (1 - slopeFriction);
+            } else {
+                // Apply standard friction on flat ground
+                ballVelocity.x *= (1 - friction);
+                ballVelocity.z *= (1 - friction);
+            }
 
             // Stop if moving very slowly
             if (Math.abs(ballVelocity.x) < minVelocity) ballVelocity.x = 0;
             if (Math.abs(ballVelocity.z) < minVelocity) ballVelocity.z = 0;
+
+            // Limit maximum velocity
+            const currentVelocity = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+            if (currentVelocity > maxVelocity) {
+                const scale = maxVelocity / currentVelocity;
+                ballVelocity.x *= scale;
+                ballVelocity.z *= scale;
+            }
         }
     }
     
