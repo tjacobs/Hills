@@ -187,9 +187,151 @@ if (isMobileDevice()) {
     });
 }
 
-// Modify animation loop to include touch controls
+// Add sky gradient
+const vertexShader = `
+varying vec3 vWorldPosition;
+void main() {
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const fragmentShader = `
+uniform vec3 topColor;
+uniform vec3 bottomColor;
+uniform float offset;
+uniform float exponent;
+varying vec3 vWorldPosition;
+void main() {
+    float h = normalize(vWorldPosition + offset).y;
+    gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+}`;
+
+const uniforms = {
+    topColor: { value: new THREE.Color(0x0077ff) },  // Light blue
+    bottomColor: { value: new THREE.Color(0xffffff) },  // White
+    offset: { value: 33 },
+    exponent: { value: 0.6 }
+};
+
+const skyGeo = new THREE.SphereGeometry(400, 32, 15);
+const skyMat = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    side: THREE.BackSide
+});
+
+const sky = new THREE.Mesh(skyGeo, skyMat);
+scene.add(sky);
+
+// Add multiple cloud layers for more depth
+const cloudTextures = [
+    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png'),
+    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png'),
+    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png')
+];
+
+cloudTextures.forEach(texture => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+});
+
+// Different scales for variety
+cloudTextures[0].repeat.set(8, 8);
+cloudTextures[1].repeat.set(4, 4);
+cloudTextures[2].repeat.set(6, 6);
+
+// Create multiple cloud layers
+const cloudLayers = cloudTextures.map((texture, i) => {
+    const geometry = new THREE.PlaneGeometry(1000, 1000);
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: i === 0 ? 0.6 : 0.4,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    const cloud = new THREE.Mesh(geometry, material);
+    cloud.rotation.x = -Math.PI / 2;
+    cloud.position.y = 100 + i * 20; // Stack the layers
+    scene.add(cloud);
+    return { mesh: cloud, speed: 0.0002 - (i * 0.00005) }; // Different speeds
+});
+
+// Add fog for distance fade
+scene.fog = new THREE.Fog(0xffffff, 100, 500);
+
+// Add particle clouds
+function createParticleClouds() {
+    const cloudParticles = [];
+    const particleCount = 300; // Number of particles for denser clouds
+    const particleGeometry = new THREE.BufferGeometry();
+    const particleMaterial = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 15, // Size for a more solid appearance
+        transparent: true,
+        opacity: 0.9, // Higher opacity for a solid look
+        map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/circle.png'),
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+
+    const positions = new Float32Array(particleCount * 3);
+    const scales = new Float32Array(particleCount);
+
+    // Create just 4 large, dense clouds
+    const cloudCenters = [
+        { x: -50, y: 60, z: -50 },  // Back left
+        { x: 50, y: 55, z: -30 },   // Back right
+        { x: -30, y: 50, z: 40 },   // Front left
+        { x: 40, y: 65, z: 30 }     // Front right
+    ];
+
+    for (let i = 0; i < particleCount; i++) {
+        // Assign to one of the cloud centers
+        const cloudCenter = cloudCenters[Math.floor(i / (particleCount / cloudCenters.length))];
+        
+        // Position particles tightly around the cluster center
+        const radius = Math.random() * 5; // Smaller radius for tighter clumping
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 2;
+        
+        // Position particles with natural cloud-like spread, double the width
+        positions[i * 3] = cloudCenter.x + (Math.cos(theta) * Math.sin(phi) * radius * 2); // Double width
+        positions[i * 3 + 1] = cloudCenter.y + (Math.sin(theta) * Math.sin(phi) * radius);
+        positions[i * 3 + 2] = cloudCenter.z + (Math.cos(phi) * radius * 2); // Double width
+
+        // Set all particles to a larger size for a solid appearance
+        scales[i] = 1; // Uniform size for a more cohesive look
+    }
+
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
+
+    const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particleSystem);
+    return particleSystem;
+}
+
+const particleClouds = createParticleClouds();
+
+// Modify animation loop for gentler cloud movement
 function animate() {
     requestAnimationFrame(animate);
+    
+    // Animate particle clouds
+    const positions = particleClouds.geometry.attributes.position.array;
+    const time = Date.now() * 0.00002; // Very slow movement
+    
+    for(let i = 0; i < positions.length; i += 3) {
+        // Very gentle floating motion
+        positions[i] += Math.sin(time + i) * 0.005;      // Reduced movement
+        positions[i + 1] += Math.cos(time + i) * 0.002; // Even less vertical movement
+        positions[i + 2] += Math.sin(time + i * 0.5) * 0.005;
+    }
+    
+    particleClouds.geometry.attributes.position.needsUpdate = true;
     
     if (!keyboardControlActive) {
         // Auto-move camera in a circle until controls are used
