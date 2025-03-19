@@ -301,48 +301,52 @@ function getTerrainHeight(x, z) {
 }
 
 // Ball parameters
-const ballRadius = 0.5; // Size of the balls
+const ballRadius = 0.5;
 const gravity = -0.1;
 const rollSpeed = 0.5;
-const friction = 0.01; // Reduced friction to help balls keep moving
-const minVelocity = 0.005; // Reduced minimum velocity threshold
+const friction = 0.01;
+const minVelocity = 0.005;
 const groundCheckOffset = 0.1;
 
-// Create multiple balls
-const numBalls = 10;
+// Ball management
 const balls = [];
 const ballVelocities = [];
+let lastBallDropTime = 0;
+const ballDropInterval = 1000; // 10 seconds in milliseconds
 
-// Create balls with different colors and initial positions
-for (let i = 0; i < numBalls; i++) {
+function createNewBall() {
     const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
-
-    // Generate a random color for each ball
-    const hue = i / numBalls;
+    
+    // Generate a random color
+    const hue = Math.random();
     const ballMaterial = new THREE.MeshStandardMaterial({ 
         color: new THREE.Color().setHSL(hue, 1, 0.5)
     });
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     
-    // Spread balls out in a circle
-    const angle = (i / numBalls) * Math.PI * 2;
-    const radius = 20; // Increased starting radius
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const y = getTerrainHeight(x, z) + ballRadius + 1; // Added +1 to start slightly above ground
+    // Random position within a reasonable area
+    const x = (Math.random() - 0.5) * 40; // -20 to 20
+    const z = (Math.random() - 0.5) * 40; // -20 to 20
+    const y = 50; // Start high in the sky
     
     ball.position.set(x, y, z);
     scene.add(ball);
     balls.push(ball);
     
-    // Initialize velocity for each ball
+    // Initialize velocity
     ballVelocities.push(new THREE.Vector3(0, 0, 0));
 }
 
-// Modify animation loop for gentler cloud movement
 function animate() {
     requestAnimationFrame(animate);
     
+    // Check if it's time to drop a new ball
+    const currentTime = Date.now();
+    if (currentTime - lastBallDropTime > ballDropInterval) {
+        createNewBall();
+        lastBallDropTime = currentTime;
+    }
+
     // Animate particle clouds
     const positions = particleClouds.geometry.attributes.position.array;
     const time = Date.now() * 0.00002;
@@ -443,7 +447,7 @@ function animate() {
             ballVelocity.y = 0;
 
             // Calculate slopes with a larger check distance
-            const checkDist = 0.2; // Increased from 0.1
+            const checkDist = 0.2;
             const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + checkDist) - ballTerrainHeight;
             const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - checkDist) - ballTerrainHeight;
             const slopeLeft = getTerrainHeight(ball.position.x - checkDist, ball.position.z) - ballTerrainHeight;
@@ -453,7 +457,6 @@ function animate() {
             let steepestSlope = 0;
             let rollDirection = new THREE.Vector3(0, 0, 0);
 
-            // Check all directions for steepest downward slope
             if (slopeFront < steepestSlope) {
                 steepestSlope = slopeFront;
                 rollDirection.set(0, 0, 1);
@@ -471,18 +474,15 @@ function animate() {
                 rollDirection.set(1, 0, 0);
             }
 
-            // Apply rolling physics if on a slope (reduced threshold)
-            if (steepestSlope < -0.01) { // More sensitive slope detection
-                // Calculate rolling force based on slope steepness
+            // Apply rolling physics if on a slope
+            if (steepestSlope < -0.01) {
                 const slopeFactor = Math.abs(steepestSlope) * 2;
-                
-                // Add to current velocity
                 const rollForce = rollSpeed * slopeFactor;
                 ballVelocity.x += rollDirection.x * rollForce;
                 ballVelocity.z += rollDirection.z * rollForce;
             }
 
-            // Apply friction to horizontal movement
+            // Apply friction
             ballVelocity.x *= (1 - friction);
             ballVelocity.z *= (1 - friction);
 
@@ -494,6 +494,11 @@ function animate() {
     
     renderer.render(scene, camera);
 }
+
+// Create first ball immediately
+createNewBall();
+lastBallDropTime = Date.now();
+
 animate();
 
 // Handle window resize
