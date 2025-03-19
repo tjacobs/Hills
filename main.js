@@ -73,11 +73,18 @@ const keys = {
     ArrowLeft: false,
     ArrowRight: false,
     ArrowUp: false,
-    ArrowDown: false
+    ArrowDown: false,
+    Space: false  // Add space key tracking
 };
 
 // Track if keys have been used
 let keyboardControlActive = false;
+
+// Player physics parameters
+const jumpForce = 0.5;  // Initial upward velocity when jumping
+const playerGravity = -0.02;  // Gravity force applied to player
+let playerVerticalVelocity = 0;  // Track vertical velocity
+let isJumping = false;  // Track jump state
 
 // Track key presses
 window.addEventListener('keydown', (e) => {
@@ -398,8 +405,29 @@ function animate() {
                 velocity.forward = Math.min(0, velocity.forward + deceleration);
             }
         }
+
+        // Handle jumping
+        const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
+        const isOnGround = camera.position.y <= terrainHeight + 3;
+
+        // Initiate jump when space is pressed and player is on ground
+        if (keys.Space && isOnGround && !isJumping) {
+            playerVerticalVelocity = jumpForce;
+            isJumping = true;
+        }
+
+        // Apply gravity and update vertical position
+        playerVerticalVelocity += playerGravity;
+        camera.position.y += playerVerticalVelocity;
+
+        // Ground collision check
+        if (camera.position.y <= terrainHeight + 3) {
+            camera.position.y = terrainHeight + 3;
+            playerVerticalVelocity = 0;
+            isJumping = false;
+        }
         
-        // Apply movement
+        // Apply horizontal movement
         cameraAngle += velocity.turning;
         
         if (velocity.forward !== 0) {
@@ -411,7 +439,7 @@ function animate() {
             const distanceFromCenterX = Math.abs(newX) / boundary;
             const distanceFromCenterZ = Math.abs(newZ) / boundary;
             
-            // Calculate slowdown factor (1 at center, approaches 0 at boundary)
+            // Calculate slowdown factor
             const slowdownX = Math.max(0, 1 - Math.pow(distanceFromCenterX, 2));
             const slowdownZ = Math.max(0, 1 - Math.pow(distanceFromCenterZ, 2));
             const slowdown = Math.min(slowdownX, slowdownZ);
@@ -425,10 +453,6 @@ function animate() {
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
 
-        // Get terrain height at camera position
-        const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-        // Set camera height to be 3 units above terrain
-        camera.position.y = terrainHeight + 3;
         camera.rotation.y = cameraAngle;
     }
 
