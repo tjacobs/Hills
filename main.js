@@ -225,40 +225,6 @@ const skyMat = new THREE.ShaderMaterial({
 const sky = new THREE.Mesh(skyGeo, skyMat);
 scene.add(sky);
 
-// Add multiple cloud layers for more depth
-const cloudTextures = [
-    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png'),
-    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png'),
-    textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/clouds.png')
-];
-
-cloudTextures.forEach(texture => {
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-});
-
-// Different scales for variety
-cloudTextures[0].repeat.set(8, 8);
-cloudTextures[1].repeat.set(4, 4);
-cloudTextures[2].repeat.set(6, 6);
-
-// Create multiple cloud layers
-const cloudLayers = cloudTextures.map((texture, i) => {
-    const geometry = new THREE.PlaneGeometry(1000, 1000);
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: i === 0 ? 0.6 : 0.4,
-        depthWrite: false,
-        side: THREE.DoubleSide
-    });
-
-    const cloud = new THREE.Mesh(geometry, material);
-    cloud.rotation.x = -Math.PI / 2;
-    cloud.position.y = 100 + i * 20; // Stack the layers
-    scene.add(cloud);
-    return { mesh: cloud, speed: 0.0002 - (i * 0.00005) }; // Different speeds
-});
-
 // Add fog for distance fade
 scene.fog = new THREE.Fog(0xffffff, 100, 500);
 
@@ -315,6 +281,49 @@ function createParticleClouds() {
 }
 
 const particleClouds = createParticleClouds();
+
+// Function to get terrain height at a specific position
+function getTerrainHeight(x, z) {
+    const vertex = groundGeometry.attributes.position;
+    const segments = groundGeometry.parameters.widthSegments; // Number of segments in the geometry
+    const size = groundGeometry.parameters.width; // Size of the ground
+
+    // Calculate the indices based on the position
+    const i = Math.floor(((x + size / 2) / size) * segments);
+    const j = Math.floor(((z + size / 2) / size) * segments);
+    
+    if (i < 0 || i >= segments || j < 0 || j >= segments) {
+        return -Infinity; // Out of bounds
+    }
+
+    const index = (j * (segments + 1) + i) * 3; // Calculate the index in the vertex array
+    return vertex.array[index + 2]; // Return the height (z-coordinate)
+}
+
+// Create a ball
+const ballRadius = 1; // Radius of the ball
+const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red color for the ball
+const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+scene.add(ball);
+
+// Function to position the ball on top of the hill
+function positionBallOnHill() {
+    // Get the terrain height at the center of the scene (or any specific position)
+    const hillX = 0; // X position on the hill
+    const hillZ = 0; // Z position on the hill
+    const hillHeight = getTerrainHeight(hillX, hillZ); // Get the height of the hill
+
+    // Position the ball on top of the hill
+    ball.position.set(hillX, hillHeight + ballRadius, hillZ); // Set Y to hill height + radius
+}
+
+// Call the function to position the ball
+positionBallOnHill();
+
+// Gravity variables
+let ballVelocityY = 0; // Vertical velocity of the ball
+const gravity = -0.1; // Gravity effect
 
 // Modify animation loop for gentler cloud movement
 function animate() {
@@ -396,6 +405,37 @@ function animate() {
         
         camera.position.y = 3;
         camera.rotation.y = cameraAngle;
+    }
+    
+    // Handle player movement and collision detection
+    if (keyboardControlActive) {
+        const forwardX = Math.sin(cameraAngle) * velocity.forward;
+        const forwardZ = Math.cos(cameraAngle) * velocity.forward;
+
+        // Calculate potential new position
+        const newX = camera.position.x - forwardX;
+        const newZ = camera.position.z - forwardZ;
+
+        // Check the terrain height at the new position
+        const newTerrainHeight = getTerrainHeight(newX, newZ);
+
+        // Set camera height to be above the terrain
+        camera.position.y = newTerrainHeight + 2; // Adjust to be 2 units above the terrain
+
+        // Allow movement if above terrain
+        camera.position.x = newX;
+        camera.position.z = newZ;
+    }
+
+    // Ball gravity effect
+    ballVelocityY += gravity; // Apply gravity to the ball's vertical velocity
+    ball.position.y += ballVelocityY; // Update ball's position
+
+    // Check if the ball hits the ground
+    const ballTerrainHeight = getTerrainHeight(ball.position.x, ball.position.z);
+    if (ball.position.y <= ballTerrainHeight + ballRadius) {
+        ball.position.y = ballTerrainHeight + ballRadius; // Set ball on the ground
+        ballVelocityY = 0; // Stop the ball
     }
     
     renderer.render(scene, camera);
