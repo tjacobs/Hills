@@ -21,7 +21,7 @@ const segments = 100;
 const xs = 10;
 const ys = xs;
 
-// Create hills
+// Create main hilly ground
 const groundGeometry = new THREE.PlaneGeometry(size, size, segments, segments);
 for (let i = 0; i <= segments; i++) {
     for (let j = 0; j <= segments; j++) {
@@ -31,6 +31,21 @@ for (let i = 0; i <= segments; i++) {
     }
 }
 groundGeometry.computeVertexNormals();
+
+// Create flat border ground (much larger)
+const borderSize = size * 10;
+const borderGeometry = new THREE.PlaneGeometry(borderSize, borderSize);
+const borderMaterial = new THREE.MeshStandardMaterial({ 
+    map: grassTexture,
+    side: THREE.DoubleSide,
+    color: 0x558833  // Darker green color
+});
+const borderGround = new THREE.Mesh(borderGeometry, borderMaterial);
+borderGround.rotation.x = -Math.PI / 2;
+borderGround.position.y = -5;
+scene.add(borderGround);
+
+// Main ground (unchanged)
 const groundMaterial = new THREE.MeshStandardMaterial({ 
     map: grassTexture,
     side: THREE.DoubleSide
