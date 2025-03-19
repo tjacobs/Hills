@@ -300,26 +300,38 @@ function getTerrainHeight(x, z) {
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
-// Create a ball
-const ballRadius = 1; // Radius of the ball
-const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
-const ballMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red color for the ball
-const ball = new THREE.Mesh(ballGeometry, ballMaterial);
-scene.add(ball);
+// Ball parameters
+const ballRadius = 0.5; // Size of the balls
 
-// Function to position the ball on top of the hill
-function positionBallOnHill() {
-    // Get the terrain height at the center of the scene (or any specific position)
-    const hillX = 0; // X position on the hill
-    const hillZ = 0; // Z position on the hill
-    const hillHeight = getTerrainHeight(hillX, hillZ); // Get the height of the hill
+// Create multiple balls
+const numBalls = 10;
+const balls = [];
+const ballVelocities = [];
 
-    // Position the ball on top of the hill
-    ball.position.set(hillX, hillHeight + ballRadius, hillZ); // Set Y to hill height + radius
+// Create balls with different colors and initial positions
+for (let i = 0; i < numBalls; i++) {
+    const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+    // Generate a random color for each ball
+    const hue = i / numBalls;
+    const ballMaterial = new THREE.MeshStandardMaterial({ 
+        color: new THREE.Color().setHSL(hue, 1, 0.5)
+    });
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    
+    // Spread balls out in a circle
+    const angle = (i / numBalls) * Math.PI * 2;
+    const radius = 10;
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const y = getTerrainHeight(x, z) + ballRadius;
+    
+    ball.position.set(x, y, z);
+    scene.add(ball);
+    balls.push(ball);
+    
+    // Initialize velocity for each ball
+    ballVelocities.push(new THREE.Vector3(0, 0, 0));
 }
-
-// Call the function to position the ball
-positionBallOnHill();
 
 // Gravity variables
 let ballVelocity = new THREE.Vector3(0, 0, 0);
@@ -413,66 +425,72 @@ function animate() {
         camera.rotation.y = cameraAngle;
     }
 
-    // Ball physics
-    ballVelocity.y += gravity;
-    ball.position.x += ballVelocity.x;
-    ball.position.y += ballVelocity.y;
-    ball.position.z += ballVelocity.z;
+    // Update all balls
+    for (let i = 0; i < balls.length; i++) {
+        const ball = balls[i];
+        const ballVelocity = ballVelocities[i];
 
-    // Get current terrain height at ball position
-    const ballTerrainHeight = getTerrainHeight(ball.position.x, ball.position.z);
+        // Ball physics
+        ballVelocity.y += gravity;
+        ball.position.x += ballVelocity.x;
+        ball.position.y += ballVelocity.y;
+        ball.position.z += ballVelocity.z;
 
-    // Ground collision check
-    if (ball.position.y <= ballTerrainHeight + ballRadius) {
-        ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
-        ballVelocity.y = 0;
+        // Get current terrain height at ball position
+        const ballTerrainHeight = getTerrainHeight(ball.position.x, ball.position.z);
 
-        // Calculate slopes in all directions
-        const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + 0.1) - ballTerrainHeight;
-        const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - 0.1) - ballTerrainHeight;
-        const slopeLeft = getTerrainHeight(ball.position.x - 0.1, ball.position.z) - ballTerrainHeight;
-        const slopeRight = getTerrainHeight(ball.position.x + 0.1, ball.position.z) - ballTerrainHeight;
+        // Ground collision check
+        if (ball.position.y <= ballTerrainHeight + ballRadius) {
+            ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
+            ballVelocity.y = 0;
 
-        // Find steepest downward slope
-        let steepestSlope = 0;
-        let rollDirection = new THREE.Vector3(0, 0, 0);
+            // Calculate slopes in all directions
+            const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + 0.1) - ballTerrainHeight;
+            const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - 0.1) - ballTerrainHeight;
+            const slopeLeft = getTerrainHeight(ball.position.x - 0.1, ball.position.z) - ballTerrainHeight;
+            const slopeRight = getTerrainHeight(ball.position.x + 0.1, ball.position.z) - ballTerrainHeight;
 
-        // Check all directions for steepest downward slope
-        if (slopeFront < steepestSlope) {
-            steepestSlope = slopeFront;
-            rollDirection.set(0, 0, 1);
+            // Find steepest downward slope
+            let steepestSlope = 0;
+            let rollDirection = new THREE.Vector3(0, 0, 0);
+
+            // Check all directions for steepest downward slope
+            if (slopeFront < steepestSlope) {
+                steepestSlope = slopeFront;
+                rollDirection.set(0, 0, 1);
+            }
+            if (slopeBack < steepestSlope) {
+                steepestSlope = slopeBack;
+                rollDirection.set(0, 0, -1);
+            }
+            if (slopeLeft < steepestSlope) {
+                steepestSlope = slopeLeft;
+                rollDirection.set(-1, 0, 0);
+            }
+            if (slopeRight < steepestSlope) {
+                steepestSlope = slopeRight;
+                rollDirection.set(1, 0, 0);
+            }
+
+            // Apply rolling physics if on a slope
+            if (steepestSlope < 0) {
+                // Calculate rolling force based on slope steepness
+                const slopeFactor = Math.abs(steepestSlope) * 2;
+                
+                // Add to current velocity
+                const rollForce = rollSpeed * slopeFactor;
+                ballVelocity.x += rollDirection.x * rollForce;
+                ballVelocity.z += rollDirection.z * rollForce;
+            }
+
+            // Apply friction to horizontal movement
+            ballVelocity.x *= (1 - friction);
+            ballVelocity.z *= (1 - friction);
+
+            // Stop if moving very slowly
+            if (Math.abs(ballVelocity.x) < minVelocity) ballVelocity.x = 0;
+            if (Math.abs(ballVelocity.z) < minVelocity) ballVelocity.z = 0;
         }
-        if (slopeBack < steepestSlope) {
-            steepestSlope = slopeBack;
-            rollDirection.set(0, 0, -1);
-        }
-        if (slopeLeft < steepestSlope) {
-            steepestSlope = slopeLeft;
-            rollDirection.set(-1, 0, 0);
-        }
-        if (slopeRight < steepestSlope) {
-            steepestSlope = slopeRight;
-            rollDirection.set(1, 0, 0);
-        }
-
-        // Apply rolling physics if on a slope
-        if (steepestSlope < 0) {
-            // Calculate rolling force based on slope steepness
-            const slopeFactor = Math.abs(steepestSlope) * 2;
-            
-            // Add to current velocity
-            const rollForce = rollSpeed * slopeFactor;
-            ballVelocity.x += rollDirection.x * rollForce;
-            ballVelocity.z += rollDirection.z * rollForce;
-        }
-
-        // Apply friction to horizontal movement
-        ballVelocity.x *= (1 - friction);
-        ballVelocity.z *= (1 - friction);
-
-        // Stop if moving very slowly
-        if (Math.abs(ballVelocity.x) < minVelocity) ballVelocity.x = 0;
-        if (Math.abs(ballVelocity.z) < minVelocity) ballVelocity.z = 0;
     }
     
     renderer.render(scene, camera);
