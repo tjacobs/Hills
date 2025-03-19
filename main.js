@@ -322,8 +322,12 @@ function positionBallOnHill() {
 positionBallOnHill();
 
 // Gravity variables
-let ballVelocityY = 0; // Vertical velocity of the ball
-const gravity = -0.1; // Gravity effect
+let ballVelocity = new THREE.Vector3(0, 0, 0);
+const gravity = -0.1;
+const rollSpeed = 0.5; // Significant roll speed
+const friction = 0.02; // Low friction
+const minVelocity = 0.01;
+const groundCheckOffset = 0.1;
 
 // Modify animation loop for gentler cloud movement
 function animate() {
@@ -419,23 +423,75 @@ function animate() {
         // Check the terrain height at the new position
         const newTerrainHeight = getTerrainHeight(newX, newZ);
 
-        // Set camera height to be above the terrain
-        camera.position.y = newTerrainHeight + 2; // Adjust to be 2 units above the terrain
+        // Smoothly adjust camera height based on terrain height
+        const targetHeight = newTerrainHeight + 2; // Adjust to be 2 units above the terrain
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetHeight, 0.1); // Smooth transition
 
         // Allow movement if above terrain
         camera.position.x = newX;
         camera.position.z = newZ;
     }
 
-    // Ball gravity effect
-    ballVelocityY += gravity; // Apply gravity to the ball's vertical velocity
-    ball.position.y += ballVelocityY; // Update ball's position
+    // Ball physics
+    ballVelocity.y += gravity;
+    ball.position.x += ballVelocity.x;
+    ball.position.y += ballVelocity.y;
+    ball.position.z += ballVelocity.z;
 
-    // Check if the ball hits the ground
+    // Get current terrain height at ball position
     const ballTerrainHeight = getTerrainHeight(ball.position.x, ball.position.z);
+
+    // Ground collision check
     if (ball.position.y <= ballTerrainHeight + ballRadius) {
-        ball.position.y = ballTerrainHeight + ballRadius; // Set ball on the ground
-        ballVelocityY = 0; // Stop the ball
+        ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
+        ballVelocity.y = 0;
+
+        // Calculate slopes in all directions
+        const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + 0.1) - ballTerrainHeight;
+        const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - 0.1) - ballTerrainHeight;
+        const slopeLeft = getTerrainHeight(ball.position.x - 0.1, ball.position.z) - ballTerrainHeight;
+        const slopeRight = getTerrainHeight(ball.position.x + 0.1, ball.position.z) - ballTerrainHeight;
+
+        // Find steepest downward slope
+        let steepestSlope = 0;
+        let rollDirection = new THREE.Vector3(0, 0, 0);
+
+        // Check all directions for steepest downward slope
+        if (slopeFront < steepestSlope) {
+            steepestSlope = slopeFront;
+            rollDirection.set(0, 0, 1);
+        }
+        if (slopeBack < steepestSlope) {
+            steepestSlope = slopeBack;
+            rollDirection.set(0, 0, -1);
+        }
+        if (slopeLeft < steepestSlope) {
+            steepestSlope = slopeLeft;
+            rollDirection.set(-1, 0, 0);
+        }
+        if (slopeRight < steepestSlope) {
+            steepestSlope = slopeRight;
+            rollDirection.set(1, 0, 0);
+        }
+
+        // Apply rolling physics if on a slope
+        if (steepestSlope < 0) {
+            // Calculate rolling force based on slope steepness
+            const slopeFactor = Math.abs(steepestSlope) * 2;
+            
+            // Add to current velocity
+            const rollForce = rollSpeed * slopeFactor;
+            ballVelocity.x += rollDirection.x * rollForce;
+            ballVelocity.z += rollDirection.z * rollForce;
+        }
+
+        // Apply friction to horizontal movement
+        ballVelocity.x *= (1 - friction);
+        ballVelocity.z *= (1 - friction);
+
+        // Stop if moving very slowly
+        if (Math.abs(ballVelocity.x) < minVelocity) ballVelocity.x = 0;
+        if (Math.abs(ballVelocity.z) < minVelocity) ballVelocity.z = 0;
     }
     
     renderer.render(scene, camera);
