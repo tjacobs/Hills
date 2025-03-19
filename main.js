@@ -15,10 +15,10 @@ grassTexture.wrapT = THREE.RepeatWrapping;
 grassTexture.repeat.set(8, 8);
 
 // Set geometry for hills
-const size = 100;
-const height = 5.0;
+const size = 200;
+const height = 5;
 const segments = 100;
-const xs = 10;
+const xs = 5;
 const ys = xs;
 
 // Create main hilly ground
