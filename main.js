@@ -17,8 +17,8 @@ grassTexture.repeat.set(8, 8);
 // Set geometry for hills
 const size = 200;
 const height = 5;
-const segments = 100;
-const xs = 5;
+const segments = 200;
+const xs = 8;
 const ys = xs;
 
 // Create main hilly ground
@@ -316,6 +316,7 @@ const ballVelocities = [];
 // Create balls with different colors and initial positions
 for (let i = 0; i < numBalls; i++) {
     const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+
     // Generate a random color for each ball
     const hue = i / numBalls;
     const ballMaterial = new THREE.MeshStandardMaterial({ 
