@@ -302,6 +302,11 @@ function getTerrainHeight(x, z) {
 
 // Ball parameters
 const ballRadius = 0.5; // Size of the balls
+const gravity = -0.1;
+const rollSpeed = 0.5;
+const friction = 0.01; // Reduced friction to help balls keep moving
+const minVelocity = 0.005; // Reduced minimum velocity threshold
+const groundCheckOffset = 0.1;
 
 // Create multiple balls
 const numBalls = 10;
@@ -320,10 +325,10 @@ for (let i = 0; i < numBalls; i++) {
     
     // Spread balls out in a circle
     const angle = (i / numBalls) * Math.PI * 2;
-    const radius = 10;
+    const radius = 20; // Increased starting radius
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    const y = getTerrainHeight(x, z) + ballRadius;
+    const y = getTerrainHeight(x, z) + ballRadius + 1; // Added +1 to start slightly above ground
     
     ball.position.set(x, y, z);
     scene.add(ball);
@@ -332,14 +337,6 @@ for (let i = 0; i < numBalls; i++) {
     // Initialize velocity for each ball
     ballVelocities.push(new THREE.Vector3(0, 0, 0));
 }
-
-// Gravity variables
-let ballVelocity = new THREE.Vector3(0, 0, 0);
-const gravity = -0.1;
-const rollSpeed = 0.5; // Significant roll speed
-const friction = 0.02; // Low friction
-const minVelocity = 0.01;
-const groundCheckOffset = 0.1;
 
 // Modify animation loop for gentler cloud movement
 function animate() {
@@ -444,11 +441,12 @@ function animate() {
             ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
             ballVelocity.y = 0;
 
-            // Calculate slopes in all directions
-            const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + 0.1) - ballTerrainHeight;
-            const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - 0.1) - ballTerrainHeight;
-            const slopeLeft = getTerrainHeight(ball.position.x - 0.1, ball.position.z) - ballTerrainHeight;
-            const slopeRight = getTerrainHeight(ball.position.x + 0.1, ball.position.z) - ballTerrainHeight;
+            // Calculate slopes with a larger check distance
+            const checkDist = 0.2; // Increased from 0.1
+            const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + checkDist) - ballTerrainHeight;
+            const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - checkDist) - ballTerrainHeight;
+            const slopeLeft = getTerrainHeight(ball.position.x - checkDist, ball.position.z) - ballTerrainHeight;
+            const slopeRight = getTerrainHeight(ball.position.x + checkDist, ball.position.z) - ballTerrainHeight;
 
             // Find steepest downward slope
             let steepestSlope = 0;
@@ -472,8 +470,8 @@ function animate() {
                 rollDirection.set(1, 0, 0);
             }
 
-            // Apply rolling physics if on a slope
-            if (steepestSlope < 0) {
+            // Apply rolling physics if on a slope (reduced threshold)
+            if (steepestSlope < -0.01) { // More sensitive slope detection
                 // Calculate rolling force based on slope steepness
                 const slopeFactor = Math.abs(steepestSlope) * 2;
                 
