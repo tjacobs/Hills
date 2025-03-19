@@ -61,10 +61,14 @@ const keys = {
     ArrowDown: false
 };
 
+// Track if keys have been used
+let keyboardControlActive = false;
+
 // Track key presses
 window.addEventListener('keydown', (e) => {
     if (keys.hasOwnProperty(e.code)) {
         keys[e.code] = true;
+        keyboardControlActive = true;
     }
 });
 
@@ -81,34 +85,43 @@ let cameraAngle = 0;
 function animate() {
     requestAnimationFrame(animate);
     
-    // Handle keyboard movement
-    if (keys.ArrowLeft) {
-        cameraAngle += rotateSpeed;
-    }
-    if (keys.ArrowRight) {
-        cameraAngle -= rotateSpeed;
-    }
-    if (keys.ArrowUp) {
-        let newX = camera.position.x - Math.sin(cameraAngle) * moveSpeed;
-        let newZ = camera.position.z - Math.cos(cameraAngle) * moveSpeed;
+    if (!keyboardControlActive) {
+        // Auto-move camera in a circle until keys are used
+        const time = Date.now() * 0.001;
+        camera.position.x = Math.cos(time * 0.5) * 15;
+        camera.position.z = Math.sin(time * 0.5) * 15;
+        camera.position.y = 8; // Higher view point
+        camera.rotation.y = time * 0.5 + Math.PI / 2; // Makes camera face tangent to circle
+    } else {
+        // Handle keyboard movement
+        if (keys.ArrowLeft) {
+            cameraAngle += rotateSpeed;
+        }
+        if (keys.ArrowRight) {
+            cameraAngle -= rotateSpeed;
+        }
+        if (keys.ArrowUp) {
+            let newX = camera.position.x - Math.sin(cameraAngle) * moveSpeed;
+            let newZ = camera.position.z - Math.cos(cameraAngle) * moveSpeed;
+            
+            // Clamp to boundaries but allow sliding
+            const boundary = size/2 - 1;
+            camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
+            camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+        }
+        if (keys.ArrowDown) {
+            let newX = camera.position.x + Math.sin(cameraAngle) * moveSpeed;
+            let newZ = camera.position.z + Math.cos(cameraAngle) * moveSpeed;
+            
+            // Clamp to boundaries but allow sliding
+            const boundary = size/2 - 1;
+            camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
+            camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+        }
         
-        // Clamp to boundaries but allow sliding
-        const boundary = size/2 - 1;
-        camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
-        camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+        camera.position.y = 3; // Return to normal height when controlling
+        camera.rotation.y = cameraAngle;
     }
-    if (keys.ArrowDown) {
-        let newX = camera.position.x + Math.sin(cameraAngle) * moveSpeed;
-        let newZ = camera.position.z + Math.cos(cameraAngle) * moveSpeed;
-        
-        // Clamp to boundaries but allow sliding
-        const boundary = size/2 - 1;
-        camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
-        camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
-    }
-    
-    // Update camera direction
-    camera.rotation.y = cameraAngle;
     
     renderer.render(scene, camera);
 }
