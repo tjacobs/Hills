@@ -51,16 +51,65 @@ scene.add(directionalLight);
 // Position camera
 camera.position.set(0, 3, 15);
 
+// Add keyboard controls
+const moveSpeed = 0.5;
+const rotateSpeed = 0.02;
+const keys = {
+    ArrowLeft: false,
+    ArrowRight: false,
+    ArrowUp: false,
+    ArrowDown: false
+};
+
+// Track key presses
+window.addEventListener('keydown', (e) => {
+    if (keys.hasOwnProperty(e.code)) {
+        keys[e.code] = true;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (keys.hasOwnProperty(e.code)) {
+        keys[e.code] = false;
+    }
+});
+
+// Set initial camera rotation
+let cameraAngle = 0;
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     
-    // Rotate camera around the scene
-    const time = Date.now() * 0.001;
-    camera.position.x = Math.cos(time * 0.5) * 15;
-    camera.position.z = Math.sin(time * 0.5) * 15;
-    camera.position.y = Math.sin(time * 0.1) * 2 + 5;
-    camera.lookAt(0, 0, 0);
+    // Handle keyboard movement
+    if (keys.ArrowLeft) {
+        cameraAngle += rotateSpeed;
+    }
+    if (keys.ArrowRight) {
+        cameraAngle -= rotateSpeed;
+    }
+    if (keys.ArrowUp) {
+        let newX = camera.position.x - Math.sin(cameraAngle) * moveSpeed;
+        let newZ = camera.position.z - Math.cos(cameraAngle) * moveSpeed;
+        
+        // Clamp to boundaries but allow sliding
+        const boundary = size/2 - 1;
+        camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
+        camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+    }
+    if (keys.ArrowDown) {
+        let newX = camera.position.x + Math.sin(cameraAngle) * moveSpeed;
+        let newZ = camera.position.z + Math.cos(cameraAngle) * moveSpeed;
+        
+        // Clamp to boundaries but allow sliding
+        const boundary = size/2 - 1;
+        camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
+        camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+    }
+    
+    // Update camera direction
+    camera.rotation.y = cameraAngle;
+    
     renderer.render(scene, camera);
 }
 animate();
