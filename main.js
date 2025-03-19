@@ -93,22 +93,101 @@ const turnAcceleration = 0.001;
 const deceleration = 0.01;
 const turnDeceleration = 0.001;
 
-// Animation loop
+// Add touch controls
+let touchStart = { x: 0, y: 0 };
+let touchEnd = { x: 0, y: 0 };
+let isTouching = false;
+
+// Check if device is mobile
+function isMobileDevice() {
+    return (typeof window.orientation !== "undefined") 
+        || (navigator.userAgent.indexOf('IEMobile') !== -1)
+        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+}
+
+// Create touch joystick elements only for mobile
+if (isMobileDevice()) {
+    const joystickContainer = document.createElement('div');
+    joystickContainer.style.cssText = `
+        position: fixed;
+        bottom: 50px;
+        left: 50px;
+        width: 100px;
+        height: 100px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        touch-action: none;
+    `;
+
+    const joystickKnob = document.createElement('div');
+    joystickKnob.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+    `;
+
+    joystickContainer.appendChild(joystickKnob);
+    document.body.appendChild(joystickContainer);
+
+    // Touch event handlers
+    joystickContainer.addEventListener('touchstart', (e) => {
+        isTouching = true;
+        keyboardControlActive = true;
+        const touch = e.touches[0];
+        touchStart.x = touch.clientX;
+        touchStart.y = touch.clientY;
+        touchEnd.x = touchStart.x;
+        touchEnd.y = touchStart.y;
+        e.preventDefault();
+    });
+
+    joystickContainer.addEventListener('touchmove', (e) => {
+        if (!isTouching) return;
+        const touch = e.touches[0];
+        touchEnd.x = touch.clientX;
+        touchEnd.y = touch.clientY;
+        
+        // Update joystick knob position
+        const deltaX = touchEnd.x - touchStart.x;
+        const deltaY = touchEnd.y - touchStart.y;
+        const distance = Math.min(50, Math.sqrt(deltaX * deltaX + deltaY * deltaY));
+        const angle = Math.atan2(deltaY, deltaX);
+        
+        joystickKnob.style.left = `${50 + (Math.cos(angle) * distance)}px`;
+        joystickKnob.style.top = `${50 + (Math.sin(angle) * distance)}px`;
+        
+        e.preventDefault();
+    });
+
+    joystickContainer.addEventListener('touchend', () => {
+        isTouching = false;
+        joystickKnob.style.left = '50%';
+        joystickKnob.style.top = '50%';
+    });
+}
+
+// Modify animation loop to include touch controls
 function animate() {
     requestAnimationFrame(animate);
     
     if (!keyboardControlActive) {
-        // Auto-move camera in a circle until keys are used
+        // Auto-move camera in a circle until controls are used
         const time = Date.now() * 0.001;
         camera.position.x = Math.cos(time * 0.5) * 15;
         camera.position.z = Math.sin(time * 0.5) * 15;
         camera.position.y = 8;
         camera.rotation.y = time * 0.5 + Math.PI / 2;
     } else {
-        // Handle keyboard movement with acceleration
-        if (keys.ArrowLeft) {
+        // Handle keyboard and touch movement with acceleration
+        if (keys.ArrowLeft || (isTouching && (touchEnd.x - touchStart.x) < -20)) {
             velocity.turning = Math.min(velocity.turning + turnAcceleration, maxTurnSpeed);
-        } else if (keys.ArrowRight) {
+        } else if (keys.ArrowRight || (isTouching && (touchEnd.x - touchStart.x) > 20)) {
             velocity.turning = Math.max(velocity.turning - turnAcceleration, -maxTurnSpeed);
         } else {
             // Decelerate turning
@@ -119,9 +198,9 @@ function animate() {
             }
         }
         
-        if (keys.ArrowUp) {
+        if (keys.ArrowUp || (isTouching && (touchStart.y - touchEnd.y) > 20)) {
             velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed);
-        } else if (keys.ArrowDown) {
+        } else if (keys.ArrowDown || (isTouching && (touchStart.y - touchEnd.y) < -20)) {
             velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed);
         } else {
             // Decelerate forward/backward
