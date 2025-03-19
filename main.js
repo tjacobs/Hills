@@ -81,6 +81,18 @@ window.addEventListener('keyup', (e) => {
 // Set initial camera rotation
 let cameraAngle = 0;
 
+// Add movement physics
+let velocity = {
+    forward: 0,
+    turning: 0
+};
+const maxSpeed = 0.5;
+const maxTurnSpeed = 0.02;
+const acceleration = 0.02;
+const turnAcceleration = 0.001;
+const deceleration = 0.01;
+const turnDeceleration = 0.001;
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
@@ -90,28 +102,42 @@ function animate() {
         const time = Date.now() * 0.001;
         camera.position.x = Math.cos(time * 0.5) * 15;
         camera.position.z = Math.sin(time * 0.5) * 15;
-        camera.position.y = 8; // Higher view point
-        camera.rotation.y = time * 0.5 + Math.PI / 2; // Makes camera face tangent to circle
+        camera.position.y = 8;
+        camera.rotation.y = time * 0.5 + Math.PI / 2;
     } else {
-        // Handle keyboard movement
+        // Handle keyboard movement with acceleration
         if (keys.ArrowLeft) {
-            cameraAngle += rotateSpeed;
+            velocity.turning = Math.min(velocity.turning + turnAcceleration, maxTurnSpeed);
+        } else if (keys.ArrowRight) {
+            velocity.turning = Math.max(velocity.turning - turnAcceleration, -maxTurnSpeed);
+        } else {
+            // Decelerate turning
+            if (velocity.turning > 0) {
+                velocity.turning = Math.max(0, velocity.turning - turnDeceleration);
+            } else if (velocity.turning < 0) {
+                velocity.turning = Math.min(0, velocity.turning + turnDeceleration);
+            }
         }
-        if (keys.ArrowRight) {
-            cameraAngle -= rotateSpeed;
-        }
+        
         if (keys.ArrowUp) {
-            let newX = camera.position.x - Math.sin(cameraAngle) * moveSpeed;
-            let newZ = camera.position.z - Math.cos(cameraAngle) * moveSpeed;
-            
-            // Clamp to boundaries but allow sliding
-            const boundary = size/2 - 1;
-            camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
-            camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
+            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed);
+        } else if (keys.ArrowDown) {
+            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed);
+        } else {
+            // Decelerate forward/backward
+            if (velocity.forward > 0) {
+                velocity.forward = Math.max(0, velocity.forward - deceleration);
+            } else if (velocity.forward < 0) {
+                velocity.forward = Math.min(0, velocity.forward + deceleration);
+            }
         }
-        if (keys.ArrowDown) {
-            let newX = camera.position.x + Math.sin(cameraAngle) * moveSpeed;
-            let newZ = camera.position.z + Math.cos(cameraAngle) * moveSpeed;
+        
+        // Apply movement
+        cameraAngle += velocity.turning;
+        
+        if (velocity.forward !== 0) {
+            let newX = camera.position.x - Math.sin(cameraAngle) * velocity.forward;
+            let newZ = camera.position.z - Math.cos(cameraAngle) * velocity.forward;
             
             // Clamp to boundaries but allow sliding
             const boundary = size/2 - 1;
@@ -119,7 +145,7 @@ function animate() {
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
         
-        camera.position.y = 3; // Return to normal height when controlling
+        camera.position.y = 3;
         camera.rotation.y = cameraAngle;
     }
     
