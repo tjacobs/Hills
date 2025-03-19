@@ -335,17 +335,16 @@ function animate() {
     
     // Animate particle clouds
     const positions = particleClouds.geometry.attributes.position.array;
-    const time = Date.now() * 0.00002; // Very slow movement
+    const time = Date.now() * 0.00002;
     
     for(let i = 0; i < positions.length; i += 3) {
-        // Very gentle floating motion
-        positions[i] += Math.sin(time + i) * 0.005;      // Reduced movement
-        positions[i + 1] += Math.cos(time + i) * 0.002; // Even less vertical movement
+        positions[i] += Math.sin(time + i) * 0.005;
+        positions[i + 1] += Math.cos(time + i) * 0.002;
         positions[i + 2] += Math.sin(time + i * 0.5) * 0.005;
     }
     
     particleClouds.geometry.attributes.position.needsUpdate = true;
-    
+
     if (!keyboardControlActive) {
         // Auto-move camera in a circle until controls are used
         const time = Date.now() * 0.001;
@@ -406,30 +405,12 @@ function animate() {
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
-        
-        camera.position.y = 3;
+
+        // Get terrain height at camera position
+        const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
+        // Set camera height to be 3 units above terrain
+        camera.position.y = terrainHeight + 3;
         camera.rotation.y = cameraAngle;
-    }
-    
-    // Handle player movement and collision detection
-    if (keyboardControlActive) {
-        const forwardX = Math.sin(cameraAngle) * velocity.forward;
-        const forwardZ = Math.cos(cameraAngle) * velocity.forward;
-
-        // Calculate potential new position
-        const newX = camera.position.x - forwardX;
-        const newZ = camera.position.z - forwardZ;
-
-        // Check the terrain height at the new position
-        const newTerrainHeight = getTerrainHeight(newX, newZ);
-
-        // Smoothly adjust camera height based on terrain height
-        const targetHeight = newTerrainHeight + 2; // Adjust to be 2 units above the terrain
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetHeight, 0.1); // Smooth transition
-
-        // Allow movement if above terrain
-        camera.position.x = newX;
-        camera.position.z = newZ;
     }
 
     // Ball physics
