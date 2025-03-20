@@ -30,8 +30,6 @@ for (let i = 0; i <= segments; i++) {
     }
 }
 groundGeometry.computeVertexNormals();
-
-// Main ground
 const groundMaterial = new THREE.MeshStandardMaterial({ 
     map: grassTexture,
     side: THREE.DoubleSide
@@ -97,7 +95,6 @@ window.addEventListener('keydown', (e) => {
         keyboardControlActive = true;
     }
 });
-
 window.addEventListener('keyup', (e) => {
     if (keys.hasOwnProperty(e.code)) {
         keys[e.code] = false;
@@ -145,7 +142,6 @@ if (isMobileDevice()) {
         border: 2px solid rgba(255, 255, 255, 0.4);
         touch-action: none;
     `;
-
     const joystickKnob = document.createElement('div');
     joystickKnob.style.cssText = `
         position: absolute;
@@ -157,7 +153,6 @@ if (isMobileDevice()) {
         border-radius: 50%;
         transform: translate(-50%, -50%);
     `;
-
     joystickContainer.appendChild(joystickKnob);
     document.body.appendChild(joystickContainer);
 
@@ -172,7 +167,6 @@ if (isMobileDevice()) {
         touchEnd.y = touchStart.y;
         e.preventDefault();
     });
-
     joystickContainer.addEventListener('touchmove', (e) => {
         if (!isTouching) return;
         const touch = e.touches[0];
@@ -190,7 +184,6 @@ if (isMobileDevice()) {
         
         e.preventDefault();
     });
-
     joystickContainer.addEventListener('touchend', () => {
         isTouching = false;
         joystickKnob.style.left = '50%';
@@ -206,7 +199,6 @@ void main() {
     vWorldPosition = worldPosition.xyz;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
-
 const fragmentShader = `
 uniform vec3 topColor;
 uniform vec3 bottomColor;
@@ -217,14 +209,12 @@ void main() {
     float h = normalize(vWorldPosition + offset).y;
     gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
 }`;
-
 const uniforms = {
     topColor: { value: new THREE.Color(0x0077ff) },  // Light blue
     bottomColor: { value: new THREE.Color(0xffffff) },  // White
     offset: { value: 33 },
     exponent: { value: 0.6 }
 };
-
 const skyGeo = new THREE.SphereGeometry(400, 32, 15);
 const skyMat = new THREE.ShaderMaterial({
     uniforms: uniforms,
@@ -232,14 +222,13 @@ const skyMat = new THREE.ShaderMaterial({
     fragmentShader: fragmentShader,
     side: THREE.BackSide
 });
-
 const sky = new THREE.Mesh(skyGeo, skyMat);
 scene.add(sky);
 
 // Add fog for distance fade
 scene.fog = new THREE.Fog(0xffffff, 100, 500);
 
-// Add particle clouds
+// Add clouds
 function createParticleClouds() {
     const cloudParticles = [];
     const particleCount = 300; // Number of particles for denser clouds
@@ -253,7 +242,6 @@ function createParticleClouds() {
         depthWrite: false,
         blending: THREE.AdditiveBlending
     });
-
     const positions = new Float32Array(particleCount * 3);
     const scales = new Float32Array(particleCount);
 
@@ -270,7 +258,7 @@ function createParticleClouds() {
         const cloudCenter = cloudCenters[Math.floor(i / (particleCount / cloudCenters.length))];
         
         // Position particles tightly around the cluster center
-        const radius = Math.random() * 5; // Smaller radius for tighter clumping
+        const radius = Math.random() * 5;
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.random() * Math.PI * 2;
         
@@ -280,17 +268,14 @@ function createParticleClouds() {
         positions[i * 3 + 2] = cloudCenter.z + (Math.cos(phi) * radius * 2); // Double width
 
         // Set all particles to a larger size for a solid appearance
-        scales[i] = 1; // Uniform size for a more cohesive look
+        scales[i] = 1;
     }
-
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     particleGeometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
-
     const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
     scene.add(particleSystem);
     return particleSystem;
 }
-
 const particleClouds = createParticleClouds();
 
 // Function to get terrain height at a specific position
@@ -302,11 +287,9 @@ function getTerrainHeight(x, z) {
     // Calculate the indices based on the position
     const i = Math.floor(((x + size / 2) / size) * segments);
     const j = Math.floor(((z + size / 2) / size) * segments);
-    
     if (i < 0 || i >= segments || j < 0 || j >= segments) {
         return -Infinity; // Out of bounds
     }
-
     const index = (j * (segments + 1) + i) * 3; // Calculate the index in the vertex array
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
@@ -341,7 +324,6 @@ function createNewStone() {
         bumpMap: stoneTexture, // Use texture only for bump mapping
         bumpScale: 0.5         // Adjust bump intensity
     });
-
     const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
     // Set fixed rotation so stones always lay flat
@@ -356,7 +338,6 @@ function createNewStone() {
     const x = (Math.random() - 0.5) * boundary * 2;
     const z = (Math.random() - 0.5) * boundary * 2;
     const y = 50;
-    
     stone.position.set(x, y, z);
     scene.add(stone);
     stones.push(stone);
@@ -407,13 +388,11 @@ function animate() {
     // Animate particle clouds
     const positions = particleClouds.geometry.attributes.position.array;
     const time = Date.now() * 0.00002;
-    
-    for(let i = 0; i < positions.length; i += 3) {
-        positions[i] += Math.sin(time + i) * 0.005;
-        positions[i + 1] += Math.cos(time + i) * 0.002;
-        positions[i + 2] += Math.sin(time + i * 0.5) * 0.005;
+    for (let i = 0; i < positions.length; i += 3) {
+        //positions[i] += Math.sin(time + i) * 0.005;
+        //positions[i + 1] += Math.cos(time + i) * 0.002;
+        //positions[i + 2] += Math.sin(time + i * 0.5) * 0.005;
     }
-    
     particleClouds.geometry.attributes.position.needsUpdate = true;
 
     if (!keyboardControlActive) {
@@ -462,7 +441,7 @@ function animate() {
         const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
         
         // Calculate target height (3 units above terrain)
-        targetHeight = terrainHeight + 3;
+        targetHeight = terrainHeight + 2;
         
         // Smoothly interpolate current height to target height
         if (!isJumping) {  // Only smooth terrain following when not jumping
@@ -513,7 +492,6 @@ function animate() {
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
-
         camera.rotation.y = cameraAngle;
     }
 
@@ -538,8 +516,8 @@ function animate() {
             stone.position.y = stoneTerrainHeight + stoneRadius + groundCheckOffset;
             stoneVelocity.y = 0;
 
-            // Calculate slopes with larger check distance for smoother gradient detection
-            const checkDist = 0.5; // Increased check distance
+            // Calculate slopes
+            const checkDist = 0.5;
             const slopeFront = getTerrainHeight(stone.position.x, stone.position.z + checkDist) - stoneTerrainHeight;
             const slopeBack = getTerrainHeight(stone.position.x, stone.position.z - checkDist) - stoneTerrainHeight;
             const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - stoneTerrainHeight;
@@ -551,7 +529,6 @@ function animate() {
             // Find steepest downward slope
             let steepestSlope = 0;
             let rollDirection = new THREE.Vector3(0, 0, 0);
-
             if (slopeFront < steepestSlope) {
                 steepestSlope = slopeFront;
                 rollDirection.set(0, 0, 1);
@@ -625,7 +602,6 @@ function animate() {
             updateStoneCountUI();
         }
     }
-    
     renderer.render(scene, camera);
 }
 
@@ -636,6 +612,7 @@ lastStoneDropTime = Date.now();
 // Initialize UI
 updateStoneCountUI();
 
+// Go
 animate();
 
 // Handle window resize
@@ -644,4 +621,4 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-} 
+}
