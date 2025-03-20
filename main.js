@@ -415,7 +415,7 @@ const maxVelocity = 0.2;
 const stones = [];
 const stoneVelocities = [];
 let lastStoneDropTime = 0;
-const stoneDropInterval = 10000;
+const stoneDropInterval = 1000;
 const pickupDelay = 500; // 500ms delay before pickup is allowed
 let lastThrowTime = 0;   // Track when the last throw happened
 
@@ -476,27 +476,6 @@ function createNewStone() {
         0,
         (Math.random() - 0.5) * 0.1
     ));
-}
-
-// Add stone collection tracking
-let stonesCollected = 0;
-
-// Create UI for stone count
-const stoneCountUI = document.createElement('div');
-stoneCountUI.style.position = 'fixed';
-stoneCountUI.style.top = '20px';
-stoneCountUI.style.right = '20px';
-stoneCountUI.style.padding = '10px';
-stoneCountUI.style.background = 'rgba(0, 0, 0, 0.5)';
-stoneCountUI.style.color = 'white';
-stoneCountUI.style.fontFamily = 'Arial, sans-serif';
-stoneCountUI.style.fontSize = '20px';
-stoneCountUI.style.borderRadius = '5px';
-document.body.appendChild(stoneCountUI);
-
-// Update UI function
-function updateStoneCountUI() {
-    stoneCountUI.textContent = `Stones: ${stonesCollected}`;
 }
 
 // Add smooth height transition parameters
@@ -791,9 +770,6 @@ function animate() {
 // Create first stone immediately
 createNewStone();
 lastStoneDropTime = Date.now();
-
-// Initialize UI
-updateStoneCountUI();
 
 // Go
 animate();
