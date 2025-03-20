@@ -69,12 +69,15 @@ camera.position.set(0, 3, 15);
 // Add keyboard controls
 const moveSpeed = 0.5;
 const rotateSpeed = 0.02;
+const sprintMultiplier = 2.0; // Double speed when sprinting
 const keys = {
     ArrowLeft: false,
     ArrowRight: false,
     ArrowUp: false,
     ArrowDown: false,
-    Space: false  // Add space key tracking
+    Space: false,
+    ShiftLeft: false,  // Track left shift
+    ShiftRight: false  // Track right shift
 };
 
 // Track if keys have been used
@@ -109,11 +112,11 @@ let velocity = {
     turning: 0
 };
 const maxSpeed = 0.5;
-const maxTurnSpeed = 0.02;
+const maxTurnSpeed = 0.03;
 const acceleration = 0.02;
-const turnAcceleration = 0.001;
+const turnAcceleration = 0.006;
 const deceleration = 0.01;
-const turnDeceleration = 0.001;
+const turnDeceleration = 0.002;
 
 // Add touch controls
 let touchStart = { x: 0, y: 0 };
@@ -401,11 +404,17 @@ function animate() {
         camera.position.y = 8;
         camera.rotation.y = time * 0.5 + Math.PI / 2;
     } else {
+        // Check if either shift key is pressed
+        const isSprinting = keys.ShiftLeft || keys.ShiftRight;
+        const currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
+        
         // Handle keyboard and touch movement with acceleration
         if (keys.ArrowLeft || (isTouching && (touchEnd.x - touchStart.x) < -20)) {
-            velocity.turning = Math.min(velocity.turning + turnAcceleration, maxTurnSpeed);
+            velocity.turning = Math.min(velocity.turning + turnAcceleration, 
+                maxTurnSpeed * (isSprinting ? sprintMultiplier : 1));
         } else if (keys.ArrowRight || (isTouching && (touchEnd.x - touchStart.x) > 20)) {
-            velocity.turning = Math.max(velocity.turning - turnAcceleration, -maxTurnSpeed);
+            velocity.turning = Math.max(velocity.turning - turnAcceleration, 
+                -maxTurnSpeed * (isSprinting ? sprintMultiplier : 1));
         } else {
             // Decelerate turning
             if (velocity.turning > 0) {
@@ -416,9 +425,9 @@ function animate() {
         }
         
         if (keys.ArrowUp || (isTouching && (touchStart.y - touchEnd.y) > 20)) {
-            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed);
+            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed * (isSprinting ? sprintMultiplier : 1));
         } else if (keys.ArrowDown || (isTouching && (touchStart.y - touchEnd.y) < -20)) {
-            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed);
+            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed * (isSprinting ? sprintMultiplier : 1));
         } else {
             // Decelerate forward/backward
             if (velocity.forward > 0) {
