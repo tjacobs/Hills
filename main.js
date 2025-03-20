@@ -312,48 +312,45 @@ function getTerrainHeight(x, z) {
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
-// Ball parameters
-const ballRadius = 0.5;
-const gravity = -0.05; // Reduced gravity
-const rollSpeed = 0.1; // Reduced roll speed
-const friction = 0.03; // Adjusted friction
-const minVelocity = 0.001; // Lower minimum velocity threshold
+// Stone parameters
+const stoneRadius = 0.5;
+const gravity = -0.05;
+const rollSpeed = 0.1;
+const friction = 0.03;
+const minVelocity = 0.001;
 const groundCheckOffset = 0.1;
-const maxVelocity = 0.3; // Added maximum velocity cap
+const maxVelocity = 0.3;
 
-// Ball management
-const balls = [];
-const ballVelocities = [];
-let lastBallDropTime = 0;
-const ballDropInterval = 100; // 10 seconds in milliseconds
+// Stone management
+const stones = [];
+const stoneVelocities = [];
+let lastStoneDropTime = 0;
+const stoneDropInterval = 10000; // 10 seconds in milliseconds
 
-// Load stone texture
-const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
-
-function createNewBall() {
+function createNewStone() {
     // Create brick-like geometry (width, height, depth)
-    const width = ballRadius * 2;
-    const height = ballRadius * 1.5;
-    const depth = ballRadius * 1;
-    const ballGeometry = new THREE.BoxGeometry(width, height, depth);
+    const width = stoneRadius * 2;
+    const height = stoneRadius * 1.5;
+    const depth = stoneRadius * 1;
+    const stoneGeometry = new THREE.BoxGeometry(width, height, depth);
     
     // Create stone material with grey color
-    const ballMaterial = new THREE.MeshStandardMaterial({ 
+    const stoneMaterial = new THREE.MeshStandardMaterial({ 
         roughness: 0.9,        // Very rough surface
         metalness: 0.1,        // Low metalness for rock look
         color: 0x808080,       // Pure grey color
-        bumpMap: stoneTexture, // Use texture only for bump mapping
+        bumpMap: grassTexture, // Use texture only for bump mapping
         bumpScale: 0.5         // Adjust bump intensity
     });
 
-    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
     // Set fixed rotation so stones always lay flat
-    ball.rotation.set(0, 0, 0);
+    stone.rotation.set(0, 0, 0);
     
     // Random scale variation for more natural look
     const scale = 0.8 + Math.random() * 0.4;
-    ball.scale.set(scale, scale, scale);
+    stone.scale.set(scale, scale, scale);
     
     // Random position within the entire playable area
     const boundary = size * 0.4;
@@ -361,37 +358,37 @@ function createNewBall() {
     const z = (Math.random() - 0.5) * boundary * 2;
     const y = 50;
     
-    ball.position.set(x, y, z);
-    scene.add(ball);
-    balls.push(ball);
+    stone.position.set(x, y, z);
+    scene.add(stone);
+    stones.push(stone);
     
     // Initialize velocity with slight random offset
-    ballVelocities.push(new THREE.Vector3(
+    stoneVelocities.push(new THREE.Vector3(
         (Math.random() - 0.5) * 0.1,
         0,
         (Math.random() - 0.5) * 0.1
     ));
 }
 
-// Add ball collection tracking
-let ballsCollected = 0;
+// Add stone collection tracking
+let stonesCollected = 0;
 
-// Create UI for ball count
-const ballCountUI = document.createElement('div');
-ballCountUI.style.position = 'fixed';
-ballCountUI.style.top = '20px';
-ballCountUI.style.right = '20px';
-ballCountUI.style.padding = '10px';
-ballCountUI.style.background = 'rgba(0, 0, 0, 0.5)';
-ballCountUI.style.color = 'white';
-ballCountUI.style.fontFamily = 'Arial, sans-serif';
-ballCountUI.style.fontSize = '20px';
-ballCountUI.style.borderRadius = '5px';
-document.body.appendChild(ballCountUI);
+// Create UI for stone count
+const stoneCountUI = document.createElement('div');
+stoneCountUI.style.position = 'fixed';
+stoneCountUI.style.top = '20px';
+stoneCountUI.style.right = '20px';
+stoneCountUI.style.padding = '10px';
+stoneCountUI.style.background = 'rgba(0, 0, 0, 0.5)';
+stoneCountUI.style.color = 'white';
+stoneCountUI.style.fontFamily = 'Arial, sans-serif';
+stoneCountUI.style.fontSize = '20px';
+stoneCountUI.style.borderRadius = '5px';
+document.body.appendChild(stoneCountUI);
 
 // Update UI function
-function updateBallCountUI() {
-    ballCountUI.textContent = `Balls: ${ballsCollected}`;
+function updateStoneCountUI() {
+    stoneCountUI.textContent = `Stones: ${stonesCollected}`;
 }
 
 // Add smooth height transition parameters
@@ -401,11 +398,11 @@ const heightSmoothness = 0.1; // Adjust this value between 0 and 1 (lower = smoo
 function animate() {
     requestAnimationFrame(animate);
     
-    // Check if it's time to drop a new ball
+    // Check if it's time to drop a new stone
     const currentTime = Date.now();
-    if (currentTime - lastBallDropTime > ballDropInterval) {
-        createNewBall();
-        lastBallDropTime = currentTime;
+    if (currentTime - lastStoneDropTime > stoneDropInterval) {
+        createNewStone();
+        lastStoneDropTime = currentTime;
     }
 
     // Animate particle clouds
@@ -521,33 +518,33 @@ function animate() {
         camera.rotation.y = cameraAngle;
     }
 
-    // Update all balls
-    for (let i = 0; i < balls.length; i++) {
-        const ball = balls[i];
-        const ballVelocity = ballVelocities[i];
+    // Update all stones
+    for (let i = 0; i < stones.length; i++) {
+        const stone = stones[i];
+        const stoneVelocity = stoneVelocities[i];
 
         // Apply gravity
-        ballVelocity.y += gravity;
+        stoneVelocity.y += gravity;
 
         // Update position
-        ball.position.x += ballVelocity.x;
-        ball.position.y += ballVelocity.y;
-        ball.position.z += ballVelocity.z;
+        stone.position.x += stoneVelocity.x;
+        stone.position.y += stoneVelocity.y;
+        stone.position.z += stoneVelocity.z;
 
-        // Get current terrain height at ball position
-        const ballTerrainHeight = getTerrainHeight(ball.position.x, ball.position.z);
+        // Get current terrain height at stone position
+        const stoneTerrainHeight = getTerrainHeight(stone.position.x, stone.position.z);
 
         // Ground collision check
-        if (ball.position.y <= ballTerrainHeight + ballRadius) {
-            ball.position.y = ballTerrainHeight + ballRadius + groundCheckOffset;
-            ballVelocity.y = 0;
+        if (stone.position.y <= stoneTerrainHeight + stoneRadius) {
+            stone.position.y = stoneTerrainHeight + stoneRadius + groundCheckOffset;
+            stoneVelocity.y = 0;
 
             // Calculate slopes with larger check distance for smoother gradient detection
             const checkDist = 0.5; // Increased check distance
-            const slopeFront = getTerrainHeight(ball.position.x, ball.position.z + checkDist) - ballTerrainHeight;
-            const slopeBack = getTerrainHeight(ball.position.x, ball.position.z - checkDist) - ballTerrainHeight;
-            const slopeLeft = getTerrainHeight(ball.position.x - checkDist, ball.position.z) - ballTerrainHeight;
-            const slopeRight = getTerrainHeight(ball.position.x + checkDist, ball.position.z) - ballTerrainHeight;
+            const slopeFront = getTerrainHeight(stone.position.x, stone.position.z + checkDist) - stoneTerrainHeight;
+            const slopeBack = getTerrainHeight(stone.position.x, stone.position.z - checkDist) - stoneTerrainHeight;
+            const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - stoneTerrainHeight;
+            const slopeRight = getTerrainHeight(stone.position.x + checkDist, stone.position.z) - stoneTerrainHeight;
 
             // Calculate average slope for smoother movement
             const avgSlope = (Math.abs(slopeFront) + Math.abs(slopeBack) + Math.abs(slopeLeft) + Math.abs(slopeRight)) / 4;
@@ -580,65 +577,65 @@ function animate() {
                 
                 // Gradually add to current velocity
                 const rollForce = rollSpeed * slopeFactor;
-                ballVelocity.x += rollDirection.x * rollForce;
-                ballVelocity.z += rollDirection.z * rollForce;
+                stoneVelocity.x += rollDirection.x * rollForce;
+                stoneVelocity.z += rollDirection.z * rollForce;
 
                 // Apply additional friction on steeper slopes
                 const slopeFriction = friction * (1 + avgSlope);
-                ballVelocity.x *= (1 - slopeFriction);
-                ballVelocity.z *= (1 - slopeFriction);
+                stoneVelocity.x *= (1 - slopeFriction);
+                stoneVelocity.z *= (1 - slopeFriction);
             } else {
                 // Apply standard friction on flat ground
-                ballVelocity.x *= (1 - friction);
-                ballVelocity.z *= (1 - friction);
+                stoneVelocity.x *= (1 - friction);
+                stoneVelocity.z *= (1 - friction);
             }
 
             // Stop if moving very slowly
-            if (Math.abs(ballVelocity.x) < minVelocity) ballVelocity.x = 0;
-            if (Math.abs(ballVelocity.z) < minVelocity) ballVelocity.z = 0;
+            if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
+            if (Math.abs(stoneVelocity.z) < minVelocity) stoneVelocity.z = 0;
 
             // Limit maximum velocity
-            const currentVelocity = Math.sqrt(ballVelocity.x * ballVelocity.x + ballVelocity.z * ballVelocity.z);
+            const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
             if (currentVelocity > maxVelocity) {
                 const scale = maxVelocity / currentVelocity;
-                ballVelocity.x *= scale;
-                ballVelocity.z *= scale;
+                stoneVelocity.x *= scale;
+                stoneVelocity.z *= scale;
             }
         }
     }
     
-    // Check for ball collection
-    const playerRadius = 4; // Increased from 2 to 4 for easier collection
-    for (let i = balls.length - 1; i >= 0; i--) {
-        const ball = balls[i];
+    // Check for stone collection
+    const playerRadius = 4;
+    for (let i = stones.length - 1; i >= 0; i--) {
+        const stone = stones[i];
         
-        // Calculate distance between player and ball
-        const dx = camera.position.x - ball.position.x;
-        const dz = camera.position.z - ball.position.z;
+        // Calculate distance between player and stone
+        const dx = camera.position.x - stone.position.x;
+        const dz = camera.position.z - stone.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
         
-        // If player is close enough, collect the ball
+        // If player is close enough, collect the stone
         if (distance < playerRadius) {
-            // Remove ball from scene and arrays
-            scene.remove(ball);
-            balls.splice(i, 1);
-            ballVelocities.splice(i, 1);
+            // Remove stone from scene and arrays
+            scene.remove(stone);
+            stones.splice(i, 1);
+            stoneVelocities.splice(i, 1);
             
             // Increment counter and update UI
-            ballsCollected++;
-            updateBallCountUI();
+            stonesCollected++;
+            updateStoneCountUI();
         }
     }
     
     renderer.render(scene, camera);
 }
 
-// Create first ball immediately
-createNewBall();
-lastBallDropTime = Date.now();
+// Create first stone immediately
+createNewStone();
+lastStoneDropTime = Date.now();
 
 // Initialize UI
-updateBallCountUI();
+updateStoneCountUI();
 
 animate();
 
