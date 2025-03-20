@@ -77,7 +77,9 @@ const keys = {
     ArrowDown: false,
     Space: false,
     ShiftLeft: false,  // Track left shift
-    ShiftRight: false  // Track right shift
+    ShiftRight: false,  // Track right shift
+    KeyA: false,  // Add A key
+    KeyD: false   // Add D key
 };
 
 // Track if keys have been used
@@ -428,6 +430,7 @@ function animate() {
             }
         }
         
+        // Forward/backward movement
         if (keys.ArrowUp || (isTouching && (touchStart.y - touchEnd.y) > 20)) {
             velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed * (isSprinting ? sprintMultiplier : 1));
         } else if (keys.ArrowDown || (isTouching && (touchStart.y - touchEnd.y) < -20)) {
