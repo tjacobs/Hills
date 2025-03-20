@@ -113,9 +113,9 @@ let velocity = {
 };
 const maxSpeed = 0.5;
 const maxTurnSpeed = 0.03;
-const acceleration = 0.02;
+const acceleration = 0.03;
 const turnAcceleration = 0.006;
-const deceleration = 0.01;
+const deceleration = 0.02;
 const turnDeceleration = 0.002;
 
 // Add touch controls
@@ -374,6 +374,10 @@ function updateBallCountUI() {
     ballCountUI.textContent = `Balls: ${ballsCollected}`;
 }
 
+// Add smooth height transition parameters
+let targetHeight = 3;
+const heightSmoothness = 0.1; // Adjust this value between 0 and 1 (lower = smoother)
+
 function animate() {
     requestAnimationFrame(animate);
     
@@ -437,27 +441,36 @@ function animate() {
             }
         }
 
-        // Handle jumping
+        // Get terrain height at camera position
         const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-        const isOnGround = camera.position.y <= terrainHeight + 3;
+        
+        // Calculate target height (3 units above terrain)
+        targetHeight = terrainHeight + 3;
+        
+        // Smoothly interpolate current height to target height
+        if (!isJumping) {  // Only smooth terrain following when not jumping
+            camera.position.y += (targetHeight - camera.position.y) * heightSmoothness;
+        }
 
-        // Initiate jump when space is pressed and player is on ground
-        if (keys.Space && isOnGround && !isJumping) {
+        // Handle jumping
+        if (keys.Space && !isJumping && Math.abs(camera.position.y - targetHeight) < 0.1) {
             playerVerticalVelocity = jumpForce;
             isJumping = true;
         }
 
-        // Apply gravity and update vertical position
-        playerVerticalVelocity += playerGravity;
-        camera.position.y += playerVerticalVelocity;
+        // Apply gravity and update vertical position when jumping
+        if (isJumping) {
+            playerVerticalVelocity += playerGravity;
+            camera.position.y += playerVerticalVelocity;
 
-        // Ground collision check
-        if (camera.position.y <= terrainHeight + 3) {
-            camera.position.y = terrainHeight + 3;
-            playerVerticalVelocity = 0;
-            isJumping = false;
+            // Check for landing
+            if (camera.position.y <= targetHeight) {
+                camera.position.y = targetHeight;
+                playerVerticalVelocity = 0;
+                isJumping = false;
+            }
         }
-        
+
         // Apply horizontal movement
         cameraAngle += velocity.turning;
         
@@ -574,7 +587,7 @@ function animate() {
     }
     
     // Check for ball collection
-    const playerRadius = 2; // Collection radius around player
+    const playerRadius = 4; // Increased from 2 to 4 for easier collection
     for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i];
         
