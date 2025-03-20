@@ -13,6 +13,48 @@ grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
 grassTexture.repeat.set(8, 8);
 
+// Create custom shader material for ground
+const groundMaterial = new THREE.ShaderMaterial({
+    uniforms: {
+        grassTexture: { value: grassTexture },
+        centerDistance: { value: 0.8 },    // Distance from center where beach starts (0-1)
+        transitionWidth: { value: 0.1 }    // Width of the beach transition
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec2 vPosition;
+        
+        void main() {
+            vUv = uv;
+            // Pass normalized position coordinates
+            vPosition = position.xy / 200.0; // Normalize by size (200)
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D grassTexture;
+        uniform float centerDistance;
+        uniform float transitionWidth;
+        
+        varying vec2 vUv;
+        varying vec2 vPosition;
+        
+        void main() {
+            vec4 grassColor = texture2D(grassTexture, vUv);
+            vec4 sandColor = vec4(0.76, 0.70, 0.50, 1.0); // Sandy color
+            
+            // Calculate distance from center (0-1)
+            float distFromCenter = max(abs(vPosition.x), abs(vPosition.y)) * 2.0;
+            
+            // Create smooth transition at the edges
+            float blend = smoothstep(centerDistance, centerDistance + transitionWidth, distFromCenter);
+            
+            gl_FragColor = mix(grassColor, sandColor, blend);
+        }
+    `,
+    side: THREE.DoubleSide
+});
+
 // Set geometry for hills
 const size = 200;
 const height = 5;
@@ -30,10 +72,7 @@ for (let i = 0; i <= segments; i++) {
     }
 }
 groundGeometry.computeVertexNormals();
-const groundMaterial = new THREE.MeshStandardMaterial({ 
-    map: grassTexture,
-    side: THREE.DoubleSide
-});
+
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
