@@ -379,17 +379,35 @@ function getTerrainHeight(x, z) {
 // Stone parameters
 const stoneRadius = 0.5;
 const gravity = -0.05;
-const rollSpeed = 0.05;  // Reduced from 0.1
-const friction = 0.1;    // Increased from 0.03
-const minVelocity = 0.01; // Increased from 0.001
-const groundCheckOffset = 0.01; // Reduced from 0.1
-const maxVelocity = 0.2; // Reduced from 0.3
+const rollSpeed = 0.05;
+const friction = 0.1;
+const minVelocity = 0.01;
+const groundCheckOffset = 0.01;
+const maxVelocity = 0.2;
 
 // Stone management
 const stones = [];
 const stoneVelocities = [];
 let lastStoneDropTime = 0;
-const stoneDropInterval = 100; // 10 seconds in milliseconds
+const stoneDropInterval = 100;
+
+// Add held stone tracking with physics
+let heldStone = null;
+const heldStoneOffset = {
+    forward: 1.2,
+    down: 0.8,
+    scale: 0.5
+};
+const heldStonePhysics = {
+    velocity: new THREE.Vector3(),
+    targetPos: new THREE.Vector3(),
+    targetRot: new THREE.Euler(),
+    springStrength: 0.35,    // Increased from 0.1 for tighter control
+    dampening: 0.6,          // Reduced from 0.8 for heavier feel
+    rotationLag: 0.15,       // Increased from 0.1 for slower rotation
+    bobStrength: 0.02,       // Reduced from 0.05 for less bouncing
+    swayStrength: 0.03       // Reduced from 0.1 for less swaying
+};
 
 function createNewStone() {
     // Create brick-like geometry (width, height, depth)
@@ -680,18 +698,65 @@ function animate() {
         const dz = camera.position.z - stone.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
         
-        // If player is close enough, collect the stone
-        if (distance < playerRadius) {
-            // Remove stone from scene and arrays
-            scene.remove(stone);
+        // If player is close enough and not holding a stone, collect it
+        if (distance < playerRadius && !heldStone) {
+            // Remove stone from physics arrays
             stones.splice(i, 1);
             stoneVelocities.splice(i, 1);
             
-            // Increment counter and update UI
-            stonesCollected++;
-            updateStoneCountUI();
+            // Set as held stone
+            heldStone = stone;
+            
+            // Scale down the held stone
+            heldStone.scale.set(
+                heldStoneOffset.scale, 
+                heldStoneOffset.scale, 
+                heldStoneOffset.scale
+            );
         }
     }
+
+    // Update held stone position with physics in animate()
+    if (heldStone) {
+        // Calculate ideal position based on camera
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyQuaternion(camera.quaternion);
+        
+        heldStonePhysics.targetPos.set(
+            camera.position.x + forward.x * heldStoneOffset.forward,
+            camera.position.y - heldStoneOffset.down,
+            camera.position.z + forward.z * heldStoneOffset.forward
+        );
+        
+        // Add bobbing based on movement
+        const time = Date.now() * 0.003;
+        if (velocity.forward !== 0) {
+            heldStonePhysics.targetPos.y += Math.sin(time * 5) * heldStonePhysics.bobStrength;
+            heldStonePhysics.targetPos.x += Math.cos(time * 2.5) * heldStonePhysics.swayStrength;
+        }
+        
+        // Apply spring physics
+        const deltaPos = new THREE.Vector3().subVectors(heldStonePhysics.targetPos, heldStone.position);
+        heldStonePhysics.velocity.add(deltaPos.multiplyScalar(heldStonePhysics.springStrength));
+        heldStonePhysics.velocity.multiplyScalar(heldStonePhysics.dampening);
+        
+        // Update position
+        heldStone.position.add(heldStonePhysics.velocity);
+        
+        // Smooth rotation
+        heldStonePhysics.targetRot.y = camera.rotation.y;
+        heldStone.rotation.y += (heldStonePhysics.targetRot.y - heldStone.rotation.y) * heldStonePhysics.rotationLag;
+        
+        // Add slight tilt based on movement
+        if (velocity.forward !== 0) {
+            heldStone.rotation.z = Math.sin(time * 5) * 0.1;
+            heldStone.rotation.x = Math.cos(time * 2.5) * 0.1;
+        } else {
+            heldStone.rotation.z *= 0.95;
+            heldStone.rotation.x *= 0.95;
+        }
+    }
+
     renderer.render(scene, camera);
 }
 
