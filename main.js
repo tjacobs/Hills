@@ -42,13 +42,16 @@ scene.add(ground);
 const borderSize = size * 10;
 const borderGeometry = new THREE.PlaneGeometry(borderSize, borderSize);
 const borderMaterial = new THREE.MeshStandardMaterial({ 
-    map: grassTexture,
+    color: 0x5588ff,  // More vibrant blue color for water
     side: THREE.DoubleSide,
-    color: 0x558833  // Darker green color
+    metalness: 0.5,   // High metalness for water shine
+    roughness: 0.1,   // Low roughness for water shine
+    transparent: true,
+    opacity: 0.9      // Slight transparency
 });
 const borderGround = new THREE.Mesh(borderGeometry, borderMaterial);
 borderGround.rotation.x = -Math.PI / 2;
-borderGround.position.y = -5;
+borderGround.position.y = -6;
 scene.add(borderGround);
 
 // Add ambient light to see the texture
@@ -375,8 +378,13 @@ function updateStoneCountUI() {
 let targetHeight = 3;
 const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
 
+// Add water animation to animate function
 function animate() {
     requestAnimationFrame(animate);
+    
+    // Animate water (border ground)
+    const time = Date.now() * 0.001;
+    borderGround.position.y = -6 + Math.sin(time) * 0.1; // Gentle bobbing motion around new base height
     
     // Check if it's time to drop a new stone
     const currentTime = Date.now();
@@ -387,7 +395,7 @@ function animate() {
 
     // Animate particle clouds
     const positions = particleClouds.geometry.attributes.position.array;
-    const time = Date.now() * 0.00002;
+    const time2 = Date.now() * 0.00002;
     for (let i = 0; i < positions.length; i += 3) {
         //positions[i] += Math.sin(time + i) * 0.005;
         //positions[i + 1] += Math.cos(time + i) * 0.002;
