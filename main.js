@@ -150,7 +150,7 @@ const moveSpeed = 0.5;
 const rotateSpeed = 0.02;
 const sprintMultiplier = 2.0;
 const throwForce = 0.8;  // Add throw force constant
-const throwUpward = 0.4; // Add upward throw component
+const throwUpward = 0.8; // Add upward throw component
 const keys = {
     ArrowLeft: false,
     ArrowRight: false,
@@ -446,14 +446,15 @@ function getTerrainHeight(x, z) {
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
-// Stone parameters
+// Stone parameters - adjusted for ultra-smooth movement
 const stoneRadius = 0.5;
-const gravity = -0.05;
-const rollSpeed = 0.05;
-const friction = 0.1;
-const minVelocity = 0.01;
-const groundCheckOffset = 0.01;
-const maxVelocity = 0.2;
+const gravity = -0.01;       // Further reduced for minimal vertical acceleration
+const rollSpeed = 0.02;      // Reduced for more gradual rolling
+const friction = 0.03;       // Reduced for smoother deceleration
+const minVelocity = 0.003;   // Lower threshold for stopping
+const groundCheckOffset = 0.1; // Increased for better ground detection
+const maxVelocity = 0.12;    // Reduced for more controlled movement
+const heightSmoothingFactor = 0.15; // New parameter for height interpolation
 
 // Stone management
 const stones = [];
@@ -525,6 +526,118 @@ function createNewStone() {
 // Add smooth height transition parameters
 let targetHeight = 3;
 const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
+
+// Add throw function with adjusted parameters
+function throwHeldStone() {
+    if (heldStone) {
+        // Add stone back to physics arrays
+        stones.push(heldStone);
+        
+        // Calculate throw direction and force
+        const forward = new THREE.Vector3(0, 0, -0.5);
+        forward.applyQuaternion(camera.quaternion);
+        
+        // Create initial velocity based on camera direction
+        const throwForce = 0.2; // Reduced from 0.4 for less powerful throw
+        const throwVelocity = new THREE.Vector3(
+            forward.x * throwForce,
+            -0.05, // Negative value for downward trajectory
+            forward.z * 0.1
+        );
+        
+        // Add to velocities array
+        stoneVelocities.push(throwVelocity);
+        
+        // Reset stone scale
+        heldStone.scale.set(1, 1, 1);
+        
+        // Clear held stone
+        heldStone = null;
+        
+        // Track throw time for pickup delay
+        lastThrowTime = Date.now();
+    }
+}
+
+// Update stones with simplified physics for smooth movement
+function updateStones() {
+    for (let i = 0; i < stones.length; i++) {
+        const stone = stones[i];
+        const stoneVelocity = stoneVelocities[i];
+
+        // Store previous position for interpolation
+        const prevX = stone.position.x;
+        const prevZ = stone.position.z;
+
+        // Update horizontal position first
+        stone.position.x += stoneVelocity.x;
+        stone.position.z += stoneVelocity.z;
+
+        // Get terrain height at new position
+        const targetHeight = getTerrainHeight(stone.position.x, stone.position.z) + stoneRadius + groundCheckOffset;
+        
+        // Smoothly interpolate height for all stones
+        if (!stone.userData.isInitialized) {
+            // First frame, just set the height directly
+            stone.position.y = targetHeight;
+            stone.userData.isInitialized = true;
+        } else {
+            // Smoothly interpolate to target height
+            stone.position.y += (targetHeight - stone.position.y) * heightSmoothingFactor;
+        }
+        
+        // Calculate horizontal velocity based on terrain slope
+        const checkDist = 0.3;
+        const currentHeight = getTerrainHeight(stone.position.x, stone.position.z);
+        const slopeFront = getTerrainHeight(stone.position.x, stone.position.z + checkDist) - currentHeight;
+        const slopeBack = getTerrainHeight(stone.position.x, stone.position.z - checkDist) - currentHeight;
+        const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - currentHeight;
+        const slopeRight = getTerrainHeight(stone.position.x + checkDist, stone.position.z) - currentHeight;
+
+        // Lower slope threshold for more consistent rolling
+        const slopeThreshold = 0.01;
+        
+        // Reset acceleration
+        let accelX = 0;
+        let accelZ = 0;
+        
+        // Apply forces based on slopes
+        if (slopeFront < -slopeThreshold) accelZ += -slopeFront * rollSpeed;
+        if (slopeBack < -slopeThreshold) accelZ -= -slopeBack * rollSpeed;
+        if (slopeLeft < -slopeThreshold) accelX -= -slopeLeft * rollSpeed;
+        if (slopeRight < -slopeThreshold) accelX += -slopeRight * rollSpeed;
+        
+        // Update velocity with acceleration and friction
+        stoneVelocity.x += accelX;
+        stoneVelocity.z += accelZ;
+        
+        // Apply friction
+        stoneVelocity.x *= (1 - friction);
+        stoneVelocity.z *= (1 - friction);
+        
+        // Stop if moving very slowly
+        if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
+        if (Math.abs(stoneVelocity.z) < minVelocity) stoneVelocity.z = 0;
+
+        // Limit maximum velocity
+        const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
+        if (currentVelocity > maxVelocity) {
+            const scale = maxVelocity / currentVelocity;
+            stoneVelocity.x *= scale;
+            stoneVelocity.z *= scale;
+        }
+        
+        // Update stone rotation based on movement for visual feedback
+        if (currentVelocity > 0.01) {
+            // Calculate rotation axis perpendicular to movement direction
+            const rotationAxis = new THREE.Vector3(-stoneVelocity.z, 0, stoneVelocity.x).normalize();
+            const rotationAmount = currentVelocity * 0.2;
+            
+            // Apply rotation
+            stone.rotateOnAxis(rotationAxis, rotationAmount);
+        }
+    }
+}
 
 // Modify the animate function to handle cloud movement
 function animate() {
@@ -722,89 +835,8 @@ function animate() {
         camera.rotation.y = cameraAngle;
     }
 
-    // Update all stones
-    for (let i = 0; i < stones.length; i++) {
-        const stone = stones[i];
-        const stoneVelocity = stoneVelocities[i];
-
-        // Apply gravity
-        stoneVelocity.y += gravity;
-
-        // Update position
-        stone.position.x += stoneVelocity.x;
-        stone.position.y += stoneVelocity.y;
-        stone.position.z += stoneVelocity.z;
-
-        // Get current terrain height at stone position
-        const stoneTerrainHeight = getTerrainHeight(stone.position.x, stone.position.z);
-
-        // Ground collision check
-        if (stone.position.y <= stoneTerrainHeight + stoneRadius) {
-            stone.position.y = stoneTerrainHeight + stoneRadius + groundCheckOffset;
-            stoneVelocity.y = 0;
-
-            // Calculate slopes
-            const checkDist = 0.5;
-            const slopeFront = getTerrainHeight(stone.position.x, stone.position.z + checkDist) - stoneTerrainHeight;
-            const slopeBack = getTerrainHeight(stone.position.x, stone.position.z - checkDist) - stoneTerrainHeight;
-            const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - stoneTerrainHeight;
-            const slopeRight = getTerrainHeight(stone.position.x + checkDist, stone.position.z) - stoneTerrainHeight;
-
-            // Only roll if slope is steep enough
-            const slopeThreshold = 0.05;
-            if (Math.abs(slopeFront) > slopeThreshold || 
-                Math.abs(slopeBack) > slopeThreshold || 
-                Math.abs(slopeLeft) > slopeThreshold || 
-                Math.abs(slopeRight) > slopeThreshold) {
-                
-                // Find steepest slope direction
-                let steepestSlope = 0;
-                let rollDirection = new THREE.Vector3(0, 0, 0);
-                
-                if (slopeFront < steepestSlope) {
-                    steepestSlope = slopeFront;
-                    rollDirection.set(0, 0, 1);
-                }
-                if (slopeBack < steepestSlope) {
-                    steepestSlope = slopeBack;
-                    rollDirection.set(0, 0, -1);
-                }
-                if (slopeLeft < steepestSlope) {
-                    steepestSlope = slopeLeft;
-                    rollDirection.set(-1, 0, 0);
-                }
-                if (slopeRight < steepestSlope) {
-                    steepestSlope = slopeRight;
-                    rollDirection.set(1, 0, 0);
-                }
-
-                // Apply rolling force
-                const rollForce = rollSpeed * Math.min(Math.abs(steepestSlope), 0.5);
-                stoneVelocity.x += rollDirection.x * rollForce;
-                stoneVelocity.z += rollDirection.z * rollForce;
-            } else {
-                // If slope is not steep enough, stop completely
-                stoneVelocity.x = 0;
-                stoneVelocity.z = 0;
-            }
-
-            // Apply friction
-            stoneVelocity.x *= (1 - friction);
-            stoneVelocity.z *= (1 - friction);
-
-            // Stop if moving very slowly
-            if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
-            if (Math.abs(stoneVelocity.z) < minVelocity) stoneVelocity.z = 0;
-
-            // Limit maximum velocity
-            const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
-            if (currentVelocity > maxVelocity) {
-                const scale = maxVelocity / currentVelocity;
-                stoneVelocity.x *= scale;
-                stoneVelocity.z *= scale;
-            }
-        }
-    }
+    // Update stones with simplified physics
+    updateStones();
     
     // Check for stone collection
     const playerRadius = 4;
@@ -892,3 +924,17 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
+// Add key handler for throwing
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyE' && heldStone) {
+        throwHeldStone();
+    }
+});
+
+// Add mouse click handler for throwing
+document.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && heldStone) { // Left mouse button
+        throwHeldStone();
+    }
+});
