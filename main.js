@@ -297,11 +297,11 @@ function getTerrainHeight(x, z) {
 // Stone parameters
 const stoneRadius = 0.5;
 const gravity = -0.05;
-const rollSpeed = 0.1;
-const friction = 0.03;
-const minVelocity = 0.001;
-const groundCheckOffset = 0.1;
-const maxVelocity = 0.3;
+const rollSpeed = 0.05;  // Reduced from 0.1
+const friction = 0.1;    // Increased from 0.03
+const minVelocity = 0.01; // Increased from 0.001
+const groundCheckOffset = 0.01; // Reduced from 0.1
+const maxVelocity = 0.2; // Reduced from 0.3
 
 // Stone management
 const stones = [];
@@ -373,7 +373,7 @@ function updateStoneCountUI() {
 
 // Add smooth height transition parameters
 let targetHeight = 3;
-const heightSmoothness = 0.1; // Adjust this value between 0 and 1 (lower = smoother)
+const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
 
 function animate() {
     requestAnimationFrame(animate);
@@ -470,25 +470,29 @@ function animate() {
         // Apply horizontal movement
         cameraAngle += velocity.turning;
         
-        if (velocity.forward !== 0) {
-            let newX = camera.position.x - Math.sin(cameraAngle) * velocity.forward;
-            let newZ = camera.position.z - Math.cos(cameraAngle) * velocity.forward;
+        if (velocity.forward !== 0 || keys.KeyA || keys.KeyD) {
+            let newX = camera.position.x;
+            let newZ = camera.position.z;
             
-            // Calculate distance from center as a percentage of the boundary
+            // Forward/backward movement
+            if (velocity.forward !== 0) {
+                newX -= Math.sin(cameraAngle) * velocity.forward;
+                newZ -= Math.cos(cameraAngle) * velocity.forward;
+            }
+            
+            // Strafe movement
+            const strafeSpeed = moveSpeed * (isSprinting ? sprintMultiplier : 1);
+            if (keys.KeyA) {
+                newX -= Math.cos(cameraAngle) * strafeSpeed;
+                newZ += Math.sin(cameraAngle) * strafeSpeed;
+            }
+            if (keys.KeyD) {
+                newX += Math.cos(cameraAngle) * strafeSpeed;
+                newZ -= Math.sin(cameraAngle) * strafeSpeed;
+            }
+            
+            // Simple boundary check without slowdown
             const boundary = size * 0.4;
-            const distanceFromCenterX = Math.abs(newX) / boundary;
-            const distanceFromCenterZ = Math.abs(newZ) / boundary;
-            
-            // Calculate slowdown factor
-            const slowdownX = Math.max(0, 1 - Math.pow(distanceFromCenterX, 2));
-            const slowdownZ = Math.max(0, 1 - Math.pow(distanceFromCenterZ, 2));
-            const slowdown = Math.min(slowdownX, slowdownZ);
-            
-            // Apply movement with slowdown
-            newX = camera.position.x - Math.sin(cameraAngle) * velocity.forward * slowdown;
-            newZ = camera.position.z - Math.cos(cameraAngle) * velocity.forward * slowdown;
-            
-            // Final boundary check
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
@@ -523,48 +527,47 @@ function animate() {
             const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - stoneTerrainHeight;
             const slopeRight = getTerrainHeight(stone.position.x + checkDist, stone.position.z) - stoneTerrainHeight;
 
-            // Calculate average slope for smoother movement
-            const avgSlope = (Math.abs(slopeFront) + Math.abs(slopeBack) + Math.abs(slopeLeft) + Math.abs(slopeRight)) / 4;
-
-            // Find steepest downward slope
-            let steepestSlope = 0;
-            let rollDirection = new THREE.Vector3(0, 0, 0);
-            if (slopeFront < steepestSlope) {
-                steepestSlope = slopeFront;
-                rollDirection.set(0, 0, 1);
-            }
-            if (slopeBack < steepestSlope) {
-                steepestSlope = slopeBack;
-                rollDirection.set(0, 0, -1);
-            }
-            if (slopeLeft < steepestSlope) {
-                steepestSlope = slopeLeft;
-                rollDirection.set(-1, 0, 0);
-            }
-            if (slopeRight < steepestSlope) {
-                steepestSlope = slopeRight;
-                rollDirection.set(1, 0, 0);
-            }
-
-            // Apply rolling physics with improved slope handling
-            if (steepestSlope < -0.01) {
-                // Calculate rolling force based on slope steepness
-                const slopeFactor = Math.min(Math.abs(steepestSlope), 0.5); // Limited slope effect
+            // Only roll if slope is steep enough
+            const slopeThreshold = 0.05;
+            if (Math.abs(slopeFront) > slopeThreshold || 
+                Math.abs(slopeBack) > slopeThreshold || 
+                Math.abs(slopeLeft) > slopeThreshold || 
+                Math.abs(slopeRight) > slopeThreshold) {
                 
-                // Gradually add to current velocity
-                const rollForce = rollSpeed * slopeFactor;
+                // Find steepest slope direction
+                let steepestSlope = 0;
+                let rollDirection = new THREE.Vector3(0, 0, 0);
+                
+                if (slopeFront < steepestSlope) {
+                    steepestSlope = slopeFront;
+                    rollDirection.set(0, 0, 1);
+                }
+                if (slopeBack < steepestSlope) {
+                    steepestSlope = slopeBack;
+                    rollDirection.set(0, 0, -1);
+                }
+                if (slopeLeft < steepestSlope) {
+                    steepestSlope = slopeLeft;
+                    rollDirection.set(-1, 0, 0);
+                }
+                if (slopeRight < steepestSlope) {
+                    steepestSlope = slopeRight;
+                    rollDirection.set(1, 0, 0);
+                }
+
+                // Apply rolling force
+                const rollForce = rollSpeed * Math.min(Math.abs(steepestSlope), 0.5);
                 stoneVelocity.x += rollDirection.x * rollForce;
                 stoneVelocity.z += rollDirection.z * rollForce;
-
-                // Apply additional friction on steeper slopes
-                const slopeFriction = friction * (1 + avgSlope);
-                stoneVelocity.x *= (1 - slopeFriction);
-                stoneVelocity.z *= (1 - slopeFriction);
             } else {
-                // Apply standard friction on flat ground
-                stoneVelocity.x *= (1 - friction);
-                stoneVelocity.z *= (1 - friction);
+                // If slope is not steep enough, stop completely
+                stoneVelocity.x = 0;
+                stoneVelocity.z = 0;
             }
+
+            // Apply friction
+            stoneVelocity.x *= (1 - friction);
+            stoneVelocity.z *= (1 - friction);
 
             // Stop if moving very slowly
             if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
