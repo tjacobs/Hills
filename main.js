@@ -148,17 +148,19 @@ camera.position.set(0, 3, 15);
 // Add keyboard controls
 const moveSpeed = 0.5;
 const rotateSpeed = 0.02;
-const sprintMultiplier = 2.0; // Double speed when sprinting
+const sprintMultiplier = 2.0;
+const throwForce = 0.8;  // Add throw force constant
+const throwUpward = 0.4; // Add upward throw component
 const keys = {
     ArrowLeft: false,
     ArrowRight: false,
     ArrowUp: false,
     ArrowDown: false,
     Space: false,
-    ShiftLeft: false,  // Track left shift
-    ShiftRight: false,  // Track right shift
-    KeyA: false,  // Add A key
-    KeyD: false   // Add D key
+    ShiftLeft: false,
+    ShiftRight: false,
+    KeyA: false,
+    KeyD: false
 };
 
 // Track if keys have been used
@@ -175,6 +177,30 @@ window.addEventListener('keydown', (e) => {
     if (keys.hasOwnProperty(e.code)) {
         keys[e.code] = true;
         keyboardControlActive = true;
+
+        // Handle stone throwing on key press (not in animate)
+        if (e.code === 'Space' && heldStone) {
+            // Get forward direction from camera
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(camera.quaternion);
+            
+            // Add stone back to physics arrays with throw velocity
+            stones.push(heldStone);
+            const throwVelocity = new THREE.Vector3(
+                forward.x * throwForce,
+                throwUpward,
+                forward.z * throwForce
+            );
+            stoneVelocities.push(throwVelocity);
+            
+            // Reset held stone and record throw time
+            heldStone = null;
+            lastThrowTime = Date.now();
+            
+            // Prevent jump
+            e.preventDefault();
+            return;
+        }
     }
 });
 window.addEventListener('keyup', (e) => {
@@ -389,7 +415,9 @@ const maxVelocity = 0.2;
 const stones = [];
 const stoneVelocities = [];
 let lastStoneDropTime = 0;
-const stoneDropInterval = 100;
+const stoneDropInterval = 10000;
+const pickupDelay = 500; // 500ms delay before pickup is allowed
+let lastThrowTime = 0;   // Track when the last throw happened
 
 // Add held stone tracking with physics
 let heldStone = null;
@@ -553,8 +581,8 @@ function animate() {
             camera.position.y += (targetHeight - camera.position.y) * heightSmoothness;
         }
 
-        // Handle jumping
-        if (keys.Space && !isJumping && Math.abs(camera.position.y - targetHeight) < 0.1) {
+        // Handle jumping (only if not holding stone and not throwing)
+        if (keys.Space && !isJumping && !heldStone && Math.abs(camera.position.y - targetHeight) < 0.1 && (Date.now() - lastThrowTime > pickupDelay)) {
             playerVerticalVelocity = jumpForce;
             isJumping = true;
         }
@@ -698,8 +726,8 @@ function animate() {
         const dz = camera.position.z - stone.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
         
-        // If player is close enough and not holding a stone, collect it
-        if (distance < playerRadius && !heldStone) {
+        // If player is close enough and not holding a stone and enough time has passed since throwing
+        if (distance < playerRadius && !heldStone && (currentTime - lastThrowTime > pickupDelay)) {
             // Remove stone from physics arrays
             stones.splice(i, 1);
             stoneVelocities.splice(i, 1);
