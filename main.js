@@ -336,16 +336,24 @@ scene.add(sky);
 // Add fog for distance fade
 scene.fog = new THREE.Fog(0xffffff, 100, 500);
 
-// Add clouds
+// Add cloud animation variables
+let centerCloudMoving = false;
+let centerCloudIndex = -1;
+let centerCloudTargetY = 0;
+let centerCloudStartY = 0;
+let centerCloudStartTime = 0;
+let centerCloudAnimationDuration = 10000; // 10 seconds
+
+// Modify the createParticleClouds function to track individual clouds
 function createParticleClouds() {
     const cloudParticles = [];
-    const particleCount = 300; // Number of particles for denser clouds
+    const particleCount = 300;
     const particleGeometry = new THREE.BufferGeometry();
     const particleMaterial = new THREE.PointsMaterial({
         color: 0xffffff,
-        size: 15, // Size for a more solid appearance
+        size: 15,
         transparent: true,
-        opacity: 0.9, // Higher opacity for a solid look
+        opacity: 0.9,
         map: textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/circle.png'),
         depthWrite: false,
         blending: THREE.AdditiveBlending
@@ -361,9 +369,13 @@ function createParticleClouds() {
         { x: 40, y: 65, z: 30 }     // Front right
     ];
 
+    // Store cloud particles by cloud index
+    const cloudParticleIndices = [[], [], [], []];
+
     for (let i = 0; i < particleCount; i++) {
         // Assign to one of the cloud centers
-        const cloudCenter = cloudCenters[Math.floor(i / (particleCount / cloudCenters.length))];
+        const cloudIndex = Math.floor(i / (particleCount / cloudCenters.length));
+        const cloudCenter = cloudCenters[cloudIndex];
         
         // Position particles tightly around the cluster center
         const radius = Math.random() * 5;
@@ -371,20 +383,52 @@ function createParticleClouds() {
         const phi = Math.random() * Math.PI * 2;
         
         // Position particles with natural cloud-like spread, double the width
-        positions[i * 3] = cloudCenter.x + (Math.cos(theta) * Math.sin(phi) * radius * 2); // Double width
+        positions[i * 3] = cloudCenter.x + (Math.cos(theta) * Math.sin(phi) * radius * 2);
         positions[i * 3 + 1] = cloudCenter.y + (Math.sin(theta) * Math.sin(phi) * radius);
-        positions[i * 3 + 2] = cloudCenter.z + (Math.cos(phi) * radius * 2); // Double width
+        positions[i * 3 + 2] = cloudCenter.z + (Math.cos(phi) * radius * 2);
 
         // Set all particles to a larger size for a solid appearance
         scales[i] = 1;
+        
+        // Track which particles belong to which cloud
+        cloudParticleIndices[cloudIndex].push(i);
     }
+    
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     particleGeometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
     const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+    
+    // Store cloud centers and particle indices
+    particleSystem.userData.cloudCenters = cloudCenters;
+    particleSystem.userData.cloudParticleIndices = cloudParticleIndices;
+    
     scene.add(particleSystem);
     return particleSystem;
 }
 const particleClouds = createParticleClouds();
+
+// Start cloud movement after a delay
+setTimeout(() => {
+    // Calculate center valley position
+    const valleySpacing = size / xs;
+    const halfSize = size / 2;
+    const centerI = Math.floor(xs / 2);
+    const centerJ = Math.floor(ys / 2);
+    const centerX = -halfSize + (centerI + 0.5) * valleySpacing;
+    const centerZ = -halfSize + (centerJ + 0.5) * valleySpacing;
+    const centerY = getTerrainHeight(centerX, centerZ) + 15; // 15 units above terrain
+    
+    // Choose a cloud to move (cloud index 2 - front left)
+    centerCloudIndex = 2;
+    centerCloudTargetY = centerY;
+    centerCloudStartY = particleClouds.userData.cloudCenters[centerCloudIndex].y;
+    centerCloudStartTime = Date.now();
+    centerCloudMoving = true;
+    
+    // Update target position
+    particleClouds.userData.cloudCenters[centerCloudIndex].targetX = centerX;
+    particleClouds.userData.cloudCenters[centerCloudIndex].targetZ = centerZ;
+}, 3000); // Start after 3 seconds
 
 // Function to get terrain height at a specific position
 function getTerrainHeight(x, z) {
@@ -482,7 +526,7 @@ function createNewStone() {
 let targetHeight = 3;
 const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
 
-// Add water animation to animate function
+// Modify the animate function to handle cloud movement
 function animate() {
     requestAnimationFrame(animate);
     
@@ -498,14 +542,81 @@ function animate() {
     }
 
     // Animate particle clouds
-    const positions = particleClouds.geometry.attributes.position.array;
-    const time2 = Date.now() * 0.00002;
-    for (let i = 0; i < positions.length; i += 3) {
-        //positions[i] += Math.sin(time + i) * 0.005;
-        //positions[i + 1] += Math.cos(time + i) * 0.002;
-        //positions[i + 2] += Math.sin(time + i * 0.5) * 0.005;
+    if (particleClouds) {
+        const positions = particleClouds.geometry.attributes.position.array;
+        const time = Date.now() * 0.00001;
+        
+        // Handle center cloud animation
+        if (centerCloudMoving) {
+            const elapsed = Date.now() - centerCloudStartTime;
+            const progress = Math.min(1.0, elapsed / centerCloudAnimationDuration);
+            
+            // Ease-in-out function for smooth movement
+            const easeProgress = progress < 0.5 
+                ? 2 * progress * progress 
+                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            
+            // Update cloud center Y position
+            const cloudCenter = particleClouds.userData.cloudCenters[centerCloudIndex];
+            const newY = centerCloudStartY + (centerCloudTargetY - centerCloudStartY) * easeProgress;
+            
+            // Calculate movement delta
+            const deltaY = newY - cloudCenter.y;
+            cloudCenter.y = newY;
+            
+            // Calculate horizontal movement
+            let deltaX = 0;
+            let deltaZ = 0;
+            
+            if (cloudCenter.targetX !== undefined && cloudCenter.targetZ !== undefined) {
+                // Calculate smoother horizontal movement
+                const horizontalSpeed = 0.00001;
+                deltaX = (cloudCenter.targetX - cloudCenter.x) * horizontalSpeed;
+                deltaZ = (cloudCenter.targetZ - cloudCenter.z) * horizontalSpeed;
+                cloudCenter.x += deltaX;
+                cloudCenter.z += deltaZ;
+            }
+            
+            // Update all particles in this cloud as a group
+            const cloudParticles = particleClouds.userData.cloudParticleIndices[centerCloudIndex];
+            for (const i of cloudParticles) {
+                // Move each particle by the same delta as the center
+                positions[i * 3] += deltaX;
+                positions[i * 3 + 1] += deltaY;
+                positions[i * 3 + 2] += deltaZ;
+            }
+            
+            // End animation when complete
+            if (progress >= 1.0) {
+                centerCloudMoving = false;
+            }
+        }
+        
+        // Add gentle movement to all clouds while preserving their shape (reduced movement)
+        const cloudCenters = particleClouds.userData.cloudCenters;
+        const cloudParticleIndices = particleClouds.userData.cloudParticleIndices;
+        
+        for (let cloudIdx = 0; cloudIdx < cloudCenters.length; cloudIdx++) {
+            // Skip the center cloud if it's moving
+            if (centerCloudMoving && cloudIdx === centerCloudIndex) continue;
+            
+            // Calculate gentle movement for this cloud center (reduced amplitude)
+            const cloudCenter = cloudCenters[cloudIdx];
+            const waveX = Math.sin(time * 50 + cloudIdx * 100) * 0.02; // Reduced from 0.05
+            const waveY = Math.cos(time * 30 + cloudIdx * 100) * 0.02; // Reduced from 0.05
+            const waveZ = Math.sin(time * 40 + cloudIdx * 100) * 0.02; // Reduced from 0.05
+            
+            // Move all particles in this cloud together
+            const particles = cloudParticleIndices[cloudIdx];
+            for (const i of particles) {
+                positions[i * 3] += waveX;
+                positions[i * 3 + 1] += waveY;
+                positions[i * 3 + 2] += waveZ;
+            }
+        }
+        
+        particleClouds.geometry.attributes.position.needsUpdate = true;
     }
-    particleClouds.geometry.attributes.position.needsUpdate = true;
 
     if (!keyboardControlActive) {
         // Auto-move camera in a circle until controls are used
