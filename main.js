@@ -320,7 +320,7 @@ const maxVelocity = 0.3; // Added maximum velocity cap
 const balls = [];
 const ballVelocities = [];
 let lastBallDropTime = 0;
-const ballDropInterval = 1000; // 10 seconds in milliseconds
+const ballDropInterval = 10000; // 10 seconds in milliseconds
 
 function createNewBall() {
     const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
@@ -332,10 +332,11 @@ function createNewBall() {
     });
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     
-    // Random position within a reasonable area
-    const x = (Math.random() - 0.5) * 40;
-    const z = (Math.random() - 0.5) * 40;
-    const y = 50;
+    // Random position within the entire playable area
+    const boundary = size * 0.4; // Match the player boundary
+    const x = (Math.random() - 0.5) * boundary * 2;
+    const z = (Math.random() - 0.5) * boundary * 2;
+    const y = 50; // Start high in the sky
     
     ball.position.set(x, y, z);
     scene.add(ball);
@@ -347,6 +348,27 @@ function createNewBall() {
         0,
         (Math.random() - 0.5) * 0.1
     ));
+}
+
+// Add ball collection tracking
+let ballsCollected = 0;
+
+// Create UI for ball count
+const ballCountUI = document.createElement('div');
+ballCountUI.style.position = 'fixed';
+ballCountUI.style.top = '20px';
+ballCountUI.style.right = '20px';
+ballCountUI.style.padding = '10px';
+ballCountUI.style.background = 'rgba(0, 0, 0, 0.5)';
+ballCountUI.style.color = 'white';
+ballCountUI.style.fontFamily = 'Arial, sans-serif';
+ballCountUI.style.fontSize = '20px';
+ballCountUI.style.borderRadius = '5px';
+document.body.appendChild(ballCountUI);
+
+// Update UI function
+function updateBallCountUI() {
+    ballCountUI.textContent = `Balls: ${ballsCollected}`;
 }
 
 function animate() {
@@ -542,12 +564,38 @@ function animate() {
         }
     }
     
+    // Check for ball collection
+    const playerRadius = 2; // Collection radius around player
+    for (let i = balls.length - 1; i >= 0; i--) {
+        const ball = balls[i];
+        
+        // Calculate distance between player and ball
+        const dx = camera.position.x - ball.position.x;
+        const dz = camera.position.z - ball.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        
+        // If player is close enough, collect the ball
+        if (distance < playerRadius) {
+            // Remove ball from scene and arrays
+            scene.remove(ball);
+            balls.splice(i, 1);
+            ballVelocities.splice(i, 1);
+            
+            // Increment counter and update UI
+            ballsCollected++;
+            updateBallCountUI();
+        }
+    }
+    
     renderer.render(scene, camera);
 }
 
 // Create first ball immediately
 createNewBall();
 lastBallDropTime = Date.now();
+
+// Initialize UI
+updateBallCountUI();
 
 animate();
 
