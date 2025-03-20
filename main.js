@@ -8,8 +8,7 @@ document.body.appendChild(renderer.domElement);
 // Create the ground plane
 const textureLoader = new THREE.TextureLoader();
 const grassTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
-
-// Make the texture repeat
+const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
 grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
 grassTexture.repeat.set(8, 8);
@@ -32,6 +31,15 @@ for (let i = 0; i <= segments; i++) {
 }
 groundGeometry.computeVertexNormals();
 
+// Main ground
+const groundMaterial = new THREE.MeshStandardMaterial({ 
+    map: grassTexture,
+    side: THREE.DoubleSide
+});
+const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
 // Create flat border ground (much larger)
 const borderSize = size * 10;
 const borderGeometry = new THREE.PlaneGeometry(borderSize, borderSize);
@@ -44,15 +52,6 @@ const borderGround = new THREE.Mesh(borderGeometry, borderMaterial);
 borderGround.rotation.x = -Math.PI / 2;
 borderGround.position.y = -5;
 scene.add(borderGround);
-
-// Main ground (unchanged)
-const groundMaterial = new THREE.MeshStandardMaterial({ 
-    map: grassTexture,
-    side: THREE.DoubleSide
-});
-const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-ground.rotation.x = -Math.PI / 2;
-scene.add(ground);
 
 // Add ambient light to see the texture
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -325,7 +324,7 @@ const maxVelocity = 0.3;
 const stones = [];
 const stoneVelocities = [];
 let lastStoneDropTime = 0;
-const stoneDropInterval = 10000; // 10 seconds in milliseconds
+const stoneDropInterval = 100; // 10 seconds in milliseconds
 
 function createNewStone() {
     // Create brick-like geometry (width, height, depth)
@@ -334,12 +333,12 @@ function createNewStone() {
     const depth = stoneRadius * 1;
     const stoneGeometry = new THREE.BoxGeometry(width, height, depth);
     
-    // Create stone material with grey color
+    // Create stone material with grey color and bump mapping
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
         roughness: 0.9,        // Very rough surface
         metalness: 0.1,        // Low metalness for rock look
         color: 0x808080,       // Pure grey color
-        bumpMap: grassTexture, // Use texture only for bump mapping
+        bumpMap: stoneTexture, // Use texture only for bump mapping
         bumpScale: 0.5         // Adjust bump intensity
     });
 
