@@ -325,23 +325,41 @@ const maxVelocity = 0.3; // Added maximum velocity cap
 const balls = [];
 const ballVelocities = [];
 let lastBallDropTime = 0;
-const ballDropInterval = 10000; // 10 seconds in milliseconds
+const ballDropInterval = 100; // 10 seconds in milliseconds
+
+// Load stone texture
+const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
 
 function createNewBall() {
-    const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+    // Create brick-like geometry (width, height, depth)
+    const width = ballRadius * 2;
+    const height = ballRadius * 1.5;
+    const depth = ballRadius * 1;
+    const ballGeometry = new THREE.BoxGeometry(width, height, depth);
     
-    // Generate a random color
-    const hue = Math.random();
+    // Create stone material with grey color
     const ballMaterial = new THREE.MeshStandardMaterial({ 
-        color: new THREE.Color().setHSL(hue, 1, 0.5)
+        roughness: 0.9,        // Very rough surface
+        metalness: 0.1,        // Low metalness for rock look
+        color: 0x808080,       // Pure grey color
+        bumpMap: stoneTexture, // Use texture only for bump mapping
+        bumpScale: 0.5         // Adjust bump intensity
     });
+
     const ball = new THREE.Mesh(ballGeometry, ballMaterial);
     
+    // Set fixed rotation so stones always lay flat
+    ball.rotation.set(0, 0, 0);
+    
+    // Random scale variation for more natural look
+    const scale = 0.8 + Math.random() * 0.4;
+    ball.scale.set(scale, scale, scale);
+    
     // Random position within the entire playable area
-    const boundary = size * 0.4; // Match the player boundary
+    const boundary = size * 0.4;
     const x = (Math.random() - 0.5) * boundary * 2;
     const z = (Math.random() - 0.5) * boundary * 2;
-    const y = 50; // Start high in the sky
+    const y = 50;
     
     ball.position.set(x, y, z);
     scene.add(ball);
