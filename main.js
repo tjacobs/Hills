@@ -23,12 +23,19 @@ const groundMaterial = new THREE.ShaderMaterial({
     vertexShader: `
         varying vec2 vUv;
         varying vec2 vPosition;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
         
         void main() {
-            vUv = uv;
-            // Pass normalized position coordinates
+            vUv = uv * 8.0; // Scale UV coordinates for smaller texture
             vPosition = position.xy / 200.0; // Normalize by size (200)
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            
+            // Calculate view-space position and normal for lighting
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            vNormal = normalMatrix * normal;
+            
+            gl_Position = projectionMatrix * mvPosition;
         }
     `,
     fragmentShader: `
@@ -38,6 +45,8 @@ const groundMaterial = new THREE.ShaderMaterial({
         
         varying vec2 vUv;
         varying vec2 vPosition;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
         
         void main() {
             vec4 grassColor = texture2D(grassTexture, vUv);
@@ -49,7 +58,26 @@ const groundMaterial = new THREE.ShaderMaterial({
             // Create smooth transition at the edges
             float blend = smoothstep(centerDistance, centerDistance + transitionWidth, distFromCenter);
             
-            gl_FragColor = mix(grassColor, sandColor, blend);
+            // Mix grass and sand colors
+            vec4 baseColor = mix(grassColor, sandColor, blend);
+            
+            // Basic lighting calculation
+            vec3 normal = normalize(vNormal);
+            vec3 viewDir = normalize(vViewPosition);
+            
+            // Ambient light
+            float ambientStrength = 0.3;
+            vec3 ambient = ambientStrength * vec3(1.0);
+            
+            // Diffuse light (sun-like)
+            vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0));
+            float diff = max(dot(normal, lightDir), 0.0);
+            vec3 diffuse = diff * vec3(1.0);
+            
+            // Combine lighting
+            vec3 lighting = ambient + diffuse;
+            
+            gl_FragColor = vec4(baseColor.rgb * lighting, 1.0);
         }
     `,
     side: THREE.DoubleSide
@@ -68,7 +96,19 @@ for (let i = 0; i <= segments; i++) {
     for (let j = 0; j <= segments; j++) {
         const vertex = groundGeometry.attributes.position;
         const index = (i * (segments + 1) + j) * 3;
-        vertex.array[index + 2] = Math.sin(i / xs) * Math.sin(j / ys) * height;
+        
+        // Calculate normalized coordinates (-1 to 1)
+        const nx = (i / segments) * 2 - 1;
+        const ny = (j / segments) * 2 - 1;
+        
+        // Calculate distance from center (0 to 1)
+        const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
+        
+        // Create sharper edge falloff factor (1 in center, 0 at edges)
+        const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
+        
+        // Apply height with edge falloff
+        vertex.array[index + 2] = Math.sin(i / xs) * Math.sin(j / ys) * height * edgeFalloff;
     }
 }
 groundGeometry.computeVertexNormals();
