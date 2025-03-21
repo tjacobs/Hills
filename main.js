@@ -432,15 +432,15 @@ function getTerrainHeight(x, z) {
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
-// Stone parameters - adjusted for ultra-smooth movement
+// Stone parameters - adjusted for faster rolling
 const stoneRadius = 0.5;
-const gravity = -0.01;       // Further reduced for minimal vertical acceleration
-const rollSpeed = 0.02;      // Reduced for more gradual rolling
-const friction = 0.03;       // Reduced for smoother deceleration
-const minVelocity = 0.003;   // Lower threshold for stopping
-const groundCheckOffset = 0.1; // Increased for better ground detection
-const maxVelocity = 0.12;    // Reduced for more controlled movement
-const heightSmoothingFactor = 0.15; // New parameter for height interpolation
+const gravity = -0.01;       
+const rollSpeed = 0.04;      // Doubled from 0.02 for faster rolling
+const friction = 0.03;       
+const minVelocity = 0.003;   
+const groundCheckOffset = 0.1;
+const maxVelocity = 0.24;    // Doubled from 0.12 for faster movement
+const heightSmoothingFactor = 0.15;
 
 // Stone management
 const stones = [];
@@ -570,9 +570,9 @@ function handleThrowAction() {
 
 // Function to find nearby tower base
 function findNearbyTowerBase(position) {
-    const maxDistance = 5.0; // Increased from 2.5 to 5.0 for wider detection
+    const maxDistance = 5.0; // Distance for stacking
     const minDistance = 0.5; // Minimum distance to consider for stacking (very close)
-    const tooCloseDistance = 8.0; // Distance that's too close for a new tower but not for stacking
+    const tooCloseDistance = 15.0; // Increased from 8.0 to 15.0 to prevent towers being built too close
     
     let closestTower = null;
     let closestDistance = Infinity;
@@ -642,10 +642,15 @@ function transformStoneToTowerBase(stone, index) {
         // Create a small dust effect to show rejection
         createDustEffect(stone.position);
         
-        // Remove original stone
-        scene.remove(stone);
-        stones.splice(index, 1);
-        stoneVelocities.splice(index, 1);
+        // Instead of removing the stone, just return it to its original position
+        // with a small bounce effect
+        const bounceHeight = 1.0;
+        stone.position.y += bounceHeight;
+        
+        // Give it a small random velocity to bounce away
+        stoneVelocities[index].x = (Math.random() - 0.5) * 0.1;
+        stoneVelocities[index].y = 0.1; // Small upward velocity
+        stoneVelocities[index].z = (Math.random() - 0.5) * 0.1;
         
         return null;
     }
@@ -656,8 +661,8 @@ function transformStoneToTowerBase(stone, index) {
     
     if (nearbyTower) {
         console.log("Found nearby tower for stacking, level: " + nearbyTower.userData.level);
-        // Position on top of existing tower
-        yPosition = nearbyTower.position.y + 0.8; // Height of existing tower plus a bit
+        // Position directly on top of existing tower (no gap)
+        yPosition = nearbyTower.position.y + 1.2; // Just the height of one block
         parentTower = nearbyTower;
         
         console.log("Stacking on tower at position: ", 
@@ -666,17 +671,17 @@ function transformStoneToTowerBase(stone, index) {
             nearbyTower.position.z);
         console.log("New tower will be at height: " + yPosition);
     } else {
-        // Position on ground
-        yPosition = getTerrainHeight(stone.position.x, stone.position.z);
+        // Position on ground - raised higher
+        yPosition = getTerrainHeight(stone.position.x, stone.position.z) + 0.3;
         console.log("Creating new tower at ground level: " + yPosition);
     }
     
     // Create a group to hold all parts of the tower base
     const towerBase = new THREE.Group();
     
-    // Block dimensions
+    // Block dimensions - doubled height
     const blockWidth = 0.8;
-    const blockHeight = 0.6;
+    const blockHeight = 1.2;
     const blockDepth = 1.2;
     
     // Create stone-like material with the same texture as stones
@@ -690,21 +695,18 @@ function transformStoneToTowerBase(stone, index) {
     
     // Determine radius based on tower level
     let outerRadius = 3.5;
-    let innerRadius = 2.2;
     
     // If stacking, make slightly smaller
     if (nearbyTower) {
         outerRadius = 3.2;
-        innerRadius = 2.0;
     }
     
     // Create blocks for outer ring
     const blockCount = 24;
     for (let i = 0; i < blockCount; i++) {
         const angle = (i / blockCount) * Math.PI * 2;
-        const radius = (outerRadius + innerRadius) / 2;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
+        const x = Math.cos(angle) * outerRadius;
+        const z = Math.sin(angle) * outerRadius;
         
         // Create a stone block
         const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
@@ -724,21 +726,7 @@ function transformStoneToTowerBase(stone, index) {
         towerBase.add(block);
     }
     
-    // Create floor of the tower base (flat circular platform)
-    const floorRadius = outerRadius - 0.3;
-    const floorGeometry = new THREE.CylinderGeometry(
-        floorRadius,
-        floorRadius,
-        0.2,
-        16,
-        1,
-        false
-    );
-    const floorMaterial = stoneMaterial.clone();
-    floorMaterial.bumpScale = 0.3;
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.position.y = -0.1;
-    towerBase.add(floor);
+    // No floor - making it hollow
     
     // Add stone texture details - small stones around the perimeter
     if (!nearbyTower) { // Only add decorative stones on ground level
