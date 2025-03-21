@@ -945,11 +945,6 @@ function transformStoneToTowerBase(stone, index) {
     // Create a group to hold all parts of the tower base
     const towerBase = new THREE.Group();
     
-    // Block dimensions - doubled height
-    const blockWidth = STONE.blockWidth;
-    const blockHeight = STONE.blockHeight;
-    const blockDepth = STONE.blockDepth;
-    
     // Create stone-like material with the same texture as stones
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
         roughness: 0.9,
@@ -975,11 +970,11 @@ function transformStoneToTowerBase(stone, index) {
         const z = Math.sin(angle) * outerRadius;
         
         // Create a stone block
-        const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+        const blockGeometry = new THREE.BoxGeometry(STONE.blockWidth, STONE.blockHeight, STONE.blockDepth);
         const block = new THREE.Mesh(blockGeometry, stoneMaterial);
         
         // Position in a ring
-        block.position.set(x, blockHeight/2, z);
+        block.position.set(x, STONE.blockHeight/2, z);
         
         // Rotate to face center
         block.rotation.y = angle + Math.PI/2;
@@ -1007,7 +1002,7 @@ function transformStoneToTowerBase(stone, index) {
             smallStoneMaterial.bumpScale = 0.3;
             const stoneMesh = new THREE.Mesh(stoneGeometry, smallStoneMaterial);
             
-            stoneMesh.position.set(x, blockHeight/2, z);
+            stoneMesh.position.set(x, STONE.blockHeight/2, z);
             stoneMesh.rotation.y = angle + Math.PI/2;
             stoneMesh.rotation.x += (Math.random() - 0.5) * 0.2;
             stoneMesh.rotation.z += (Math.random() - 0.5) * 0.2;
@@ -1966,11 +1961,6 @@ function createTowerBaseForRestore(x, y, z, level) {
     // Create a group to hold all parts of the tower base
     const towerBase = new THREE.Group();
     
-    // Block dimensions
-    const blockWidth = STONE.blockWidth;
-    const blockHeight = STONE.blockHeight;
-    const blockDepth = STONE.blockDepth;
-    
     // Create stone-like material
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
         roughness: 0.9,
@@ -2008,11 +1998,11 @@ function createTowerBaseForRestore(x, y, z, level) {
         const blockZ = Math.sin(angle) * blockRadius;
         
         // Create a stone block
-        const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+        const blockGeometry = new THREE.BoxGeometry(STONE.blockWidth, STONE.blockHeight, STONE.blockDepth);
         const block = new THREE.Mesh(blockGeometry, stoneMaterial);
         
         // Position in a ring
-        block.position.set(blockX, blockHeight/2, blockZ);
+        block.position.set(blockX, STONE.blockHeight/2, blockZ);
         
         // Rotate to face center with slight variation
         const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
@@ -2062,12 +2052,7 @@ if (typeof transformStoneToTowerBase === 'function') {
             
             // Add random variation to block positions
             const randomSeed = level * 123.456;
-            
-            // Block dimensions - ensure consistent size
-            const blockWidth = STONE.blockWidth;
-            const blockHeight = STONE.blockHeight;
-            const blockDepth = STONE.blockDepth;
-            
+
             // Update each block in the tower
             for (let i = 0; i < newTower.children.length; i++) {
                 const block = newTower.children[i];
@@ -2080,12 +2065,12 @@ if (typeof transformStoneToTowerBase === 'function') {
                 
                 // Replace geometry if it's not the right size
                 if (block.geometry.parameters && 
-                    (Math.abs(block.geometry.parameters.width - blockWidth) > 0.1 ||
-                     Math.abs(block.geometry.parameters.height - blockHeight) > 0.1 ||
-                     Math.abs(block.geometry.parameters.depth - blockDepth) > 0.1)) {
+                    (Math.abs(block.geometry.parameters.width - STONE.blockWidth) > 0.1 ||
+                     Math.abs(block.geometry.parameters.height - STONE.blockHeight) > 0.1 ||
+                     Math.abs(block.geometry.parameters.depth - STONE.blockDepth) > 0.1)) {
                     
                     // Create new geometry with correct dimensions
-                    const newGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+                    const newGeometry = new THREE.BoxGeometry(STONE.blockWidth, STONE.blockHeight, STONE.blockDepth);
                     block.geometry.dispose(); // Clean up old geometry
                     block.geometry = newGeometry;
                 }
@@ -2101,7 +2086,7 @@ if (typeof transformStoneToTowerBase === 'function') {
                 // Update position
                 block.position.x = Math.cos(angle) * blockRadius;
                 block.position.z = Math.sin(angle) * blockRadius;
-                block.position.y = blockHeight/2; // Ensure consistent height
+                block.position.y = STONE.blockHeight/2; // Ensure consistent height
                 
                 // Update rotation with variation
                 const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
