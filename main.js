@@ -515,6 +515,77 @@ setTimeout(() => {
     particleClouds.userData.cloudCenters[centerCloudIndex].targetZ = centerZ;
 }, 3000); // Start after 3 seconds
 
+
+// Properly defined function for animating particle clouds with validation
+function animateParticleClouds() {
+    const deltaTime = 0.016; // Assuming ~60fps
+    
+    // Update each particle
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        
+        // Update position based on velocity
+        particle.mesh.position.add(particle.velocity);
+        
+        // Apply gravity and drag
+        particle.velocity.y -= 0.01;
+        particle.velocity.multiplyScalar(0.95);
+        
+        // Reduce life
+        particle.life -= deltaTime;
+        
+        // Scale down as life decreases
+        const scale = particle.life * 0.5;
+        particle.mesh.scale.set(scale, scale, scale);
+        
+        // Remove dead particles
+        if (particle.life <= 0) {
+            scene.remove(particle.mesh);
+            particles.splice(i, 1);
+        }
+    }
+    
+    // Validate particle cloud geometry if it exists
+    if (particleClouds && particleClouds.geometry) {
+        validateGeometry(particleClouds.geometry);
+    }
+}
+
+// Properly defined function for animating center cloud with validation
+function animateCenterCloud() {
+    if (!centerCloud) return;
+    
+    // Rotate the center cloud
+    centerCloud.rotation.y += 0.005;
+    
+    // Pulse the center cloud
+    const time = Date.now() * 0.001;
+    const scale = 1.0 + Math.sin(time) * 0.1;
+    centerCloud.scale.set(scale, scale, scale);
+    
+    // Validate center cloud geometry if it exists
+    if (particleClouds && particleClouds.geometry) {
+        validateGeometry(particleClouds.geometry);
+    }
+}
+
+// Helper function for geometry validation
+function validateGeometry(geometry) {
+    if (geometry.isBufferGeometry) {
+        const position = geometry.attributes.position;
+        if (position && position.array) {
+            // Check for NaN values in position array
+            for (let i = 0; i < position.array.length; i++) {
+                if (isNaN(position.array[i])) {
+                    console.warn('Found NaN in geometry position data');
+                    position.array[i] = 0; // Replace with a safe value
+                }
+            }
+            position.needsUpdate = true;
+        }
+    }
+}
+
 // Function to get terrain height at a specific position
 function getTerrainHeight(x, z) {
     const vertex = groundGeometry.attributes.position;
@@ -1030,8 +1101,8 @@ function checkThrownStones() {
             // Increment stationary time
             thrownStone.stationaryTime += 16; // Assuming ~60fps
             
-            // If stone has been stationary for 0.5 seconds
-            if (thrownStone.stationaryTime > 500) {
+            // If stone has been stationary
+            if (thrownStone.stationaryTime > 100) {
                 transformStoneToTowerBase(stone, stoneIndex);
                 thrownStone.transformed = true;
             }
@@ -1286,7 +1357,7 @@ function animate() {
                 positions[i * 3 + 1] += deltaY;
                 positions[i * 3 + 2] += deltaZ;
             }
-            
+
             // End animation when complete
             if (progress >= 1.0) {
                 centerCloudMoving = false;
@@ -1512,6 +1583,27 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+// Update keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    // Save game state with Ctrl+S
+    if (e.code === 'KeyS' && e.ctrlKey) {
+        e.preventDefault(); // Prevent browser save dialog
+        saveGameState();
+        console.log('Game state saved!');
+    }
+    
+    // Restore towers only with Ctrl+L
+    if (e.code === 'KeyL' && e.ctrlKey) {
+        e.preventDefault();
+        restoreTowersOnly(); // Only restore towers
+    }
+    
+    // Full restore (including stones) with Ctrl+Shift+L
+    if (e.code === 'KeyL' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        restoreGameState(); // Full restore
+    }
+});
 
 // Add key handler for throwing with more force (shift+E)
 document.addEventListener('keydown', (e) => {
@@ -1819,34 +1911,6 @@ function restoreTowersOnly() {
     }
 }
 
-// Update keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-    // Save game state with Ctrl+S
-    if (e.code === 'KeyS' && e.ctrlKey) {
-        e.preventDefault(); // Prevent browser save dialog
-        saveGameState();
-        console.log('Game state saved!');
-    }
-    
-    // Restore towers only with Ctrl+L
-    if (e.code === 'KeyL' && e.ctrlKey) {
-        e.preventDefault();
-        restoreTowersOnly(); // Only restore towers
-    }
-    
-    // Full restore (including stones) with Ctrl+Shift+L
-    if (e.code === 'KeyL' && e.ctrlKey && e.shiftKey) {
-        e.preventDefault();
-        restoreGameState(); // Full restore
-    }
-});
-
-// Try to restore only towers on page load
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        restoreTowersOnly();
-    }, 1000); // Delay to ensure all resources are loaded
-});
 
 // Helper function to create a tower base for restore operations
 function createTowerBaseForRestore(x, y, z, level) {
@@ -2144,72 +2208,9 @@ setInterval(function() {
     saveGameState();
 }, 10000);
 
-// Properly defined function for animating particle clouds with validation
-function animateParticleClouds() {
-    const deltaTime = 0.016; // Assuming ~60fps
-    
-    // Update each particle
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const particle = particles[i];
-        
-        // Update position based on velocity
-        particle.mesh.position.add(particle.velocity);
-        
-        // Apply gravity and drag
-        particle.velocity.y -= 0.01;
-        particle.velocity.multiplyScalar(0.95);
-        
-        // Reduce life
-        particle.life -= deltaTime;
-        
-        // Scale down as life decreases
-        const scale = particle.life * 0.5;
-        particle.mesh.scale.set(scale, scale, scale);
-        
-        // Remove dead particles
-        if (particle.life <= 0) {
-            scene.remove(particle.mesh);
-            particles.splice(i, 1);
-        }
-    }
-    
-    // Validate particle cloud geometry if it exists
-    if (particleClouds && particleClouds.geometry) {
-        validateGeometry(particleClouds.geometry);
-    }
-}
-
-// Properly defined function for animating center cloud with validation
-function animateCenterCloud() {
-    if (!centerCloud) return;
-    
-    // Rotate the center cloud
-    centerCloud.rotation.y += 0.005;
-    
-    // Pulse the center cloud
-    const time = Date.now() * 0.001;
-    const scale = 1.0 + Math.sin(time) * 0.1;
-    centerCloud.scale.set(scale, scale, scale);
-    
-    // Validate center cloud geometry if it exists
-    if (particleClouds && particleClouds.geometry) {
-        validateGeometry(particleClouds.geometry);
-    }
-}
-
-// Helper function for geometry validation
-function validateGeometry(geometry) {
-    if (geometry.isBufferGeometry) {
-        const position = geometry.attributes.position;
-        if (position && position.array) {
-            // Check for NaN values in position array
-            for (let i = 0; i < position.array.length; i++) {
-                if (isNaN(position.array[i])) {
-                    console.warn('Found NaN in geometry position data');
-                    position.array[i] = 0; // Replace with a safe value
-                }
-            }
-            position.needsUpdate = true;
-        }
-    }
-}
+// Try to restore only towers on page load
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        restoreTowersOnly();
+    }, 1000); // Delay to ensure all resources are loaded
+});
