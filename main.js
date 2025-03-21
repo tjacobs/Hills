@@ -1331,7 +1331,7 @@ function checkTowerClimbing() {
     if (highestTower) {
         // Calculate the exact height - ensure it's a positive value
         const blockHeight = STONE.blockHeight; // This should match the height of blocks in transformStoneToTowerBase
-        targetHeight = Math.max(highestTower.position.y + blockHeight, 3);
+        targetHeight = Math.max(highestTower.position.y + blockHeight, 3) + 1;
         
         return true;
     }
@@ -1954,7 +1954,6 @@ function restoreTowersOnly() {
         return false;
     }
 }
-
 
 // Helper function to create a tower base for restore operations
 function createTowerBaseForRestore(x, y, z, level) {
