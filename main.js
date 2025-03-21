@@ -1610,6 +1610,9 @@ function animate() {
         }
     }
 
+    // Check for cloud-tower interaction
+    handleCloudTowerInteraction();
+
     renderer.render(scene, camera);
 }
 
@@ -2247,3 +2250,538 @@ window.addEventListener('load', () => {
         restoreTowersOnly();
     }, 1000); // Delay to ensure all resources are loaded
 });
+
+// Add function to handle cloud movement and tower destruction
+function handleCloudTowerInteraction() {
+    // Check if player is on a tower
+    const playerPosition = new THREE.Vector3().copy(camera.position);
+    let playerTower = null;
+    let playerTowerIndex = -1;
+    
+    // Find the tower the player is standing on
+    for (let i = 0; i < towerBases.length; i++) {
+        const tower = towerBases[i];
+        const horizontalDistance = new THREE.Vector3()
+            .copy(playerPosition)
+            .sub(tower.position)
+            .setY(0) // Ignore Y difference
+            .length();
+        
+        if (horizontalDistance < 3.0) { // Tower radius
+            playerTower = tower;
+            playerTowerIndex = i;
+            break;
+        }
+    }
+    
+    // If player is on a tower and close to cloud
+    if (playerTower && window.centerCloud) {
+        const distanceToCloud = playerPosition.distanceTo(window.centerCloud.position);
+        
+        // If player is close enough to the cloud
+        if (distanceToCloud < 15) {
+            // Find another tower to move the cloud to
+            let targetTower = null;
+            let targetTowerIndex = -1;
+            
+            // Find the furthest tower from player
+            let maxDistance = 0;
+            for (let i = 0; i < towerBases.length; i++) {
+                // Skip the tower player is on
+                if (i === playerTowerIndex) continue;
+                
+                const tower = towerBases[i];
+                const distance = playerPosition.distanceTo(tower.position);
+                
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    targetTower = tower;
+                    targetTowerIndex = i;
+                }
+            }
+            
+            // If we found a target tower
+            if (targetTower) {
+                console.log("Moving cloud to destroy tower");
+                
+                // Start cloud movement animation
+                window.centerCloudMoving = true;
+                window.centerCloudStartTime = Date.now();
+                window.centerCloudAnimationDuration = 3000; // 3 seconds
+                
+                // Store start position
+                window.centerCloudStartY = window.centerCloud.position.y;
+                
+                // Set target position (above target tower)
+                window.centerCloudTargetY = targetTower.position.y + 20; // Position above tower
+                
+                // Store target tower for destruction
+                window.centerCloud.userData.targetTowerIndex = targetTowerIndex;
+                
+                // Set horizontal target directly for the centerCloud
+                window.centerCloud.userData.targetX = targetTower.position.x;
+                window.centerCloud.userData.targetZ = targetTower.position.z;
+                
+                // Schedule lightning strike and tower destruction
+                setTimeout(() => {
+                    // Create lightning effect
+                    createLightningEffect(targetTower.position);
+                    
+                    // Play thunder sound if available
+                    if (typeof playSound === 'function') {
+                        playSound('thunder');
+                    }
+                    
+                    // Destroy the tower
+                    destroyTower(targetTowerIndex);
+                }, 2500); // Strike just before animation completes
+            }
+        }
+    }
+    
+    // Animate cloud movement if it's moving
+    if (window.centerCloudMoving && window.centerCloud) {
+        const elapsed = Date.now() - window.centerCloudStartTime;
+        const progress = Math.min(1.0, elapsed / window.centerCloudAnimationDuration);
+        
+        // Ease-in-out function for smooth movement
+        const easeProgress = progress < 0.5 
+            ? 2 * progress * progress 
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        // Update cloud Y position
+        const newY = window.centerCloudStartY + (window.centerCloudTargetY - window.centerCloudStartY) * easeProgress;
+        window.centerCloud.position.y = newY;
+        
+        // Update horizontal position if target is set
+        if (window.centerCloud.userData.targetX !== undefined && window.centerCloud.userData.targetZ !== undefined) {
+            // Calculate smoother horizontal movement
+            const horizontalSpeed = 0.05;
+            window.centerCloud.position.x += (window.centerCloud.userData.targetX - window.centerCloud.position.x) * horizontalSpeed;
+            window.centerCloud.position.z += (window.centerCloud.userData.targetZ - window.centerCloud.position.z) * horizontalSpeed;
+        }
+        
+        // End animation when complete
+        if (progress >= 1.0) {
+            window.centerCloudMoving = false;
+        }
+    }
+}
+
+// Make sure these variables are defined at the global scope
+// Add this at the top of your script or in an appropriate scope
+window.centerCloud = null;
+window.centerCloudMoving = false;
+window.centerCloudStartTime = 0;
+window.centerCloudAnimationDuration = 3000;
+window.centerCloudStartY = 0;
+window.centerCloudTargetY = 0;
+
+// Initialize the center cloud - make sure this is called before the animation loop starts
+function initializeCenterCloud() {
+    console.log("Initializing center cloud");
+    
+    // Create a simple cloud mesh
+    const cloudGeometry = new THREE.SphereGeometry(5, 16, 16);
+    const cloudMaterial = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        transparent: true,
+        opacity: 0.8,
+        emissive: 0xCCCCFF,
+        emissiveIntensity: 0.2
+    });
+    
+    window.centerCloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+    window.centerCloud.position.set(0, 30, 0); // Position high above center
+    scene.add(window.centerCloud);
+    
+    // Add some particle effects to make it look more cloud-like
+    const particleCount = 50;
+    const particles = new THREE.Group();
+    
+    for (let i = 0; i < particleCount; i++) {
+        const size = 1 + Math.random() * 2;
+        const particle = new THREE.Mesh(
+            new THREE.SphereGeometry(size, 8, 8),
+            new THREE.MeshStandardMaterial({
+                color: 0xFFFFFF,
+                transparent: true,
+                opacity: 0.6 + Math.random() * 0.3
+            })
+        );
+        
+        // Position randomly around center
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 2 + Math.random() * 4;
+        particle.position.set(
+            Math.cos(angle) * radius,
+            (Math.random() - 0.5) * 3,
+            Math.sin(angle) * radius
+        );
+        
+        particles.add(particle);
+    }
+    
+    window.centerCloud.add(particles);
+    console.log("Center cloud initialized:", window.centerCloud);
+    
+    return window.centerCloud;
+}
+
+// Make sure to call this function to initialize the cloud
+// Add this to your initialization code or at the end of your script
+window.addEventListener('load', function() {
+    // Wait a short time to ensure Three.js is initialized
+    setTimeout(function() {
+        initializeCenterCloud();
+        console.log("Cloud initialization triggered");
+    }, 1000);
+});
+
+// Add lightning effect function
+function createLightningEffect(position) {
+    console.log("Creating lightning effect at", position);
+    
+    // Create a bright flash
+    const flash = new THREE.PointLight(0xFFFFFF, 100, 100);
+    flash.position.copy(position);
+    flash.position.y += 10; // Position above tower
+    scene.add(flash);
+    
+    // Create lightning bolt geometry
+    const points = [];
+    const startPoint = new THREE.Vector3(position.x, position.y + 20, position.z);
+    const endPoint = new THREE.Vector3(position.x, position.y, position.z);
+    
+    // Create zigzag pattern
+    points.push(startPoint);
+    
+    const segments = 6;
+    for (let i = 1; i < segments; i++) {
+        const t = i / segments;
+        const point = new THREE.Vector3()
+            .lerpVectors(startPoint, endPoint, t);
+        
+        // Add random offset for zigzag
+        point.x += (Math.random() - 0.5) * 2;
+        point.z += (Math.random() - 0.5) * 2;
+        
+        points.push(point);
+    }
+    
+    points.push(endPoint);
+    
+    // Create lightning geometry
+    const lightningGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const lightningMaterial = new THREE.LineBasicMaterial({ 
+        color: 0xFFFFFF,
+        linewidth: 3
+    });
+    
+    const lightning = new THREE.Line(lightningGeometry, lightningMaterial);
+    scene.add(lightning);
+    
+    // Fade out effect
+    let intensity = 1.0;
+    const fadeInterval = setInterval(() => {
+        intensity -= 0.1;
+        flash.intensity = 100 * intensity;
+        
+        if (intensity <= 0) {
+            clearInterval(fadeInterval);
+            scene.remove(flash);
+            scene.remove(lightning);
+        }
+    }, 50);
+}
+
+// Enhanced tower destruction function to handle the entire stack
+function destroyTower(towerIndex) {
+    console.log("Destroying tower at index", towerIndex);
+    
+    if (towerIndex < 0 || towerIndex >= towerBases.length) {
+        console.warn("Invalid tower index:", towerIndex);
+        return;
+    }
+    
+    const tower = towerBases[towerIndex];
+    const towerPosition = tower.position.clone();
+    
+    // Create explosion effect at the tower position
+    createExplosionEffect(towerPosition);
+    
+    // Check if this tower has child towers (rings above it)
+    let currentTower = tower;
+    const towersToDestroy = [tower];
+    
+    // Find all towers in the stack (follow the chain of child towers)
+    while (currentTower.userData && currentTower.userData.childTower) {
+        currentTower = currentTower.userData.childTower;
+        towersToDestroy.push(currentTower);
+    }
+    
+    console.log(`Found ${towersToDestroy.length} towers in the stack to destroy`);
+    
+    // Destroy all towers in the stack with cascading explosions
+    for (let i = 0; i < towersToDestroy.length; i++) {
+        const currentTowerToDestroy = towersToDestroy[i];
+        
+        // Create explosion effect with delay based on position in stack
+        setTimeout(() => {
+            // Create explosion at this tower's position
+            const explosionPosition = currentTowerToDestroy.position.clone();
+            createExplosionEffect(explosionPosition);
+            
+            // Remove from scene
+            scene.remove(currentTowerToDestroy);
+            
+            // Play destruction sound with decreasing volume for higher rings
+            if (typeof playSound === 'function') {
+                const volume = 1.0 - (i * 0.2); // Decrease volume for higher rings
+                playSound('explosion', volume);
+            }
+        }, i * 200); // Stagger explosions by 200ms
+    }
+    
+    // Remove the base tower from the towerBases array
+    towerBases.splice(towerIndex, 1);
+    
+    // Check if any other towers had this tower as a parent and update their references
+    for (let i = 0; i < towerBases.length; i++) {
+        const otherTower = towerBases[i];
+        if (otherTower.userData && otherTower.userData.parentTower === tower) {
+            // Clear the parent reference
+            otherTower.userData.parentTower = null;
+        }
+        
+        // Also check if this tower is in the list of towers to destroy
+        for (const towerToDestroy of towersToDestroy) {
+            if (otherTower === towerToDestroy && i !== towerIndex) {
+                // Remove this tower from the towerBases array as well
+                towerBases.splice(i, 1);
+                i--; // Adjust index since we removed an element
+                break;
+            }
+        }
+    }
+    
+    // Play initial destruction sound
+    if (typeof playSound === 'function') {
+        playSound('explosion', 1.0);
+    }
+}
+
+// Alternative implementation that might work better with your tower structure
+function destroyTowerAlternative(towerIndex) {
+    console.log("Destroying tower at index", towerIndex);
+    
+    if (towerIndex < 0 || towerIndex >= towerBases.length) {
+        console.warn("Invalid tower index:", towerIndex);
+        return;
+    }
+    
+    const tower = towerBases[towerIndex];
+    
+    // First, find all towers that are part of this stack
+    // This includes the base tower and all towers above it
+    const towersInStack = [];
+    
+    // Add the base tower
+    towersInStack.push(tower);
+    
+    // Find all towers that have this tower as their parent (directly or indirectly)
+    for (let i = 0; i < towerBases.length; i++) {
+        if (i === towerIndex) continue; // Skip the base tower
+        
+        const otherTower = towerBases[i];
+        let parent = otherTower.userData?.parentTower;
+        
+        // Check if this tower is in the same stack
+        while (parent) {
+            if (parent === tower) {
+                // This tower is part of the stack
+                towersInStack.push(otherTower);
+                break;
+            }
+            parent = parent.userData?.parentTower;
+        }
+    }
+    
+    console.log(`Found ${towersInStack.length} towers in the stack to destroy`);
+    
+    // Create cascading explosions for all towers in the stack
+    for (let i = 0; i < towersInStack.length; i++) {
+        const towerToDestroy = towersInStack[i];
+        
+        // Create explosion with delay
+        setTimeout(() => {
+            createExplosionEffect(towerToDestroy.position.clone());
+            scene.remove(towerToDestroy);
+            
+            // Play sound
+            if (typeof playSound === 'function') {
+                const volume = 1.0 - (i * 0.2);
+                playSound('explosion', volume);
+            }
+        }, i * 200);
+    }
+    
+    // Remove all towers in the stack from the towerBases array
+    for (let i = towerBases.length - 1; i >= 0; i--) {
+        if (towersInStack.includes(towerBases[i])) {
+            towerBases.splice(i, 1);
+        }
+    }
+    
+    // Play initial sound
+    if (typeof playSound === 'function') {
+        playSound('explosion', 1.0);
+    }
+}
+
+// Replace the destroyTower function with the alternative implementation
+window.destroyTower = destroyTowerAlternative;
+
+// Enhanced explosion effect with more particles and variation
+function createExplosionEffect(position) {
+    console.log("Creating explosion effect at", position);
+    
+    // Create particles for explosion
+    const particleCount = 75; // More particles for bigger explosion
+    
+    for (let i = 0; i < particleCount; i++) {
+        // Randomize particle size
+        const size = 0.3 + Math.random() * 0.4;
+        
+        // Randomize particle color (stone-like colors)
+        const colorValue = 0.5 + Math.random() * 0.3; // Gray to light gray
+        const color = new THREE.Color(colorValue, colorValue, colorValue);
+        
+        const particle = new THREE.Mesh(
+            new THREE.BoxGeometry(size, size, size),
+            new THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 1.0
+            })
+        );
+        
+        // Position at explosion center with slight random offset
+        particle.position.copy(position);
+        particle.position.x += (Math.random() - 0.5) * 1.0;
+        particle.position.y += (Math.random() - 0.5) * 1.0;
+        particle.position.z += (Math.random() - 0.5) * 1.0;
+        
+        // Add random velocity in all directions (stronger explosion)
+        const velocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.8,
+            Math.random() * 0.8,
+            (Math.random() - 0.5) * 0.8
+        );
+        
+        // Add random rotation
+        particle.rotation.set(
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2,
+            Math.random() * Math.PI * 2
+        );
+        
+        // Add random rotation velocity
+        const rotationVelocity = new THREE.Vector3(
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.2,
+            (Math.random() - 0.5) * 0.2
+        );
+        
+        // Add to scene and particles array
+        scene.add(particle);
+        
+        if (!window.explosionParticles) {
+            window.explosionParticles = [];
+        }
+        
+        window.explosionParticles.push({
+            mesh: particle,
+            velocity: velocity,
+            rotationVelocity: rotationVelocity,
+            life: 1.5 + Math.random() * 1.0 // Varied life for particles
+        });
+    }
+}
+
+// Enhanced updateParticleClouds function to handle rotation
+function updateParticleClouds() {
+    const deltaTime = 0.016; // Assuming ~60fps
+    
+    // Update regular particles
+    if (window.particles && window.particles.length > 0) {
+        for (let i = window.particles.length - 1; i >= 0; i--) {
+            const particle = window.particles[i];
+            
+            // Update position based on velocity
+            particle.mesh.position.add(particle.velocity);
+            
+            // Apply gravity and drag
+            particle.velocity.y -= 0.01;
+            particle.velocity.multiplyScalar(0.95);
+            
+            // Reduce life
+            particle.life -= deltaTime;
+            
+            // Scale down as life decreases
+            const scale = particle.life * 0.5;
+            particle.mesh.scale.set(scale, scale, scale);
+            
+            // Remove dead particles
+            if (particle.life <= 0) {
+                scene.remove(particle.mesh);
+                window.particles.splice(i, 1);
+            }
+        }
+    }
+    
+    // Update explosion particles
+    if (window.explosionParticles && window.explosionParticles.length > 0) {
+        for (let i = window.explosionParticles.length - 1; i >= 0; i--) {
+            const particle = window.explosionParticles[i];
+            
+            // Update position
+            particle.mesh.position.add(particle.velocity);
+            
+            // Update rotation if available
+            if (particle.rotationVelocity) {
+                particle.mesh.rotation.x += particle.rotationVelocity.x;
+                particle.mesh.rotation.y += particle.rotationVelocity.y;
+                particle.mesh.rotation.z += particle.rotationVelocity.z;
+            }
+            
+            // Apply gravity
+            particle.velocity.y -= 0.015;
+            
+            // Apply drag
+            particle.velocity.multiplyScalar(0.98);
+            
+            // Reduce life
+            particle.life -= deltaTime;
+            
+            // Update opacity
+            if (particle.mesh.material.opacity) {
+                particle.mesh.material.opacity = particle.life / 1.5;
+            }
+            
+            // Remove dead particles
+            if (particle.life <= 0) {
+                scene.remove(particle.mesh);
+                particle.mesh.material.dispose();
+                particle.mesh.geometry.dispose();
+                window.explosionParticles.splice(i, 1);
+            }
+        }
+    }
+}
+
+// Make sure these functions are available globally
+window.createLightningEffect = createLightningEffect;
+window.destroyTower = destroyTower;
+window.createExplosionEffect = createExplosionEffect;
+window.updateParticleClouds = updateParticleClouds;
