@@ -74,7 +74,7 @@ const STONE = {
         offset: {
             forward: 1.2,     // How far in front of player the stone appears
             down: 0.8,        // How far below eye level the stone appears
-            scale: 0.5        // Scale factor applied to held stones
+            scale: 1.0        // Scale factor applied to held stones
         },
         // Physics
         physics: {
