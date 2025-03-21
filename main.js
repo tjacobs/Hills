@@ -117,7 +117,7 @@ grassTexture.wrapT = THREE.RepeatWrapping; // Vertical wrapping
 const groundMaterial = new THREE.ShaderMaterial({
     uniforms: {
         grassTexture: { value: grassTexture },
-        centerDistance: { value: 0.80 },    // Distance from center where beach starts (0-1)
+        centerDistance: { value: TERRAIN.shoreRadius / 100 },    // Distance from center where beach starts (0-1)
         transitionWidth: { value: 0.05 }   // Width of the beach transition
     },
     vertexShader: `
@@ -183,23 +183,16 @@ const groundMaterial = new THREE.ShaderMaterial({
     side: THREE.DoubleSide
 });
 
-// Set geometry for hills
-const size = 200;
-const height = 5;
-const segments = 200;
-const xs = 8;
-const ys = xs;
-
 // Create main hilly ground
-const groundGeometry = new THREE.PlaneGeometry(size, size, segments, segments);
-for (let i = 0; i <= segments; i++) {
-    for (let j = 0; j <= segments; j++) {
+const groundGeometry = new THREE.PlaneGeometry(TERRAIN.size, TERRAIN.size, TERRAIN.segments, TERRAIN.segments);
+for (let i = 0; i <= TERRAIN.segments; i++) {
+    for (let j = 0; j <= TERRAIN.segments; j++) {
         const vertex = groundGeometry.attributes.position;
-        const index = (i * (segments + 1) + j) * 3;
+        const index = (i * (TERRAIN.segments + 1) + j) * 3;
         
         // Calculate normalized coordinates (-1 to 1)
-        const nx = (i / segments) * 2 - 1;
-        const ny = (j / segments) * 2 - 1;
+        const nx = (i / TERRAIN.segments) * 2 - 1;
+        const ny = (j / TERRAIN.segments) * 2 - 1;
         
         // Calculate distance from center (0 to 1)
         const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
@@ -208,7 +201,7 @@ for (let i = 0; i <= segments; i++) {
         const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
         
         // Apply height with edge falloff
-        vertex.array[index + 2] = Math.sin(i / xs) * Math.sin(j / ys) * height * edgeFalloff;
+        vertex.array[index + 2] = Math.sin(i / TERRAIN.xs) * Math.sin(j / TERRAIN.ys) * TERRAIN.height * edgeFalloff;
     }
 }
 groundGeometry.computeVertexNormals();
@@ -218,7 +211,7 @@ ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
 // Create flat border ground (much larger)
-const borderSize = size * 10;
+const borderSize = TERRAIN.size * 10;
 const borderGeometry = new THREE.PlaneGeometry(borderSize, borderSize);
 const borderMaterial = new THREE.MeshStandardMaterial({ 
     color: 0x5588ff,  // More vibrant blue color for water
@@ -496,10 +489,10 @@ const particleClouds = createParticleClouds();
 // Start cloud movement after a delay
 setTimeout(() => {
     // Calculate center valley position
-    const valleySpacing = size / xs;
-    const halfSize = size / 2;
-    const centerI = Math.floor(xs / 2);
-    const centerJ = Math.floor(ys / 2);
+    const valleySpacing = TERRAIN.size / TERRAIN.xs;
+    const halfSize = TERRAIN.size / 2;
+    const centerI = Math.floor(TERRAIN.xs / 2);
+    const centerJ = Math.floor(TERRAIN.ys / 2);
     const centerX = -halfSize + (centerI + 0.5) * valleySpacing;
     const centerZ = -halfSize + (centerJ + 0.5) * valleySpacing;
     const centerY = getTerrainHeight(centerX, centerZ) + 15; // 15 units above terrain
@@ -523,12 +516,12 @@ function getTerrainHeight(x, z) {
     const size = groundGeometry.parameters.width; // Size of the ground
 
     // Calculate the indices based on the position
-    const i = Math.floor(((x + size / 2) / size) * segments);
-    const j = Math.floor(((z + size / 2) / size) * segments);
-    if (i < 0 || i >= segments || j < 0 || j >= segments) {
+    const i = Math.floor(((x + size / 2) / size) * TERRAIN.segments);
+    const j = Math.floor(((z + size / 2) / size) * TERRAIN.segments);
+    if (i < 0 || i >= TERRAIN.segments || j < 0 || j >= TERRAIN.segments) {
         return -Infinity; // Out of bounds
     }
-    const index = (j * (segments + 1) + i) * 3; // Calculate the index in the vertex array
+    const index = (j * (TERRAIN.segments + 1) + i) * 3; // Calculate the index in the vertex array
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
@@ -551,7 +544,7 @@ const pickupDelay = 500; // 500ms delay before pickup is allowed
 let lastThrowTime = 0;   // Track when the last throw happened
 
 // Add shore stone spawning parameters
-const shoreRadius = size * 0.48; // Slightly larger than before, right at water's edge
+const shoreRadius = TERRAIN.size * 0.48; // Slightly larger than before, right at water's edge
 const shoreWidth = 5; // Narrower band at the very edge
 const waveStrength = 0.18; // Significantly increased for much further inland movement
 
@@ -592,7 +585,7 @@ function createNewStone() {
     const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
     // Position stone randomly within the boundary
-    const positionRadius = size * 0.4;
+    const positionRadius = TERRAIN.size * 0.4;
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * positionRadius;
     
