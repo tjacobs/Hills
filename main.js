@@ -1185,7 +1185,7 @@ window.updateStones = function() {
         }
         
         // Check if stone is outside the boundary
-        const boundary = size * 0.49;
+        const boundary = TERRAIN.size * 0.49;
         if (Math.abs(stone.position.x) > boundary) {
             stone.position.x = Math.sign(stone.position.x) * boundary;
             velocity.x = -velocity.x * STONE_BOUNCE;
@@ -1438,9 +1438,9 @@ function animate() {
                 newX += Math.cos(cameraAngle) * strafeSpeed;
                 newZ -= Math.sin(cameraAngle) * strafeSpeed;
             }
-            
-            // Expanded boundary check to allow walking to the edge
-            const boundary = size * 0.49; // Increased from 0.4 to 0.49 (almost the full radius)
+
+            // Limit            
+            const boundary = TERRAIN.size * 0.49;
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
@@ -2219,5 +2219,4 @@ document.addEventListener('keydown', (e) => {
 // Set up auto-save every 10 seconds
 setInterval(function() {
     saveGameState();
-    console.log('Auto-saved game state');
 }, 10000);
