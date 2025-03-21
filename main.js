@@ -29,8 +29,8 @@ const STONE = {
     maxVelocity: 0.24,        // Maximum stone velocity cap
     dropInterval: 1000,       // Milliseconds between automatic stone spawns
     pickupDelay: 500,         // Milliseconds delay before pickup is allowed
-    throwForce: 0.5,          // Force of the throw
-    throwUpward: 0.5,         // Upward component of the throw
+    throwForce: 0.2,          // Force of the throw
+    throwUpward: 0.2,         // Upward component of the throw
     bounce: 0.2,              // Bounce coefficient (lower = less bouncy)
     stopThreshold: 0.01,      // Velocity threshold for stopping
     rollFactor: 0.03,         // Factor for rolling down hills
@@ -204,18 +204,17 @@ for (let i = 0; i <= TERRAIN.segments; i++) {
     }
 }
 groundGeometry.computeVertexNormals();
-
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-// Create flat border ground (much larger)
+// Create water
 const borderSize = TERRAIN.size * 10;
 const borderGeometry = new THREE.PlaneGeometry(borderSize, borderSize);
 const borderMaterial = new THREE.MeshStandardMaterial({ 
     color: 0x5588ff,  // More vibrant blue color for water
     side: THREE.DoubleSide,
-    metalness: 0.5,   // High metalness for water shine
+    metalness: 0.2,   // High metalness for water shine
     roughness: 0.1,   // Low roughness for water shine
     transparent: true,
     opacity: 0.9      // Slight transparency
@@ -238,11 +237,6 @@ scene.add(directionalLight);
 camera.position.set(0, 3, 15);
 
 // Add keyboard controls
-const moveSpeed = 0.5;
-const rotateSpeed = 0.02;
-const sprintMultiplier = 2.0;
-const throwForce = 0.5;
-const throwUpward = 0.8;
 const keys = {
     ArrowLeft: false,
     ArrowRight: false,
@@ -259,8 +253,6 @@ const keys = {
 let keyboardControlActive = false;
 
 // Player physics parameters
-const jumpForce = 0.5;  // Initial upward velocity when jumping
-const playerGravity = -0.02;  // Gravity force applied to player
 let playerVerticalVelocity = 0;  // Track vertical velocity
 let isJumping = false;  // Track jump state
 
