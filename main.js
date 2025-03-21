@@ -1523,3 +1523,130 @@ document.addEventListener('mousedown', (e) => {
         handleThrowAction();
     }
 });
+
+/**
+ * Validates a vector to ensure it doesn't contain NaN values
+ * @param {THREE.Vector3} vector - The vector to validate
+ * @returns {boolean} - True if the vector is valid, false otherwise
+ */
+function isValidVector(vector) {
+    return vector && 
+           !isNaN(vector.x) && !isNaN(vector.y) && !isNaN(vector.z) &&
+           isFinite(vector.x) && isFinite(vector.y) && isFinite(vector.z);
+}
+
+/**
+ * Fixes a vector by replacing NaN or infinite values with defaults
+ * @param {THREE.Vector3} vector - The vector to fix
+ * @returns {THREE.Vector3} - The fixed vector
+ */
+function fixVector(vector) {
+    if (!vector) return new THREE.Vector3();
+    
+    if (!isValidVector(vector)) {
+        if (isNaN(vector.x) || !isFinite(vector.x)) vector.x = 0;
+        if (isNaN(vector.y) || !isFinite(vector.y)) vector.y = 0;
+        if (isNaN(vector.z) || !isFinite(vector.z)) vector.z = 0;
+    }
+    return vector;
+}
+
+/**
+ * Validates and fixes a buffer geometry to prevent NaN errors
+ * @param {THREE.BufferGeometry} geometry - The geometry to validate
+ */
+function validateGeometry(geometry) {
+    if (!geometry || !geometry.attributes || !geometry.attributes.position) return;
+    
+    const positions = geometry.attributes.position.array;
+    let fixed = false;
+    
+    // Check for NaN values in position array
+    for (let i = 0; i < positions.length; i++) {
+        if (isNaN(positions[i]) || !isFinite(positions[i])) {
+            positions[i] = 0;
+            fixed = true;
+        }
+    }
+    
+    // If we fixed any values, update the attribute
+    if (fixed) {
+        geometry.attributes.position.needsUpdate = true;
+    }
+}
+
+/**
+ * Validates all geometries in the scene
+ */
+function validateAllGeometries() {
+    // Check all objects in the scene
+    scene.traverse(function(object) {
+        if (object.geometry) {
+            validateGeometry(object.geometry);
+        }
+    });
+}
+
+// Add a validation step to the particle cloud update
+if (typeof updateParticleClouds === 'function') {
+    const originalUpdateParticleClouds = updateParticleClouds;
+    updateParticleClouds = function() {
+        // Call the original function
+        originalUpdateParticleClouds();
+        
+        // Validate particle cloud geometry
+        if (particleClouds && particleClouds.geometry) {
+            validateGeometry(particleClouds.geometry);
+        }
+    };
+} else {
+    // If the function doesn't exist, create a validation function for particle clouds
+    function validateParticleClouds() {
+        if (particleClouds && particleClouds.geometry) {
+            validateGeometry(particleClouds.geometry);
+        }
+    }
+}
+
+// Patch the animate function to validate geometries
+const originalAnimate = animate;
+animate = function() {
+    // Validate all geometries before rendering
+    validateAllGeometries();
+    
+    // Specifically validate particle clouds which are likely the source of the error
+    if (particleClouds && particleClouds.geometry) {
+        validateGeometry(particleClouds.geometry);
+    }
+    
+    // Call the original animate function
+    originalAnimate();
+};
+
+// Add a specific check for the particle cloud animation
+if (typeof animateParticleClouds === 'function') {
+    const originalAnimateParticleClouds = animateParticleClouds;
+    animateParticleClouds = function() {
+        // Call the original function
+        originalAnimateParticleClouds();
+        
+        // Validate particle cloud geometry
+        if (particleClouds && particleClouds.geometry) {
+            validateGeometry(particleClouds.geometry);
+        }
+    };
+}
+
+// Add a specific check for the center cloud animation
+if (typeof animateCenterCloud === 'function') {
+    const originalAnimateCenterCloud = animateCenterCloud;
+    animateCenterCloud = function() {
+        // Call the original function
+        originalAnimateCenterCloud();
+        
+        // Validate particle cloud geometry
+        if (particleClouds && particleClouds.geometry) {
+            validateGeometry(particleClouds.geometry);
+        }
+    };
+}
