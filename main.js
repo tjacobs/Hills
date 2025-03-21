@@ -723,50 +723,67 @@ const thrownStones = [];
 // Add tracking for tower bases
 const towerBases = [];
 
+/**
+ * Throws the most recently picked up stone
+ */
 function handleThrowAction() {
-    // Check if we're holding a stone and enough time has passed since last throw
-    if (heldStone && (Date.now() - lastThrowTime > pickupDelay)) {
-        
-        // Add stone back to physics arrays
-        stones.push(heldStone);
-        
-        // Calculate throw direction and force
-        const forward = new THREE.Vector3(0, 0, -1);
-        forward.applyQuaternion(camera.quaternion);
-        
-        // Create initial velocity based on camera direction
-        const throwForce = 0.8;
-        const throwUpward = 0.8;
-        const throwVelocity = new THREE.Vector3(
-            forward.x * throwForce,
-            throwUpward,
-            forward.z * throwForce
-        );
-        
-        // Add to velocities array
-        stoneVelocities.push(throwVelocity);
-        
-        // Track this stone as thrown
-        thrownStones.push({
-            stone: heldStone,
-            throwTime: Date.now(),
-            lastPosition: new THREE.Vector3().copy(heldStone.position),
-            stationaryTime: 0,
-            transformed: false
-        });
-        
-        // Reset stone scale
-        heldStone.scale.set(1, 1, 1);
-        
-        // Clear held stone
-        heldStone = null;
-        
-        // Track throw time for pickup delay
-        lastThrowTime = Date.now();
-        
-        return true; // Throw was successful
+    // Check if we have any stones to throw
+    if (heldStone === null || (Date.now() - lastThrowTime < STONE.pickupDelay)) {
+        return false;
     }
-    return false; // No throw occurred
+    
+    // Get the last stone in the array (LIFO - last in, first out)
+    const stoneToThrow = heldStone;
+    stoneToThrow.visible = true;
+    
+    // Position stone in front of player
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    
+    stoneToThrow.position.copy(camera.position)
+        .add(new THREE.Vector3(0, -0.3, 0))  // Slightly below eye level
+        .add(forward.clone().multiplyScalar(1.0));
+    
+    // Add stone back to physics arrays
+    stones.push(stoneToThrow);
+    
+    // Calculate throw direction and force - REDUCED VALUES
+    const throwForce = 0.3;  // Reduced from 0.8 for weaker throw
+    const throwUpward = 0.2; // Reduced from 0.8 for lower arc
+    
+    // Create throw velocity with reduced components
+    const throwVelocity = new THREE.Vector3(
+        forward.x * throwForce,
+        throwUpward,
+        forward.z * throwForce
+    );
+    
+    // Add to velocities array
+    stoneVelocities.push(throwVelocity);
+    
+    // Mark stone as thrown for tower building
+    stoneToThrow.userData.thrown = true;
+    
+    // Track this stone as thrown
+    thrownStones.push({
+        stone: stoneToThrow,
+        throwTime: Date.now(),
+        lastPosition: new THREE.Vector3().copy(stoneToThrow.position),
+        stationaryTime: 0,
+        transformed: false
+    });
+    
+    // Track throw time for pickup delay
+    lastThrowTime = Date.now();
+    
+    // Play throw sound if available
+    if (typeof playSound === 'function') {
+        playSound('throw');
+    }
+    
+    // Clear held stone
+    heldStone = null;
+    
+    return true;
 }
 
 // Add function to find nearby tower base
@@ -1087,93 +1104,141 @@ function checkThrownStones() {
     }
 }
 
-// Modify updateStones function to allow stones to travel much further inland
-function updateStones() {
-    for (let i = stones.length - 1; i >= 0; i--) {
+// Update the stone physics to allow rolling down hills
+window.updateStones = function() {
+    // Define physics constants
+    const STONE_GRAVITY = 0.025;       // Gravity strength
+    const STONE_BOUNCE = 0.2;          // Bounce coefficient (lower = less bouncy)
+    const STONE_FRICTION = 0.85;       // Reduced friction (higher = less friction)
+    const STONE_STOP_THRESHOLD = 0.01; // Lower threshold to allow more movement
+    const STONE_ROLL_FACTOR = 0.03;    // Increased factor for faster hill rolling (was 0.01)
+    
+    // Update stone positions based on velocities
+    for (let i = 0; i < stones.length; i++) {
         const stone = stones[i];
-        const stoneVelocity = stoneVelocities[i];
-
-        // Update horizontal position first
-        stone.position.x += stoneVelocity.x;
-        stone.position.z += stoneVelocity.z;
-
-        // Get terrain height at new position
-        const targetHeight = getTerrainHeight(stone.position.x, stone.position.z) + stoneRadius + groundCheckOffset;
+        const velocity = stoneVelocities[i];
         
-        // Smoothly interpolate height for all stones
-        if (!stone.userData.isInitialized) {
-            // First frame, just set the height directly
-            stone.position.y = targetHeight;
-            stone.userData.isInitialized = true;
-        } else {
-            // Smoothly interpolate to target height
-            stone.position.y += (targetHeight - stone.position.y) * heightSmoothingFactor;
-        }
+        // Skip if stone or velocity is invalid
+        if (!stone || !velocity) continue;
         
-        // Calculate horizontal velocity based on terrain slope
-        const checkDist = 0.3;
-        const currentHeight = getTerrainHeight(stone.position.x, stone.position.z);
-        const slopeFront = getTerrainHeight(stone.position.x, stone.position.z + checkDist) - currentHeight;
-        const slopeBack = getTerrainHeight(stone.position.x, stone.position.z - checkDist) - currentHeight;
-        const slopeLeft = getTerrainHeight(stone.position.x - checkDist, stone.position.z) - currentHeight;
-        const slopeRight = getTerrainHeight(stone.position.x + checkDist, stone.position.z) - currentHeight;
-
-        // Lower slope threshold for more consistent rolling
-        const slopeThreshold = 0.01;
+        // Check if stone is already stopped
+        if (velocity.lengthSq() === 0) continue;
         
-        // Reset acceleration
-        let accelX = 0;
-        let accelZ = 0;
+        // Store previous position for rotation calculation
+        const prevPosition = stone.position.clone();
         
-        // Apply forces based on slopes
-        if (slopeFront < -slopeThreshold) accelZ += -slopeFront * rollSpeed;
-        if (slopeBack < -slopeThreshold) accelZ -= -slopeBack * rollSpeed;
-        if (slopeLeft < -slopeThreshold) accelX -= -slopeLeft * rollSpeed;
-        if (slopeRight < -slopeThreshold) accelX += -slopeRight * rollSpeed;
+        // Apply velocity to position
+        stone.position.x += velocity.x;
+        stone.position.y += velocity.y;
+        stone.position.z += velocity.z;
         
-        // Update velocity with acceleration and friction
-        stoneVelocity.x += accelX;
-        stoneVelocity.z += accelZ;
+        // Apply gravity to velocity
+        velocity.y -= STONE_GRAVITY;
         
-        // Apply reduced friction for stones coming from water to allow them to travel further
-        const distanceFromCenter = Math.sqrt(stone.position.x * stone.position.x + stone.position.z * stone.position.z);
-        const isNearShore = distanceFromCenter > (shoreRadius * 0.8);
-        const frictionFactor = isNearShore ? 0.3 * friction : friction; // Further reduce friction near shore
+        // Check if stone is on or near ground
+        const groundHeight = getTerrainHeight ? 
+            getTerrainHeight(stone.position.x, stone.position.z) : 
+            0;
         
-        stoneVelocity.x *= (1 - frictionFactor);
-        stoneVelocity.z *= (1 - frictionFactor);
-        
-        // Calculate current velocity magnitude
-        const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
-        
-        // Check if stone has settled (very low velocity) and was thrown by player
-        if (currentVelocity < minVelocity && stone.userData.thrown === true) {
-            transformStoneToTowerBase(stone, i);
-            continue; // Skip the rest of the loop for this stone
-        }
-        
-        // Stop if moving very slowly
-        if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
-        if (Math.abs(stoneVelocity.z) < minVelocity) stoneVelocity.z = 0;
-
-        // Limit maximum velocity
-        if (currentVelocity > maxVelocity) {
-            const scale = maxVelocity / currentVelocity;
-            stoneVelocity.x *= scale;
-            stoneVelocity.z *= scale;
-        }
-        
-        // Update stone rotation based on movement for visual feedback
-        if (currentVelocity > 0.01) {
-            // Calculate rotation axis perpendicular to movement direction
-            const rotationAxis = new THREE.Vector3(-stoneVelocity.z, 0, stoneVelocity.x).normalize();
-            const rotationAmount = currentVelocity * 0.2;
+        if (stone.position.y < groundHeight + STONE.radius) {
+            // Position stone on ground
+            stone.position.y = groundHeight + STONE.radius;
             
-            // Apply rotation
+            // Bounce with energy loss
+            velocity.y = -velocity.y * STONE_BOUNCE;
+            
+            // Apply friction to horizontal movement
+            velocity.x *= STONE_FRICTION;
+            velocity.z *= STONE_FRICTION;
+            
+            // Calculate terrain slope for rolling
+            let slopeX = 0;
+            let slopeZ = 0;
+            
+            // Sample terrain at nearby points to determine slope if getTerrainHeight exists
+            if (typeof getTerrainHeight === 'function') {
+                // Use a larger sample distance to detect slopes better
+                const sampleDistance = 0.8; // Increased from 0.5
+                const heightRight = getTerrainHeight(stone.position.x + sampleDistance, stone.position.z);
+                const heightLeft = getTerrainHeight(stone.position.x - sampleDistance, stone.position.z);
+                const heightFront = getTerrainHeight(stone.position.x, stone.position.z + sampleDistance);
+                const heightBack = getTerrainHeight(stone.position.x, stone.position.z - sampleDistance);
+                
+                // Calculate slope components (negative because we want to roll downhill)
+                slopeX = (heightLeft - heightRight) * STONE_ROLL_FACTOR;
+                slopeZ = (heightBack - heightFront) * STONE_ROLL_FACTOR;
+                
+                // Enhance slope effect for steeper slopes
+                const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+                if (slopeMagnitude > 0.001) {
+                    // Apply a non-linear boost to steeper slopes
+                    const slopeBoost = 1.0 + slopeMagnitude * 10.0;
+                    slopeX *= slopeBoost;
+                    slopeZ *= slopeBoost;
+                }
+                
+                // Add slope-based acceleration (rolling downhill)
+                velocity.x += slopeX;
+                velocity.z += slopeZ;
+                
+                // Reduce friction when on slopes to allow faster rolling
+                if (slopeMagnitude > 0.002) {
+                    // Apply less friction on steeper slopes
+                    const slopeFriction = Math.min(0.98, 0.85 + slopeMagnitude * 5.0);
+                    velocity.x *= slopeFriction;
+                    velocity.z *= slopeFriction;
+                }
+            }
+            
+            // Calculate the total horizontal velocity
+            const horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+            
+            // If stone is moving very slowly and not on a significant slope, stop it completely
+            const significantSlope = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ) > 0.001;
+            
+            if (horizontalSpeed < STONE_STOP_THRESHOLD && Math.abs(velocity.y) < STONE_STOP_THRESHOLD) {
+                if (!significantSlope) {
+                    // Stop the stone completely
+                    velocity.set(0, 0, 0);
+                    continue; // Skip the rest of the loop for this stone
+                }
+            }
+            
+            // Additional stopping check for very slow movement
+            if (horizontalSpeed < STONE_STOP_THRESHOLD * 0.5) {
+                if (!significantSlope) {
+                    // Stop horizontal movement
+                    velocity.x = 0;
+                    velocity.z = 0;
+                }
+            }
+            
+            // Stop vertical movement if very small
+            if (Math.abs(velocity.y) < STONE_STOP_THRESHOLD * 0.5) {
+                velocity.y = 0;
+            }
+        }
+        
+        // Check if stone is outside the boundary
+        const boundary = size * 0.49;
+        if (Math.abs(stone.position.x) > boundary) {
+            stone.position.x = Math.sign(stone.position.x) * boundary;
+            velocity.x = -velocity.x * STONE_BOUNCE;
+        }
+        if (Math.abs(stone.position.z) > boundary) {
+            stone.position.z = Math.sign(stone.position.z) * boundary;
+            velocity.z = -velocity.z * STONE_BOUNCE;
+        }
+        
+        // Update stone rotation based on movement
+        if (velocity.length() > 0.01) {
+            const movement = new THREE.Vector3().subVectors(stone.position, prevPosition);
+            const rotationAxis = new THREE.Vector3(-movement.z, 0, movement.x).normalize();
+            const rotationAmount = movement.length() * 2;
             stone.rotateOnAxis(rotationAxis, rotationAmount);
         }
     }
-}
+};
 
 // Add tower climbing functionality
 function checkTowerClimbing() {
@@ -1510,17 +1575,29 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-// Add key handler for throwing
+// Add key handler for throwing with more force (shift+E)
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'KeyE' && heldStone) {
-        handleThrowAction();
-    }
-});
-
-// Add mouse click handler for throwing
-document.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && heldStone) { // Left mouse button
-        handleThrowAction();
+    if (e.code === 'KeyE') {
+        // Check if shift is pressed for power throw
+        if (e.shiftKey) {
+            // Store original values
+            const originalThrowForce = STONE.throwForce;
+            const originalThrowUpward = STONE.throwUpward;
+            
+            // Set higher values for power throw (but still moderate)
+            STONE.throwForce = 0.6;  // Stronger than normal but still weak
+            STONE.throwUpward = 0.4; // Higher arc but still low
+            
+            // Throw the stone
+            handleThrowAction();
+            
+            // Restore original values
+            STONE.throwForce = originalThrowForce;
+            STONE.throwUpward = originalThrowUpward;
+        } else {
+            // Normal throw
+            handleThrowAction();
+        }
     }
 });
 
