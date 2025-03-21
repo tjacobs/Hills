@@ -33,8 +33,11 @@ const STONE = {
     dropInterval: 1000,       // Milliseconds between automatic stone spawns
     pickupDelay: 500,         // Milliseconds delay before pickup is allowed
     waveStrength: 0.18,       // Force of waves pushing stones inland
-    throwForce: 0.8,          // Force of the throw
-    throwUpward: 0.5          // Upward component of the throw
+    throwForce: 0.5,          // Force of the throw
+    throwUpward: 0.2,         // Upward component of the throw
+    bounce: 0.2,              // Bounce coefficient (lower = less bouncy)
+    stopThreshold: 0.01,      // Velocity threshold for stopping
+    rollFactor: 0.03          // Factor for rolling down hills
 };
 
 // Player movement parameters
@@ -241,8 +244,8 @@ camera.position.set(0, 3, 15);
 const moveSpeed = 0.5;
 const rotateSpeed = 0.02;
 const sprintMultiplier = 2.0;
-const throwForce = 0.8;  // Add throw force constant
-const throwUpward = 0.8; // Add upward throw component
+const throwForce = 0.5;
+const throwUpward = 0.8;
 const keys = {
     ArrowLeft: false,
     ArrowRight: false,
@@ -524,16 +527,6 @@ function getTerrainHeight(x, z) {
     return vertex.array[index + 2]; // Return the height (z-coordinate)
 }
 
-// Stone parameters - adjusted for faster rolling
-const stoneRadius = 0.5;
-const gravity = -0.01;       
-const rollSpeed = 0.04;      // Doubled from 0.02 for faster rolling
-const friction = 0.03;       
-const minVelocity = 0.003;   
-const groundCheckOffset = 0.1;
-const maxVelocity = 0.24;    // Doubled from 0.12 for faster movement
-const heightSmoothingFactor = 0.15;
-
 // Stone management
 const stones = [];
 const stoneVelocities = [];
@@ -590,7 +583,10 @@ function createNewStone() {
     
     stone.position.x = Math.cos(angle) * distance;
     stone.position.z = Math.sin(angle) * distance;
-    stone.position.y = STONE.radius; // Start at ground level
+    
+    // Get terrain height at this position and place stone on ground
+    const groundHeight = getTerrainHeight(stone.position.x, stone.position.z);
+    stone.position.y = groundHeight + STONE.radius; // Start at ground level
     
     // Random rotation
     stone.rotation.x = Math.random() * Math.PI;
@@ -710,15 +706,11 @@ function handleThrowAction() {
     // Add stone back to physics arrays
     stones.push(stoneToThrow);
     
-    // Calculate throw direction and force - REDUCED VALUES
-    const throwForce = 0.3;  // Reduced from 0.8 for weaker throw
-    const throwUpward = 0.2; // Reduced from 0.8 for lower arc
-    
-    // Create throw velocity with reduced components
+    // Calculate throw direction and force from STONE object
     const throwVelocity = new THREE.Vector3(
-        forward.x * throwForce,
-        throwUpward,
-        forward.z * throwForce
+        forward.x * STONE.throwForce,
+        STONE.throwUpward,
+        forward.z * STONE.throwForce
     );
     
     // Add to velocities array
