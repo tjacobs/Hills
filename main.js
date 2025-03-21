@@ -609,9 +609,9 @@ let lastStoneDropTime = 0;
 let lastThrowTime = 0;   // Track when the last throw happened
 
 // Add shore stone spawning parameters
-const shoreRadius = TERRAIN.size * 0.48; // Slightly larger than before, right at water's edge
-const shoreWidth = 5; // Narrower band at the very edge
-const waveStrength = 0.18; // Significantly increased for much further inland movement
+const shoreRadius = TERRAIN.size * 0.5;
+const shoreWidth = 2;
+const waveStrength = 0.28;
 
 // Add held stone tracking with physics
 let heldStone = null;
@@ -627,10 +627,11 @@ let heldStonePhysics = {
 function createNewStone() {
     // Create a rectangular stone
     const stoneGeometry = new THREE.BoxGeometry(
-        STONE.width || 0.8, 
-        STONE.height || 0.4, 
-        STONE.depth || 0.6
+        STONE.width, 
+        STONE.height, 
+        STONE.depth
     );
+    
     const stoneMaterial = new THREE.MeshStandardMaterial({
         roughness: 0.9,
         metalness: 0.1,
@@ -638,18 +639,28 @@ function createNewStone() {
         bumpMap: stoneTexture,
         bumpScale: 0.5
     });
+    
     const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
-    // Position stone randomly within the boundary
-    const positionRadius = TERRAIN.size * 0.4;
-    const angle = Math.random() * Math.PI * 2;
-    const distance = Math.random() * positionRadius;
-    stone.position.x = Math.cos(angle) * distance;
-    stone.position.z = Math.sin(angle) * distance;
+    // Position stone at the edge of the ocean
+    const positionRadius = TERRAIN.size * 0.5; // Keep the further out position
+    const angle = Math.random() * Math.PI * 2; // Random angle around the circle
+    
+    // Calculate position at the edge
+    stone.position.x = Math.cos(angle) * positionRadius;
+    stone.position.z = Math.sin(angle) * positionRadius;
     
     // Get terrain height at this position and place stone on ground
     const groundHeight = getTerrainHeight(stone.position.x, stone.position.z);
     stone.position.y = groundHeight + STONE.radius; // Start at ground level
+    
+    // Add a gentler initial velocity toward the center
+    const centerDirection = new THREE.Vector3(-stone.position.x, 0, -stone.position.z).normalize();
+    const initialVelocity = new THREE.Vector3(
+        centerDirection.x * 0.02,
+        0.16,                     // Keep moderate upward velocity
+        centerDirection.z * 0.02
+    );
     
     // Random rotation
     stone.rotation.x = Math.random() * Math.PI;
@@ -659,8 +670,45 @@ function createNewStone() {
     // Add to scene and arrays
     scene.add(stone);
     stones.push(stone);
-    stoneVelocities.push(new THREE.Vector3(0, 0, 0));
+    stoneVelocities.push(initialVelocity); // Start with gentler velocity toward center
     return stone;
+}
+
+// Update the simulateWaves function to push stones further inland
+function simulateWaves() {
+    for (let i = 0; i < stones.length; i++) {
+        const stone = stones[i];
+        const velocity = stoneVelocities[i];
+        
+        // Calculate distance from center
+        const distanceFromCenter = Math.sqrt(
+            stone.position.x * stone.position.x + 
+            stone.position.z * stone.position.z
+        );
+        
+        // Apply wave force only to stones very near the edge
+        const edgeThreshold = TERRAIN.size * 0.47; // Only affect stones very near the edge
+        if (distanceFromCenter > edgeThreshold) {
+            // Calculate direction toward center
+            const centerDirection = new THREE.Vector3(
+                -stone.position.x,
+                0,
+                -stone.position.z
+            ).normalize();
+            
+            // Apply gentler wave force
+            const waveStrength = STONE.waveStrength * 0.7 * 
+                (distanceFromCenter - edgeThreshold) / (TERRAIN.size * 0.1);
+            
+            velocity.x += centerDirection.x * waveStrength;
+            velocity.z += centerDirection.z * waveStrength;
+            
+            // Occasionally add a small upward force for subtle bouncing
+            if (Math.random() < 0.03) { // Reduced probability
+                velocity.y += 0.02; // Reduced upward force
+            }
+        }
+    }
 }
 
 // Enhance water splash effect
@@ -1493,6 +1541,7 @@ function animate() {
 
     // Update stones with simplified physics
     updateStones();
+    simulateWaves(); // Add wave simulation
     
     // Check thrown stones for transformation
     checkThrownStones();
