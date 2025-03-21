@@ -1617,56 +1617,6 @@ function validateAllGeometries() {
     });
 }
 
-// Add a validation step to the particle cloud update
-if (typeof updateParticleClouds === 'function') {
-    const originalUpdateParticleClouds = updateParticleClouds;
-    updateParticleClouds = function() {
-        // Call the original function
-        originalUpdateParticleClouds();
-        
-        // Validate particle cloud geometry
-        if (particleClouds && particleClouds.geometry) {
-            validateGeometry(particleClouds.geometry);
-        }
-    };
-} else {
-    // If the function doesn't exist, create a validation function for particle clouds
-    function validateParticleClouds() {
-        if (particleClouds && particleClouds.geometry) {
-            validateGeometry(particleClouds.geometry);
-        }
-    }
-}
-
-// Patch the animate function to validate geometries
-const originalAnimate = animate;
-animate = function() {
-    // Validate all geometries before rendering
-    validateAllGeometries();
-    
-    // Specifically validate particle clouds which are likely the source of the error
-    if (particleClouds && particleClouds.geometry) {
-        validateGeometry(particleClouds.geometry);
-    }
-    
-    // Call the original animate function
-    originalAnimate();
-};
-
-// Add a specific check for the particle cloud animation
-if (typeof animateParticleClouds === 'function') {
-    const originalAnimateParticleClouds = animateParticleClouds;
-    animateParticleClouds = function() {
-        // Call the original function
-        originalAnimateParticleClouds();
-        
-        // Validate particle cloud geometry
-        if (particleClouds && particleClouds.geometry) {
-            validateGeometry(particleClouds.geometry);
-        }
-    };
-}
-
 // Add a specific check for the center cloud animation
 if (typeof animateCenterCloud === 'function') {
     const originalAnimateCenterCloud = animateCenterCloud;
@@ -2208,3 +2158,73 @@ document.addEventListener('keydown', (e) => {
 setInterval(function() {
     saveGameState();
 }, 10000);
+
+// Properly defined function for animating particle clouds with validation
+function animateParticleClouds() {
+    const deltaTime = 0.016; // Assuming ~60fps
+    
+    // Update each particle
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const particle = particles[i];
+        
+        // Update position based on velocity
+        particle.mesh.position.add(particle.velocity);
+        
+        // Apply gravity and drag
+        particle.velocity.y -= 0.01;
+        particle.velocity.multiplyScalar(0.95);
+        
+        // Reduce life
+        particle.life -= deltaTime;
+        
+        // Scale down as life decreases
+        const scale = particle.life * 0.5;
+        particle.mesh.scale.set(scale, scale, scale);
+        
+        // Remove dead particles
+        if (particle.life <= 0) {
+            scene.remove(particle.mesh);
+            particles.splice(i, 1);
+        }
+    }
+    
+    // Validate particle cloud geometry if it exists
+    if (particleClouds && particleClouds.geometry) {
+        validateGeometry(particleClouds.geometry);
+    }
+}
+
+// Properly defined function for animating center cloud with validation
+function animateCenterCloud() {
+    if (!centerCloud) return;
+    
+    // Rotate the center cloud
+    centerCloud.rotation.y += 0.005;
+    
+    // Pulse the center cloud
+    const time = Date.now() * 0.001;
+    const scale = 1.0 + Math.sin(time) * 0.1;
+    centerCloud.scale.set(scale, scale, scale);
+    
+    // Validate center cloud geometry if it exists
+    if (particleClouds && particleClouds.geometry) {
+        validateGeometry(particleClouds.geometry);
+    }
+}
+
+// Helper function for geometry validation
+function validateGeometry(geometry) {
+    if (geometry.isBufferGeometry) {
+        const position = geometry.attributes.position;
+        if (position && position.array) {
+            // Check for NaN values in position array
+            for (let i = 0; i < position.array.length; i++) {
+                if (isNaN(position.array[i])) {
+                    console.warn('Found NaN in geometry position data');
+                    position.array[i] = 0; // Replace with a safe value
+                }
+            }
+            position.needsUpdate = true;
+        }
+    }
+}
