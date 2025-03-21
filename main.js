@@ -1,24 +1,121 @@
-// Set up scene, camera, and renderer
+/**
+ * main.js - 3D Island Game with Tower Building Mechanics
+ * 
+ * This file sets up the Three.js environment and implements core game functionality
+ * including terrain generation, player movement, and stone interaction.
+ */
+
+//=============================================================================
+// GAME CONSTANTS AND CONFIGURATION
+//=============================================================================
+
+// Terrain parameters
+const TERRAIN = {
+    size: 200,                // Size of the terrain plane
+    segments: 200,            // Resolution of the terrain grid
+    height: 5,                // Maximum height of terrain hills
+    xs: 8,                    // X-scale factor for terrain undulation
+    ys: 8,                    // Y-scale factor for terrain undulation
+    shoreRadius: 96,          // Radius where beach/water transition occurs (48% of size)
+    shoreWidth: 5,            // Width of the beach transition band
+    waterLevel: -6            // Height of the water surface
+};
+
+// Stone physics parameters
+const STONE = {
+    radius: 0.5,              // Base radius of stones
+    gravity: -0.01,           // Gravity force applied to stones
+    rollSpeed: 0.04,          // How fast stones roll (doubled from 0.02 for faster rolling)
+    friction: 0.03,           // Ground friction applied to rolling stones
+    minVelocity: 0.003,       // Minimum velocity before stone stops moving
+    groundCheckOffset: 0.1,   // Distance to check for ground below stone
+    maxVelocity: 0.24,        // Maximum stone velocity (doubled from 0.12)
+    heightSmoothingFactor: 0.15, // How smoothly stones follow terrain height
+    dropInterval: 1000,       // Milliseconds between automatic stone spawns
+    pickupDelay: 500,         // Milliseconds delay before pickup is allowed
+    waveStrength: 0.18        // Force of waves pushing stones inland
+};
+
+// Player movement parameters
+const PLAYER = {
+    moveSpeed: 0.5,           // Base movement speed
+    rotateSpeed: 0.02,        // Base rotation speed
+    sprintMultiplier: 2.0,    // Speed multiplier when sprinting
+    jumpForce: 0.5,           // Initial upward velocity when jumping
+    gravity: -0.02,           // Gravity force applied to player
+    baseHeight: 3,            // Default camera height above ground
+    heightSmoothness: 0.2     // How smoothly camera follows terrain (lower = smoother)
+};
+
+// Held stone configuration
+const HELD_STONE = {
+    offset: {
+        forward: 1.2,         // How far in front of player the stone appears
+        down: 0.8,            // How far below eye level the stone appears
+        scale: 0.5            // Scale factor applied to held stones
+    },
+    physics: {
+        springStrength: 0.35, // How strongly stone is pulled to target position
+        dampening: 0.6,       // How quickly oscillations are reduced
+        rotationLag: 0.15,    // How slowly rotation catches up to movement
+        bobStrength: 0.02,    // Amplitude of up/down bobbing motion
+        swayStrength: 0.03    // Amplitude of side-to-side swaying
+    }
+};
+
+// Tower building parameters
+const TOWER = {
+    stackingRadius: 3.5,      // Maximum distance for stacking stones
+    minTowerDistance: 8.0,    // Minimum distance between separate towers
+    transformDelay: 2000,     // Milliseconds before stone transforms to tower
+    ringHeight: 1.5,          // Height of each tower ring
+    blockCount: 8             // Number of blocks in each tower ring
+};
+
+//=============================================================================
+// SCENE SETUP
+//=============================================================================
+
+// Initialize the Three.js scene, camera and renderer
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+// Create perspective camera with 75° FOV, screen aspect ratio, and view frustum limits
+const camera = new THREE.PerspectiveCamera(
+    75,                                     // Field of view in degrees
+    window.innerWidth / window.innerHeight, // Aspect ratio based on window dimensions
+    0.1,                                    // Near clipping plane
+    1000                                    // Far clipping plane
+);
+
+// Initialize WebGL renderer and add to document
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Create the ground plane
+//=============================================================================
+// TEXTURE LOADING
+//=============================================================================
+
+// Create texture loader for loading external image assets
 const textureLoader = new THREE.TextureLoader();
+
+// Load grass texture for terrain from Three.js examples repository
 const grassTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
+
+// Load stone texture (currently using same texture as grass - could be replaced with unique texture)
 const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
-grassTexture.wrapS = THREE.RepeatWrapping;
-grassTexture.wrapT = THREE.RepeatWrapping;
-grassTexture.repeat.set(8, 8);
+
+// Configure grass texture to repeat seamlessly across the terrain
+grassTexture.wrapS = THREE.RepeatWrapping; // Horizontal wrapping
+grassTexture.wrapT = THREE.RepeatWrapping; // Vertical wrapping
+grassTexture.repeat.set(8, 8);             // Repeat 8 times in each direction for finer detail
 
 // Create custom shader material for ground
 const groundMaterial = new THREE.ShaderMaterial({
     uniforms: {
         grassTexture: { value: grassTexture },
-        centerDistance: { value: 0.8 },    // Distance from center where beach starts (0-1)
-        transitionWidth: { value: 0.1 }    // Width of the beach transition
+        centerDistance: { value: 0.80 },    // Distance from center where beach starts (0-1)
+        transitionWidth: { value: 0.05 }   // Width of the beach transition
     },
     vertexShader: `
         varying vec2 vUv;
