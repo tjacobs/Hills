@@ -672,24 +672,23 @@ function handleThrowAction() {
     return false; // No throw occurred
 }
 
-// Function to find nearby tower base
+// Add function to find nearby tower base
 function findNearbyTowerBase(position) {
-    const stackingDistance = 2.0; // Distance for stacking (reduced from 5.0)
-    const tooCloseDistance = 16.0; // Double the tower diameter (8.0 * 2)
+    // Define distances
+    const tooCloseDistance = 8.0; // Minimum distance between towers
+    const stackingDistance = 3.5; // Distance for stacking
     
-    // First check if we're too close to ANY tower
+    // Check distance to all tower bases
     for (const tower of towerBases) {
+        // Calculate horizontal distance to tower
         const horizontalDistance = new THREE.Vector3()
             .copy(position)
             .sub(tower.position)
             .setY(0) // Ignore Y difference for horizontal distance
             .length();
         
-        console.log("Horizontal distance to tower:", horizontalDistance);
-        
         // If too close to any tower but not close enough to stack, reject immediately
         if (horizontalDistance >= stackingDistance && horizontalDistance < tooCloseDistance) {
-            console.log("REJECTING: Too close to existing tower but not for stacking:", horizontalDistance);
             return { tooClose: true, tower: tower };
         }
     }
@@ -956,7 +955,6 @@ function createDustEffect(position) {
 
 // Add function to check thrown stones
 function checkThrownStones() {
-    
     for (let i = thrownStones.length - 1; i >= 0; i--) {
         const thrownStone = thrownStones[i];
         
@@ -988,11 +986,9 @@ function checkThrownStones() {
         if (movement < 0.01) {
             // Increment stationary time
             thrownStone.stationaryTime += 16; // Assuming ~60fps
-            console.log("Stone stationary time: " + thrownStone.stationaryTime);
             
             // If stone has been stationary for 0.5 seconds
             if (thrownStone.stationaryTime > 500) {
-                console.log("Stone has been stationary for 0.5 seconds, transforming");
                 transformStoneToTowerBase(stone, stoneIndex);
                 thrownStone.transformed = true;
             }
@@ -1129,15 +1125,10 @@ function checkTowerClimbing() {
     
     // If we found a tower to climb
     if (highestTower) {
-        // Debug the tower position
-        console.log("Tower position:", highestTower.position.y);
-        console.log("Tower level:", highestLevel);
-        
         // Calculate the exact height - ensure it's a positive value
         const blockHeight = 1.2; // This should match the height of blocks in transformStoneToTowerBase
         targetHeight = Math.max(highestTower.position.y + blockHeight, 3);
         
-        console.log(`Climbing to tower level ${highestLevel} at exact height ${targetHeight}`);
         return true;
     }
     
