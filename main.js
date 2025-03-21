@@ -450,6 +450,11 @@ const stoneDropInterval = 1000;
 const pickupDelay = 500; // 500ms delay before pickup is allowed
 let lastThrowTime = 0;   // Track when the last throw happened
 
+// Add shore stone spawning parameters
+const shoreRadius = size * 0.48; // Slightly larger than before, right at water's edge
+const shoreWidth = 5; // Narrower band at the very edge
+const waveStrength = 0.18; // Significantly increased for much further inland movement
+
 // Add held stone tracking with physics
 let heldStone = null;
 const heldStoneOffset = {
@@ -492,21 +497,120 @@ function createNewStone() {
     const scale = 0.8 + Math.random() * 0.4;
     stone.scale.set(scale, scale, scale);
     
-    // Random position within the entire playable area
-    const boundary = size * 0.4;
-    const x = (Math.random() - 0.5) * boundary * 2;
-    const z = (Math.random() - 0.5) * boundary * 2;
-    const y = 50;
+    // Generate a random angle around the island
+    const angle = Math.random() * Math.PI * 2;
+    
+    // Position at the very edge of the water
+    const spawnRadius = shoreRadius + shoreWidth; // Start in the water
+    const x = Math.cos(angle) * spawnRadius;
+    const z = Math.sin(angle) * spawnRadius;
+    
+    // Position slightly below water level
+    const waterLevel = -5.5; // Adjust based on your water level
+    const y = waterLevel + 0.2; // Just barely visible above water
+    
     stone.position.set(x, y, z);
     scene.add(stone);
     stones.push(stone);
     
-    // Initialize velocity with slight random offset
+    // Calculate vector pointing toward island center
+    const toCenter = new THREE.Vector3(-x, 0, -z).normalize();
+    
+    // Initialize velocity with a stronger push from the "wave" toward the island
+    // Add a random factor to make some stones go further inland than others
+    const inlandFactor = 1.5 + Math.random() * 1.0; // Random factor between 1.5 and 2.5
     stoneVelocities.push(new THREE.Vector3(
-        (Math.random() - 0.5) * 0.1,
-        0,
-        (Math.random() - 0.5) * 0.1
+        toCenter.x * waveStrength * inlandFactor,
+        0.05, // Increased upward component for more dramatic effect
+        toCenter.z * waveStrength * inlandFactor
     ));
+    
+    // Add splash effect at stone position
+    createWaterSplash(new THREE.Vector3(x, y, z));
+    
+    // Add a second, delayed splash as the stone hits the shore
+    setTimeout(() => {
+        // Calculate approximate shore position
+        const shoreDistance = spawnRadius - shoreRadius;
+        const shorePosition = new THREE.Vector3(
+            x - toCenter.x * shoreDistance * 0.8,
+            getTerrainHeight(x - toCenter.x * shoreDistance * 0.8, z - toCenter.z * shoreDistance * 0.8),
+            z - toCenter.z * shoreDistance * 0.8
+        );
+        createWaterSplash(shorePosition);
+    }, 1000); // Delay the second splash
+}
+
+// Enhance water splash effect
+function createWaterSplash(position) {
+    // Create a particle system for splash
+    const particleCount = 40; // More particles
+    const particleGeometry = new THREE.BufferGeometry();
+    const particleMaterial = new THREE.PointsMaterial({
+        color: 0x88CCFF,
+        size: 0.3,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+    
+    // Initialize particles in a small area around the position
+    for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+        positions[i3] = position.x + (Math.random() - 0.5) * 0.8;
+        positions[i3 + 1] = position.y + (Math.random() - 0.5) * 0.3;
+        positions[i3 + 2] = position.z + (Math.random() - 0.5) * 0.8;
+        
+        // Random velocity for each particle - mostly upward and outward
+        const outwardDir = new THREE.Vector3(
+            positions[i3] - position.x,
+            0,
+            positions[i3 + 2] - position.z
+        ).normalize();
+        
+        velocities.push({
+            x: outwardDir.x * (Math.random() * 0.1 + 0.05),
+            y: Math.random() * 0.2 + 0.1, // Higher upward velocity
+            z: outwardDir.z * (Math.random() * 0.1 + 0.05)
+        });
+    }
+    
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particles);
+    
+    // Animate the splash particles
+    const splashLifetime = 1500; // 1.5 seconds
+    const startTime = Date.now();
+    
+    function animateSplash() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed > splashLifetime) {
+            scene.remove(particles);
+            return;
+        }
+        
+        const positions = particles.geometry.attributes.position.array;
+        const progress = elapsed / splashLifetime;
+        
+        // Update particle positions based on velocity and gravity
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] += velocities[i].x;
+            positions[i3 + 1] += velocities[i].y - 0.005 * progress; // Stronger gravity effect
+            positions[i3 + 2] += velocities[i].z;
+        }
+        
+        // Fade out particles
+        particles.material.opacity = 0.8 * (1 - progress);
+        
+        particles.geometry.attributes.position.needsUpdate = true;
+        requestAnimationFrame(animateSplash);
+    }
+    
+    animateSplash();
 }
 
 // Add smooth height transition parameters
@@ -570,61 +674,54 @@ function handleThrowAction() {
 
 // Function to find nearby tower base
 function findNearbyTowerBase(position) {
-    const maxDistance = 5.0; // Distance for stacking
-    const minDistance = 0.5; // Minimum distance to consider for stacking (very close)
-    const tooCloseDistance = 8.0 * 2; // Doubled to 16.0 - approximately two ring diameters
+    const stackingDistance = 2.0; // Distance for stacking (reduced from 5.0)
+    const tooCloseDistance = 16.0; // Double the tower diameter (8.0 * 2)
     
-    let closestTower = null;
-    let closestDistance = Infinity;
-    
+    // First check if we're too close to ANY tower
     for (const tower of towerBases) {
-        const distance = new THREE.Vector3()
+        const horizontalDistance = new THREE.Vector3()
             .copy(position)
             .sub(tower.position)
             .setY(0) // Ignore Y difference for horizontal distance
             .length();
         
-        console.log("Distance to tower:", distance);
+        console.log("Horizontal distance to tower:", horizontalDistance);
         
-        // If very close, consider for stacking
-        if (distance < minDistance) {
-            // Find the top-most tower in this stack
-            let topTower = tower;
-            while (topTower.userData.childTower) {
-                topTower = topTower.userData.childTower;
-            }
-            
-            // Use the top tower for stacking
-            if (topTower.position.distanceTo(position) < closestDistance) {
-                closestTower = topTower;
-                closestDistance = topTower.position.distanceTo(position);
-            }
-        }
-        // If within stacking range but not super close
-        else if (distance < maxDistance) {
-            // Find the top-most tower in this stack
-            let topTower = tower;
-            while (topTower.userData.childTower) {
-                topTower = topTower.userData.childTower;
-            }
-            
-            // Calculate distance to the top tower
-            const topDistance = new THREE.Vector3()
-                .copy(position)
-                .sub(topTower.position)
-                .length(); // Include Y difference for vertical stacking
-            
-            // If stone is close to the top tower
-            if (topDistance < maxDistance && topDistance < closestDistance) {
-                closestTower = topTower;
-                closestDistance = topDistance;
-            }
-        }
-        // If too close but not for stacking, prevent new tower creation
-        else if (distance < tooCloseDistance) {
-            console.log("Too close to existing tower:", distance);
-            // Return a special value to indicate "too close for new tower"
+        // If too close to any tower but not close enough to stack, reject immediately
+        if (horizontalDistance >= stackingDistance && horizontalDistance < tooCloseDistance) {
+            console.log("REJECTING: Too close to existing tower but not for stacking:", horizontalDistance);
             return { tooClose: true, tower: tower };
+        }
+    }
+    
+    // If we're here, we're either far enough away from all towers or close enough to stack
+    // Now find the closest tower for stacking if we're within stacking distance
+    let closestTower = null;
+    let closestDistance = Infinity;
+    
+    for (const tower of towerBases) {
+        const horizontalDistance = new THREE.Vector3()
+            .copy(position)
+            .sub(tower.position)
+            .setY(0) // Ignore Y difference for horizontal distance
+            .length();
+        
+        // Only consider for stacking if very close horizontally
+        if (horizontalDistance < stackingDistance) {
+            // Find the top-most tower in this stack
+            let topTower = tower;
+            while (topTower.userData.childTower) {
+                topTower = topTower.userData.childTower;
+            }
+            
+            // Calculate full 3D distance to the top tower
+            const fullDistance = topTower.position.distanceTo(position);
+            
+            // If this is the closest tower so far
+            if (fullDistance < closestDistance) {
+                closestTower = topTower;
+                closestDistance = fullDistance;
+            }
         }
     }
     
@@ -640,7 +737,7 @@ function transformStoneToTowerBase(stone, index) {
     
     // If too close to existing tower but not for stacking, don't create a tower
     if (nearbyResult && nearbyResult.tooClose === true) {
-        console.log("Too close to existing tower, not creating a new tower");
+        console.log("REJECTED: Too close to existing tower, not creating a new tower");
         
         // Create a small dust effect to show rejection
         createDustEffect(stone.position);
@@ -663,7 +760,7 @@ function transformStoneToTowerBase(stone, index) {
     let parentTower = null;
     
     if (nearbyTower) {
-        console.log("Found nearby tower for stacking, level: " + nearbyTower.userData.level);
+        console.log("STACKING: Found nearby tower for stacking, level: " + nearbyTower.userData.level);
         // Position directly on top of existing tower (no gap)
         yPosition = nearbyTower.position.y + 1.2; // Just the height of one block
         parentTower = nearbyTower;
@@ -676,7 +773,7 @@ function transformStoneToTowerBase(stone, index) {
     } else {
         // Position on ground - raised higher
         yPosition = getTerrainHeight(stone.position.x, stone.position.z) + 0.3;
-        console.log("Creating new tower at ground level: " + yPosition);
+        console.log("CREATING NEW: Tower at ground level: " + yPosition);
     }
     
     // Create a group to hold all parts of the tower base
@@ -908,7 +1005,7 @@ function checkThrownStones() {
     }
 }
 
-// Modify updateStones function to also check for transformation
+// Modify updateStones function to allow stones to travel much further inland
 function updateStones() {
     for (let i = stones.length - 1; i >= 0; i--) {
         const stone = stones[i];
@@ -956,9 +1053,13 @@ function updateStones() {
         stoneVelocity.x += accelX;
         stoneVelocity.z += accelZ;
         
-        // Apply friction
-        stoneVelocity.x *= (1 - friction);
-        stoneVelocity.z *= (1 - friction);
+        // Apply reduced friction for stones coming from water to allow them to travel further
+        const distanceFromCenter = Math.sqrt(stone.position.x * stone.position.x + stone.position.z * stone.position.z);
+        const isNearShore = distanceFromCenter > (shoreRadius * 0.8);
+        const frictionFactor = isNearShore ? 0.3 * friction : friction; // Further reduce friction near shore
+        
+        stoneVelocity.x *= (1 - frictionFactor);
+        stoneVelocity.z *= (1 - frictionFactor);
         
         // Calculate current velocity magnitude
         const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
@@ -1233,8 +1334,8 @@ function animate() {
                 newZ -= Math.sin(cameraAngle) * strafeSpeed;
             }
             
-            // Simple boundary check without slowdown
-            const boundary = size * 0.4;
+            // Expanded boundary check to allow walking to the edge
+            const boundary = size * 0.49; // Increased from 0.4 to 0.49 (almost the full radius)
             camera.position.x = Math.max(-boundary, Math.min(boundary, newX));
             camera.position.z = Math.max(-boundary, Math.min(boundary, newZ));
         }
