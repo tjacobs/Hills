@@ -2068,3 +2068,135 @@ if (typeof transformStoneToTowerBase === 'function') {
         return newTower;
     };
 }
+
+// Function to handle space bar action (throw or jump)
+function handleSpaceAction() {
+    if (heldStone) {
+        // Throw the stone
+        handleThrowAction();
+    } else if (!isJumping && Math.abs(camera.position.y - targetHeight) < 0.1) {
+        // Jump if not already jumping and on the ground
+        playerVerticalVelocity = jumpForce;
+        isJumping = true;
+    }
+}
+
+// Update keyboard event listener to use the common function
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        handleSpaceAction();
+    }
+    
+    // Keep other keyboard shortcuts
+    // ... existing keyboard handlers ...
+});
+
+// Add tap handler without overriding existing touch variables
+(function() {
+    // Track tap detection variables locally to avoid conflicts
+    let tapStartX = 0;
+    let tapStartY = 0;
+    let tapStartTime = 0;
+    let isTapInProgress = false;
+    const tapThreshold = 200; // ms maximum for a tap
+    const moveThreshold = 20; // pixels of movement allowed for a tap
+    
+    // Check if joystick is being touched
+    function isTouchingJoystick(x, y) {
+        // If joystick exists and has a defined position
+        if (typeof joystick !== 'undefined' && joystick && joystick.position) {
+            // Calculate distance from joystick center
+            const joystickX = joystick.position.x || window.innerWidth * 0.15; // Default left side
+            const joystickY = joystick.position.y || window.innerHeight * 0.75; // Default bottom
+            const joystickRadius = joystick.radius || 50; // Default radius
+            
+            const dx = x - joystickX;
+            const dy = y - joystickY;
+            const distance = Math.sqrt(dx*dx + dy*dy);
+            
+            // Return true if touch is within joystick area
+            return distance < joystickRadius * 1.5; // 1.5x radius for better detection
+        }
+        
+        // If no joystick or can't determine position, assume left side of screen is joystick area
+        return x < window.innerWidth * 0.3;
+    }
+    
+    // Add tap detection without overriding existing handlers
+    function addTapHandler() {
+        // Touch start handler
+        const touchStartHandler = function(event) {
+            // Only process if not already tracking a tap
+            if (!isTapInProgress) {
+                tapStartX = event.touches[0].clientX;
+                tapStartY = event.touches[0].clientY;
+                tapStartTime = Date.now();
+                isTapInProgress = true;
+                
+                // Don't process taps in joystick area
+                if (isTouchingJoystick(tapStartX, tapStartY)) {
+                    isTapInProgress = false;
+                }
+            }
+        };
+        
+        // Touch move handler
+        const touchMoveHandler = function(event) {
+            if (isTapInProgress) {
+                const currentX = event.touches[0].clientX;
+                const currentY = event.touches[0].clientY;
+                
+                // Calculate movement distance
+                const dx = currentX - tapStartX;
+                const dy = currentY - tapStartY;
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                // If moved too much, cancel tap
+                if (distance > moveThreshold) {
+                    isTapInProgress = false;
+                }
+            }
+        };
+        
+        // Touch end handler
+        const touchEndHandler = function(event) {
+            if (isTapInProgress) {
+                const tapDuration = Date.now() - tapStartTime;
+                
+                // If this was a quick tap
+                if (tapDuration < tapThreshold) {
+                    // Don't process taps in joystick area (double check)
+                    if (!isTouchingJoystick(tapStartX, tapStartY)) {
+                        // Simulate space bar press - throw if holding, jump otherwise
+                        handleSpaceAction();
+                        
+                        // Provide haptic feedback if available
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50); // 50ms vibration
+                        }
+                        
+                        // Prevent default to avoid accidental clicks
+                        event.preventDefault();
+                    }
+                }
+                
+                // Reset tap tracking
+                isTapInProgress = false;
+            }
+        };
+        
+        // Add event listeners with passive: false to allow preventDefault
+        document.addEventListener('touchstart', touchStartHandler, { passive: false });
+        document.addEventListener('touchmove', touchMoveHandler, { passive: true });
+        document.addEventListener('touchend', touchEndHandler, { passive: false });
+    }
+    
+    // Call this function when the page loads
+    window.addEventListener('load', function() {
+        // Check if this is likely a mobile device
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            // Add tap handler after a short delay to ensure joystick is initialized
+            setTimeout(addTapHandler, 500);
+        }
+    });
+})();
