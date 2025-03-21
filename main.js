@@ -530,8 +530,6 @@ function getTerrainHeight(x, z) {
 const stones = [];
 const stoneVelocities = [];
 let lastStoneDropTime = 0;
-const stoneDropInterval = 1000;
-const pickupDelay = 500; // 500ms delay before pickup is allowed
 let lastThrowTime = 0;   // Track when the last throw happened
 
 // Add shore stone spawning parameters
@@ -557,7 +555,6 @@ function createNewStone() {
         STONE.height || 0.4, 
         STONE.depth || 0.6
     );
-    
     const stoneMaterial = new THREE.MeshStandardMaterial({
         roughness: 0.9,
         metalness: 0.1,
@@ -565,14 +562,12 @@ function createNewStone() {
         bumpMap: stoneTexture,
         bumpScale: 0.5
     });
-    
     const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
     // Position stone randomly within the boundary
     const positionRadius = TERRAIN.size * 0.4;
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * positionRadius;
-    
     stone.position.x = Math.cos(angle) * distance;
     stone.position.z = Math.sin(angle) * distance;
     
@@ -589,7 +584,6 @@ function createNewStone() {
     scene.add(stone);
     stones.push(stone);
     stoneVelocities.push(new THREE.Vector3(0, 0, 0));
-    
     return stone;
 }
 
@@ -604,7 +598,6 @@ function createWaterSplash(position) {
         transparent: true,
         opacity: 0.8
     });
-    
     const positions = new Float32Array(particleCount * 3);
     const velocities = [];
     
@@ -628,7 +621,6 @@ function createWaterSplash(position) {
             z: outwardDir.z * (Math.random() * 0.1 + 0.05)
         });
     }
-    
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const particles = new THREE.Points(particleGeometry, particleMaterial);
     scene.add(particles);
@@ -667,7 +659,6 @@ function createWaterSplash(position) {
 
 // Add smooth height transition parameters
 let targetHeight = 3;
-const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
 
 // Add global tracking for thrown stones
 const thrownStones = [];
@@ -675,9 +666,7 @@ const thrownStones = [];
 // Add tracking for tower bases
 const towerBases = [];
 
-/**
- * Throws the most recently picked up stone
- */
+// Throws the most recently picked up stone
 function handleThrowAction() {
     // Check if we have any stones to throw
     if (heldStone === null || (Date.now() - lastThrowTime < STONE.pickupDelay)) {
@@ -791,12 +780,11 @@ function findNearbyTowerBase(position) {
 
 // Add function to transform stone into tower base
 function transformStoneToTowerBase(stone, index) {
-    
     // Check if stone is near an existing tower base
     const nearbyResult = findNearbyTowerBase(stone.position);
     
     // If too close to existing tower but not for stacking, don't create a tower
-    if (nearbyResult && nearbyResult.tooClose === true) {
+    if (false && nearbyResult && nearbyResult.tooClose === true) {
         console.log("REJECTED: Too close to existing tower, not creating a new tower");
         
         // Create a small dust effect to show rejection
@@ -880,8 +868,6 @@ function transformStoneToTowerBase(stone, index) {
         towerBase.add(block);
     }
     
-    // No floor - making it hollow
-    
     // Add stone texture details - small stones around the perimeter
     if (!nearbyTower) { // Only add decorative stones on ground level
         const stoneCount = 16;
@@ -916,7 +902,6 @@ function transformStoneToTowerBase(stone, index) {
         towerBase.position.x = stone.position.x;
         towerBase.position.z = stone.position.z;
     }
-    
     towerBase.position.y = yPosition;
     
     // Store reference to parent tower if stacking
@@ -1247,7 +1232,7 @@ function animate() {
     
     // Check if it's time to drop a new stone
     const currentTime = Date.now();
-    if (currentTime - lastStoneDropTime > stoneDropInterval) {
+    if (currentTime - lastStoneDropTime > STONE.dropInterval) {
         createNewStone();
         lastStoneDropTime = currentTime;
     }
