@@ -1955,10 +1955,27 @@ function createTowerBaseForRestore(x, y, z, level) {
     
     // Create blocks for outer ring
     const blockCount = 24;
+    
+    // Generate a random rotation for the entire circle
+    // Use a deterministic random value based on level for consistency
+    const circleRotation = (Math.sin(level * 7919) * 0.5 + 0.5) * Math.PI * 2;
+    
+    // Generate a rotation offset based on level to stagger blocks
+    const levelRotationOffset = (level % 4) * (Math.PI / 12) + circleRotation;
+    
+    // Add random variation to block positions
+    const randomSeed = level * 123.456; // Different seed for each level
+    
     for (let i = 0; i < blockCount; i++) {
-        const angle = (i / blockCount) * Math.PI * 2;
-        const blockX = Math.cos(angle) * outerRadius;
-        const blockZ = Math.sin(angle) * outerRadius;
+        // Calculate angle with level-based offset for staggering
+        const angle = (i / blockCount) * Math.PI * 2 + levelRotationOffset;
+        
+        // Add small random variation to radius (different for each block and level)
+        const radiusVariation = 0.1;
+        const blockRadius = outerRadius + (Math.sin(angle * level + randomSeed) * radiusVariation);
+        
+        const blockX = Math.cos(angle) * blockRadius;
+        const blockZ = Math.sin(angle) * blockRadius;
         
         // Create a stone block
         const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
@@ -1967,12 +1984,17 @@ function createTowerBaseForRestore(x, y, z, level) {
         // Position in a ring
         block.position.set(blockX, blockHeight/2, blockZ);
         
-        // Rotate to face center
-        block.rotation.y = angle + Math.PI/2;
+        // Rotate to face center with slight variation
+        const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
+        block.rotation.y = angle + Math.PI/2 + rotationVariation;
         
         // Add slight random rotation for natural look
-        block.rotation.x += (Math.random() - 0.5) * 0.1;
-        block.rotation.z += (Math.random() - 0.5) * 0.1;
+        // Use deterministic "random" based on block index and level
+        const xTilt = Math.sin(i * 0.7 + level * 1.3) * 0.15;
+        const zTilt = Math.cos(i * 0.9 + level * 1.7) * 0.15;
+        
+        block.rotation.x += xTilt;
+        block.rotation.z += zTilt;
         
         // Add to tower base group
         towerBase.add(block);
@@ -1988,4 +2010,61 @@ function createTowerBaseForRestore(x, y, z, level) {
     scene.add(towerBase);
     
     return towerBase;
+}
+
+// Also update the transformStoneToTowerBase function if it exists
+if (typeof transformStoneToTowerBase === 'function') {
+    const originalTransform = transformStoneToTowerBase;
+    window.transformStoneToTowerBase = function(stone, parentTower) {
+        // Call the original function
+        const newTower = originalTransform(stone, parentTower);
+        
+        // If we have a new tower, update its blocks to have variation
+        if (newTower) {
+            // Get the level
+            const level = newTower.userData.level || 1;
+            
+            // Generate a random rotation for the entire circle
+            const circleRotation = (Math.sin(level * 7919) * 0.5 + 0.5) * Math.PI * 2;
+            
+            // Generate a rotation offset based on level to stagger blocks
+            const levelRotationOffset = (level % 4) * (Math.PI / 12) + circleRotation;
+            
+            // Add random variation to block positions
+            const randomSeed = level * 123.456;
+            
+            // Update each block in the tower
+            for (let i = 0; i < newTower.children.length; i++) {
+                const block = newTower.children[i];
+                
+                // Skip non-mesh children
+                if (!block.isMesh) continue;
+                
+                // Calculate the original angle based on block index
+                const angle = (i / newTower.children.length) * Math.PI * 2 + levelRotationOffset;
+                
+                // Add small random variation to radius
+                const radiusVariation = 0.1;
+                const outerRadius = level > 1 ? 3.2 : 3.5;
+                const blockRadius = outerRadius + (Math.sin(angle * level + randomSeed) * radiusVariation);
+                
+                // Update position
+                block.position.x = Math.cos(angle) * blockRadius;
+                block.position.z = Math.sin(angle) * blockRadius;
+                
+                // Update rotation with variation
+                const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
+                block.rotation.y = angle + Math.PI/2 + rotationVariation;
+                
+                // Add slight random rotation for natural look
+                const xTilt = Math.sin(i * 0.7 + level * 1.3) * 0.15;
+                const zTilt = Math.cos(i * 0.9 + level * 1.7) * 0.15;
+                
+                block.rotation.x = xTilt;
+                block.rotation.z = zTilt;
+            }
+        }
+        
+        return newTower;
+    };
 }
