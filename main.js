@@ -578,64 +578,63 @@ function transformStoneToTowerBase(stone, index) {
     // Create a group to hold all parts of the tower base
     const towerBase = new THREE.Group();
     
-    // Create the main octagonal ring
-    const shape = new THREE.Shape();
+    // Instead of using a complex extruded shape, create individual stone blocks
+    // that form an octagonal ring - this will give better texture mapping
     
-    // Draw octagon outer edge
-    for (let i = 0; i < segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const x = Math.cos(angle) * outerRadius;
-        const y = Math.sin(angle) * outerRadius;
-        if (i === 0) {
-            shape.moveTo(x, y);
-        } else {
-            shape.lineTo(x, y);
-        }
-    }
-    shape.closePath();
+    const blockWidth = 0.8;       // Width of each stone block
+    const blockHeight = height;   // Height of each stone block
+    const blockDepth = 1.2;       // Depth of each stone block
     
-    // Create inner hole (octagonal too)
-    const hole = new THREE.Path();
-    for (let i = 0; i < segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const x = Math.cos(angle) * innerRadius;
-        const y = Math.sin(angle) * innerRadius;
-        if (i === 0) {
-            hole.moveTo(x, y);
-        } else {
-            hole.lineTo(x, y);
-        }
-    }
-    hole.closePath();
-    shape.holes.push(hole);
-    
-    // Extrude the shape to create a 3D ring
-    const extrudeSettings = {
-        depth: height,
-        bevelEnabled: true,
-        bevelThickness: 0.1,
-        bevelSize: 0.1,
-        bevelSegments: 2
-    };
-    
-    const ringGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    
-    // Create stone-like material
+    // Create stone-like material with the same texture as stones
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
-        roughness: 0.9,
-        metalness: 0.1,
-        color: 0x808080,
-        flatShading: true
+        roughness: 0.9,        // Very rough surface
+        metalness: 0.1,        // Low metalness for rock look
+        color: 0x808080,       // Pure grey color
+        bumpMap: stoneTexture, // Use texture only for bump mapping
+        bumpScale: 0.5         // Adjust bump intensity
     });
     
-    // Create the ring mesh
-    const ringMesh = new THREE.Mesh(ringGeometry, stoneMaterial);
+    // Create blocks for outer ring
+    const blockCount = 24;  // More blocks for smoother appearance
+    for (let i = 0; i < blockCount; i++) {
+        const angle = (i / blockCount) * Math.PI * 2;
+        const radius = (outerRadius + innerRadius) / 2;  // Middle of the ring
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        
+        // Create a stone block
+        const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+        const block = new THREE.Mesh(blockGeometry, stoneMaterial);
+        
+        // Position in a ring
+        block.position.set(x, blockHeight/2, z);
+        
+        // Rotate to face center
+        block.rotation.y = angle + Math.PI/2;
+        
+        // Add slight random rotation for natural look
+        block.rotation.x += (Math.random() - 0.5) * 0.1;
+        block.rotation.z += (Math.random() - 0.5) * 0.1;
+        
+        // Add to tower base group
+        towerBase.add(block);
+    }
     
-    // Rotate to lay flat
-    ringMesh.rotation.x = -Math.PI / 2;
-    
-    // Add to tower base group
-    towerBase.add(ringMesh);
+    // Create floor of the tower base (flat circular platform)
+    const floorRadius = outerRadius - 0.3;  // Slightly smaller than outer edge
+    const floorGeometry = new THREE.CylinderGeometry(
+        floorRadius,     // top radius
+        floorRadius,     // bottom radius
+        0.2,             // height
+        16,              // radial segments
+        1,               // height segments
+        false            // open-ended
+    );
+    const floorMaterial = stoneMaterial.clone();
+    floorMaterial.bumpScale = 0.3;  // Less pronounced bumps for floor
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.position.y = -0.1;  // Position slightly below the blocks
+    towerBase.add(floor);
     
     // Add stone texture details - small stones around the perimeter
     const stoneCount = 16;  // Number of stones around the perimeter
@@ -646,9 +645,11 @@ function transformStoneToTowerBase(stone, index) {
         const x = Math.cos(angle) * (outerRadius - stoneSize/2);
         const z = Math.sin(angle) * (outerRadius - stoneSize/2);
         
-        // Create a small stone
+        // Create a small stone with the same material
         const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize*0.6, stoneSize);
-        const stoneMesh = new THREE.Mesh(stoneGeometry, stoneMaterial);
+        const smallStoneMaterial = stoneMaterial.clone(); // Clone to allow different bump scale
+        smallStoneMaterial.bumpScale = 0.3; // Smaller bump scale for small stones
+        const stoneMesh = new THREE.Mesh(stoneGeometry, smallStoneMaterial);
         
         // Position around the perimeter
         stoneMesh.position.set(x, height/2, z);
