@@ -723,11 +723,9 @@ const thrownStones = [];
 // Add tracking for tower bases
 const towerBases = [];
 
-// Add a unified function for throwing stones (via space key or tap)
 function handleThrowAction() {
     // Check if we're holding a stone and enough time has passed since last throw
     if (heldStone && (Date.now() - lastThrowTime > pickupDelay)) {
-        console.log("Throwing stone via unified throw function");
         
         // Add stone back to physics arrays
         stones.push(heldStone);
@@ -766,7 +764,6 @@ function handleThrowAction() {
         // Track throw time for pickup delay
         lastThrowTime = Date.now();
         
-        console.log("Stone thrown and tracked");
         return true; // Throw was successful
     }
     return false; // No throw occurred
@@ -829,7 +826,6 @@ function findNearbyTowerBase(position) {
 
 // Add function to transform stone into tower base
 function transformStoneToTowerBase(stone, index) {
-    console.log("Transforming stone to tower base");
     
     // Check if stone is near an existing tower base
     const nearbyResult = findNearbyTowerBase(stone.position);
@@ -862,13 +858,7 @@ function transformStoneToTowerBase(stone, index) {
         console.log("STACKING: Found nearby tower for stacking, level: " + nearbyTower.userData.level);
         // Position directly on top of existing tower (no gap)
         yPosition = nearbyTower.position.y + 1.2; // Just the height of one block
-        parentTower = nearbyTower;
-        
-        console.log("Stacking on tower at position: ", 
-            nearbyTower.position.x, 
-            nearbyTower.position.y, 
-            nearbyTower.position.z);
-        console.log("New tower will be at height: " + yPosition);
+        parentTower = nearbyTower;        
     } else {
         // Position on ground - raised higher
         yPosition = getTerrainHeight(stone.position.x, stone.position.z) + 0.3;
@@ -981,8 +971,6 @@ function transformStoneToTowerBase(stone, index) {
     scene.remove(stone);
     stones.splice(index, 1);
     stoneVelocities.splice(index, 1);
-    
-    console.log("Transformation complete - Tower level: " + towerBase.userData.level);
     
     return towerBase;
 }
@@ -1160,7 +1148,6 @@ function updateStones() {
         
         // Check if stone has settled (very low velocity) and was thrown by player
         if (currentVelocity < minVelocity && stone.userData.thrown === true) {
-            console.log("Stone has settled naturally, transforming to tower base");
             transformStoneToTowerBase(stone, i);
             continue; // Skip the rest of the loop for this stone
         }
