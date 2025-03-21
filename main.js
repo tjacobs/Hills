@@ -1753,6 +1753,7 @@ function saveGameState() {
     
     // Save to localStorage
     localStorage.setItem('stoneGameState', JSON.stringify(gameState));    
+    console.log('Game state saved');
     return gameState;
 }
 
@@ -2200,3 +2201,9 @@ document.addEventListener('keydown', (e) => {
         }
     });
 })();
+
+// Set up auto-save every 10 seconds
+setInterval(function() {
+    saveGameState();
+    console.log('Auto-saved game state');
+}, 10000);
