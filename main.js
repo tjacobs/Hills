@@ -516,6 +516,9 @@ const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoo
 // Add global tracking for thrown stones
 const thrownStones = [];
 
+// Add tracking for tower bases
+const towerBases = [];
+
 // Add a unified function for throwing stones (via space key or tap)
 function handleThrowAction() {
     // Check if we're holding a stone and enough time has passed since last throw
@@ -565,40 +568,141 @@ function handleThrowAction() {
     return false; // No throw occurred
 }
 
+// Function to find nearby tower base
+function findNearbyTowerBase(position) {
+    const maxDistance = 5.0; // Increased from 2.5 to 5.0 for wider detection
+    const minDistance = 0.5; // Minimum distance to consider for stacking (very close)
+    const tooCloseDistance = 8.0; // Distance that's too close for a new tower but not for stacking
+    
+    let closestTower = null;
+    let closestDistance = Infinity;
+    
+    for (const tower of towerBases) {
+        const distance = new THREE.Vector3()
+            .copy(position)
+            .sub(tower.position)
+            .setY(0) // Ignore Y difference for horizontal distance
+            .length();
+        
+        // If very close, consider for stacking
+        if (distance < minDistance) {
+            // Find the top-most tower in this stack
+            let topTower = tower;
+            while (topTower.userData.childTower) {
+                topTower = topTower.userData.childTower;
+            }
+            
+            // Use the top tower for stacking
+            if (topTower.position.distanceTo(position) < closestDistance) {
+                closestTower = topTower;
+                closestDistance = topTower.position.distanceTo(position);
+            }
+        }
+        // If within stacking range but not super close
+        else if (distance < maxDistance) {
+            // Find the top-most tower in this stack
+            let topTower = tower;
+            while (topTower.userData.childTower) {
+                topTower = topTower.userData.childTower;
+            }
+            
+            // Calculate distance to the top tower
+            const topDistance = new THREE.Vector3()
+                .copy(position)
+                .sub(topTower.position)
+                .length(); // Include Y difference for vertical stacking
+            
+            // If stone is close to the top tower
+            if (topDistance < maxDistance && topDistance < closestDistance) {
+                closestTower = topTower;
+                closestDistance = topDistance;
+            }
+        }
+        // If too close but not for stacking, prevent new tower creation
+        else if (distance < tooCloseDistance) {
+            // Return a special value to indicate "too close for new tower"
+            return { tooClose: true, tower: tower };
+        }
+    }
+    
+    return closestTower;
+}
+
 // Add function to transform stone into tower base
 function transformStoneToTowerBase(stone, index) {
     console.log("Transforming stone to tower base");
     
-    // Create octagonal tower base
-    const outerRadius = 3.5;      // Larger radius for walkable area
-    const innerRadius = 2.2;      // Larger inner radius
-    const height = 0.6;           // Taller height for a proper base
-    const segments = 8;           // 8 sides for octagon
+    // Check if stone is near an existing tower base
+    const nearbyResult = findNearbyTowerBase(stone.position);
+    
+    // If too close to existing tower but not for stacking, don't create a tower
+    if (nearbyResult && nearbyResult.tooClose === true) {
+        console.log("Too close to existing tower, not creating a new tower");
+        
+        // Create a small dust effect to show rejection
+        createDustEffect(stone.position);
+        
+        // Remove original stone
+        scene.remove(stone);
+        stones.splice(index, 1);
+        stoneVelocities.splice(index, 1);
+        
+        return null;
+    }
+    
+    const nearbyTower = nearbyResult; // Normal tower reference if not too close
+    let yPosition = 0;
+    let parentTower = null;
+    
+    if (nearbyTower) {
+        console.log("Found nearby tower for stacking, level: " + nearbyTower.userData.level);
+        // Position on top of existing tower
+        yPosition = nearbyTower.position.y + 0.8; // Height of existing tower plus a bit
+        parentTower = nearbyTower;
+        
+        console.log("Stacking on tower at position: ", 
+            nearbyTower.position.x, 
+            nearbyTower.position.y, 
+            nearbyTower.position.z);
+        console.log("New tower will be at height: " + yPosition);
+    } else {
+        // Position on ground
+        yPosition = getTerrainHeight(stone.position.x, stone.position.z);
+        console.log("Creating new tower at ground level: " + yPosition);
+    }
     
     // Create a group to hold all parts of the tower base
     const towerBase = new THREE.Group();
     
-    // Instead of using a complex extruded shape, create individual stone blocks
-    // that form an octagonal ring - this will give better texture mapping
-    
-    const blockWidth = 0.8;       // Width of each stone block
-    const blockHeight = height;   // Height of each stone block
-    const blockDepth = 1.2;       // Depth of each stone block
+    // Block dimensions
+    const blockWidth = 0.8;
+    const blockHeight = 0.6;
+    const blockDepth = 1.2;
     
     // Create stone-like material with the same texture as stones
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
-        roughness: 0.9,        // Very rough surface
-        metalness: 0.1,        // Low metalness for rock look
-        color: 0x808080,       // Pure grey color
-        bumpMap: stoneTexture, // Use texture only for bump mapping
-        bumpScale: 0.5         // Adjust bump intensity
+        roughness: 0.9,
+        metalness: 0.1,
+        color: 0x808080,
+        bumpMap: stoneTexture,
+        bumpScale: 0.5
     });
     
+    // Determine radius based on tower level
+    let outerRadius = 3.5;
+    let innerRadius = 2.2;
+    
+    // If stacking, make slightly smaller
+    if (nearbyTower) {
+        outerRadius = 3.2;
+        innerRadius = 2.0;
+    }
+    
     // Create blocks for outer ring
-    const blockCount = 24;  // More blocks for smoother appearance
+    const blockCount = 24;
     for (let i = 0; i < blockCount; i++) {
         const angle = (i / blockCount) * Math.PI * 2;
-        const radius = (outerRadius + innerRadius) / 2;  // Middle of the ring
+        const radius = (outerRadius + innerRadius) / 2;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
         
@@ -621,70 +725,145 @@ function transformStoneToTowerBase(stone, index) {
     }
     
     // Create floor of the tower base (flat circular platform)
-    const floorRadius = outerRadius - 0.3;  // Slightly smaller than outer edge
+    const floorRadius = outerRadius - 0.3;
     const floorGeometry = new THREE.CylinderGeometry(
-        floorRadius,     // top radius
-        floorRadius,     // bottom radius
-        0.2,             // height
-        16,              // radial segments
-        1,               // height segments
-        false            // open-ended
+        floorRadius,
+        floorRadius,
+        0.2,
+        16,
+        1,
+        false
     );
     const floorMaterial = stoneMaterial.clone();
-    floorMaterial.bumpScale = 0.3;  // Less pronounced bumps for floor
+    floorMaterial.bumpScale = 0.3;
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.position.y = -0.1;  // Position slightly below the blocks
+    floor.position.y = -0.1;
     towerBase.add(floor);
     
     // Add stone texture details - small stones around the perimeter
-    const stoneCount = 16;  // Number of stones around the perimeter
-    const stoneSize = 0.3;  // Size of individual stones
-    
-    for (let i = 0; i < stoneCount; i++) {
-        const angle = (i / stoneCount) * Math.PI * 2;
-        const x = Math.cos(angle) * (outerRadius - stoneSize/2);
-        const z = Math.sin(angle) * (outerRadius - stoneSize/2);
+    if (!nearbyTower) { // Only add decorative stones on ground level
+        const stoneCount = 16;
+        const stoneSize = 0.3;
         
-        // Create a small stone with the same material
-        const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize*0.6, stoneSize);
-        const smallStoneMaterial = stoneMaterial.clone(); // Clone to allow different bump scale
-        smallStoneMaterial.bumpScale = 0.3; // Smaller bump scale for small stones
-        const stoneMesh = new THREE.Mesh(stoneGeometry, smallStoneMaterial);
-        
-        // Position around the perimeter
-        stoneMesh.position.set(x, height/2, z);
-        
-        // Rotate to face outward
-        stoneMesh.rotation.y = angle + Math.PI/2;
-        
-        // Add random rotation for natural look
-        stoneMesh.rotation.x += (Math.random() - 0.5) * 0.2;
-        stoneMesh.rotation.z += (Math.random() - 0.5) * 0.2;
-        
-        // Add to tower base group
-        towerBase.add(stoneMesh);
+        for (let i = 0; i < stoneCount; i++) {
+            const angle = (i / stoneCount) * Math.PI * 2;
+            const x = Math.cos(angle) * (outerRadius - stoneSize/2);
+            const z = Math.sin(angle) * (outerRadius - stoneSize/2);
+            
+            const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize*0.6, stoneSize);
+            const smallStoneMaterial = stoneMaterial.clone();
+            smallStoneMaterial.bumpScale = 0.3;
+            const stoneMesh = new THREE.Mesh(stoneGeometry, smallStoneMaterial);
+            
+            stoneMesh.position.set(x, blockHeight/2, z);
+            stoneMesh.rotation.y = angle + Math.PI/2;
+            stoneMesh.rotation.x += (Math.random() - 0.5) * 0.2;
+            stoneMesh.rotation.z += (Math.random() - 0.5) * 0.2;
+            
+            towerBase.add(stoneMesh);
+        }
     }
     
     // Position the entire tower base
-    towerBase.position.x = stone.position.x;
-    towerBase.position.z = stone.position.z;
+    if (nearbyTower) {
+        // Use the same x,z position as the tower below
+        towerBase.position.x = nearbyTower.position.x;
+        towerBase.position.z = nearbyTower.position.z;
+    } else {
+        // Use the stone's position
+        towerBase.position.x = stone.position.x;
+        towerBase.position.z = stone.position.z;
+    }
     
-    // Get terrain height at this position
-    const terrainHeight = getTerrainHeight(stone.position.x, stone.position.z);
-    towerBase.position.y = terrainHeight; // Directly on ground
+    towerBase.position.y = yPosition;
     
-    // Add to scene
+    // Store reference to parent tower if stacking
+    towerBase.userData.parentTower = parentTower;
+    towerBase.userData.level = parentTower ? parentTower.userData.level + 1 : 1;
+    
+    // Update parent to reference this as its child
+    if (parentTower) {
+        parentTower.userData.childTower = towerBase;
+    }
+    
+    // Add to scene and tracking array
     scene.add(towerBase);
+    towerBases.push(towerBase);
     
     // Remove original stone
     scene.remove(stone);
     stones.splice(index, 1);
     stoneVelocities.splice(index, 1);
     
-    console.log("Transformation complete");
+    console.log("Transformation complete - Tower level: " + towerBase.userData.level);
     
-    // Return the tower base
     return towerBase;
+}
+
+// Add a simple dust effect function
+function createDustEffect(position) {
+    // Create a particle system for dust
+    const particleCount = 20;
+    const particleGeometry = new THREE.BufferGeometry();
+    const particleMaterial = new THREE.PointsMaterial({
+        color: 0xCCCCCC,
+        size: 0.2,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const positions = new Float32Array(particleCount * 3);
+    const velocities = [];
+    
+    // Initialize particles in a small area around the position
+    for (let i = 0; i < particleCount; i++) {
+        const i3 = i * 3;
+        positions[i3] = position.x + (Math.random() - 0.5) * 0.5;
+        positions[i3 + 1] = position.y + (Math.random() - 0.5) * 0.5;
+        positions[i3 + 2] = position.z + (Math.random() - 0.5) * 0.5;
+        
+        // Random velocity for each particle
+        velocities.push({
+            x: (Math.random() - 0.5) * 0.05,
+            y: Math.random() * 0.05 + 0.02,
+            z: (Math.random() - 0.5) * 0.05
+        });
+    }
+    
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    scene.add(particles);
+    
+    // Animate the dust particles
+    const dustLifetime = 1000; // 1 second
+    const startTime = Date.now();
+    
+    function animateDust() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed > dustLifetime) {
+            scene.remove(particles);
+            return;
+        }
+        
+        const positions = particles.geometry.attributes.position.array;
+        const progress = elapsed / dustLifetime;
+        
+        // Update particle positions based on velocity and gravity
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] += velocities[i].x;
+            positions[i3 + 1] += velocities[i].y - 0.001 * progress; // Add gravity effect
+            positions[i3 + 2] += velocities[i].z;
+        }
+        
+        // Fade out particles
+        particles.material.opacity = 0.8 * (1 - progress);
+        
+        particles.geometry.attributes.position.needsUpdate = true;
+        requestAnimationFrame(animateDust);
+    }
+    
+    animateDust();
 }
 
 // Add function to check thrown stones
