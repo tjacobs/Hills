@@ -45,6 +45,11 @@ const STONE = {
     height: 0.4,              // Height of stone
     depth: 0.6,               // Depth of stone
     
+    // Block dimensions for tower construction
+    blockWidth: 0.8,          // Width of blocks used in towers
+    blockHeight: 1.2,         // Height of blocks used in towers
+    blockDepth: 1.2,          // Depth of blocks used in towers
+    
     // Physics parameters
     gravity: -0.01,           // Gravity force applied to stones
     friction: 0.03,           // Ground friction applied to rolling stones
@@ -822,9 +827,9 @@ function transformStoneToTowerBase(stone, index) {
     const towerBase = new THREE.Group();
     
     // Block dimensions - doubled height
-    const blockWidth = 0.8;
-    const blockHeight = 1.2;
-    const blockDepth = 1.2;
+    const blockWidth = STONE.blockWidth;
+    const blockHeight = STONE.blockHeight;
+    const blockDepth = STONE.blockDepth;
     
     // Create stone-like material with the same texture as stones
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
@@ -1211,7 +1216,7 @@ function checkTowerClimbing() {
     // If we found a tower to climb
     if (highestTower) {
         // Calculate the exact height - ensure it's a positive value
-        const blockHeight = 1.2; // This should match the height of blocks in transformStoneToTowerBase
+        const blockHeight = STONE.blockHeight; // This should match the height of blocks in transformStoneToTowerBase
         targetHeight = Math.max(highestTower.position.y + blockHeight, 3);
         
         return true;
@@ -1849,9 +1854,9 @@ function createTowerBaseForRestore(x, y, z, level) {
     const towerBase = new THREE.Group();
     
     // Block dimensions
-    const blockWidth = 0.8;
-    const blockHeight = 1.2;
-    const blockDepth = 1.2;
+    const blockWidth = STONE.blockWidth;
+    const blockHeight = STONE.blockHeight;
+    const blockDepth = STONE.blockDepth;
     
     // Create stone-like material
     const stoneMaterial = new THREE.MeshStandardMaterial({ 
@@ -1946,9 +1951,9 @@ if (typeof transformStoneToTowerBase === 'function') {
             const randomSeed = level * 123.456;
             
             // Block dimensions - ensure consistent size
-            const blockWidth = 0.8;
-            const blockHeight = 1.2;
-            const blockDepth = 1.2;
+            const blockWidth = STONE.blockWidth;
+            const blockHeight = STONE.blockHeight;
+            const blockDepth = STONE.blockDepth;
             
             // Update each block in the tower
             for (let i = 0; i < newTower.children.length; i++) {
