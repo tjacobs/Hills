@@ -574,71 +574,43 @@ const heldStonePhysics = {
 };
 
 function createNewStone() {
-    // Create brick-like geometry (width, height, depth)
-    const width = stoneRadius * 2;
-    const height = stoneRadius * 1.5;
-    const depth = stoneRadius * 1;
-    const stoneGeometry = new THREE.BoxGeometry(width, height, depth);
+    // Create a rectangular stone
+    const stoneGeometry = new THREE.BoxGeometry(
+        STONE.width || 0.8, 
+        STONE.height || 0.4, 
+        STONE.depth || 0.6
+    );
     
-    // Create stone material with grey color and bump mapping
-    const stoneMaterial = new THREE.MeshStandardMaterial({ 
-        roughness: 0.9,        // Very rough surface
-        metalness: 0.1,        // Low metalness for rock look
-        color: 0x808080,       // Pure grey color
-        bumpMap: stoneTexture, // Use texture only for bump mapping
-        bumpScale: 0.5         // Adjust bump intensity
+    const stoneMaterial = new THREE.MeshStandardMaterial({
+        roughness: 0.9,
+        metalness: 0.1,
+        color: 0x808080,
+        bumpMap: stoneTexture,
+        bumpScale: 0.5
     });
+    
     const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
     
-    // Set fixed rotation so stones always lay flat
-    stone.rotation.set(0, 0, 0);
-    
-    // Random scale variation for more natural look
-    const scale = 0.8 + Math.random() * 0.4;
-    stone.scale.set(scale, scale, scale);
-    
-    // Generate a random angle around the island
+    // Position stone randomly within the boundary
+    const positionRadius = size * 0.4;
     const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * positionRadius;
     
-    // Position at the very edge of the water
-    const spawnRadius = shoreRadius + shoreWidth; // Start in the water
-    const x = Math.cos(angle) * spawnRadius;
-    const z = Math.sin(angle) * spawnRadius;
+    stone.position.x = Math.cos(angle) * distance;
+    stone.position.z = Math.sin(angle) * distance;
+    stone.position.y = STONE.radius; // Start at ground level
     
-    // Position slightly below water level
-    const waterLevel = -5.5; // Adjust based on your water level
-    const y = waterLevel + 0.2; // Just barely visible above water
+    // Random rotation
+    stone.rotation.x = Math.random() * Math.PI;
+    stone.rotation.y = Math.random() * Math.PI;
+    stone.rotation.z = Math.random() * Math.PI;
     
-    stone.position.set(x, y, z);
+    // Add to scene and arrays
     scene.add(stone);
     stones.push(stone);
+    stoneVelocities.push(new THREE.Vector3(0, 0, 0));
     
-    // Calculate vector pointing toward island center
-    const toCenter = new THREE.Vector3(-x, 0, -z).normalize();
-    
-    // Initialize velocity with a stronger push from the "wave" toward the island
-    // Add a random factor to make some stones go further inland than others
-    const inlandFactor = 1.5 + Math.random() * 1.0; // Random factor between 1.5 and 2.5
-    stoneVelocities.push(new THREE.Vector3(
-        toCenter.x * waveStrength * inlandFactor,
-        0.05, // Increased upward component for more dramatic effect
-        toCenter.z * waveStrength * inlandFactor
-    ));
-    
-    // Add splash effect at stone position
-    createWaterSplash(new THREE.Vector3(x, y, z));
-    
-    // Add a second, delayed splash as the stone hits the shore
-    setTimeout(() => {
-        // Calculate approximate shore position
-        const shoreDistance = spawnRadius - shoreRadius;
-        const shorePosition = new THREE.Vector3(
-            x - toCenter.x * shoreDistance * 0.8,
-            getTerrainHeight(x - toCenter.x * shoreDistance * 0.8, z - toCenter.z * shoreDistance * 0.8),
-            z - toCenter.z * shoreDistance * 0.8
-        );
-        createWaterSplash(shorePosition);
-    }, 1000); // Delay the second splash
+    return stone;
 }
 
 // Enhance water splash effect
@@ -1727,3 +1699,253 @@ if (typeof animateCenterCloud === 'function') {
         }
     };
 }
+
+// Add functions to save and restore game state
+function saveGameState() {
+    const gameState = {
+        stones: [],
+        stoneVelocities: [],
+        towerBases: [],
+        timestamp: Date.now()
+    };
+    
+    // Save stone data
+    for (let i = 0; i < stones.length; i++) {
+        const stone = stones[i];
+        const velocity = stoneVelocities[i];
+        
+        gameState.stones.push({
+            position: {
+                x: stone.position.x,
+                y: stone.position.y,
+                z: stone.position.z
+            },
+            rotation: {
+                x: stone.rotation.x,
+                y: stone.rotation.y,
+                z: stone.rotation.z
+            },
+            userData: stone.userData
+        });
+        
+        gameState.stoneVelocities.push({
+            x: velocity.x,
+            y: velocity.y,
+            z: velocity.z
+        });
+    }
+    
+    // Save tower data
+    for (let i = 0; i < towerBases.length; i++) {
+        const tower = towerBases[i];
+        
+        gameState.towerBases.push({
+            position: {
+                x: tower.position.x,
+                y: tower.position.y,
+                z: tower.position.z
+            },
+            level: tower.userData.level || 1,
+            parentIndex: tower.userData.parentTower ? 
+                towerBases.indexOf(tower.userData.parentTower) : -1
+        });
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('stoneGameState', JSON.stringify(gameState));    
+    return gameState;
+}
+
+function restoreGameState() {
+    // Try to load from localStorage
+    const savedState = localStorage.getItem('stoneGameState');
+    if (!savedState) {
+        return false;
+    }
+    
+    try {
+        const gameState = JSON.parse(savedState);
+        
+        // Clear existing stones and towers
+        for (const stone of stones) {
+            scene.remove(stone);
+        }
+        
+        for (const tower of towerBases) {
+            scene.remove(tower);
+        }
+        
+        // Create new arrays
+        const newStones = [];
+        const newStoneVelocities = [];
+        const newTowerBases = [];
+        
+        // Restore stones
+        for (const stoneData of gameState.stones) {
+            // Create a rectangular stone instead of spherical
+            const stoneGeometry = new THREE.BoxGeometry(
+                STONE.width || 0.8, 
+                STONE.height || 0.4, 
+                STONE.depth || 0.6
+            );
+            
+            const stoneMaterial = new THREE.MeshStandardMaterial({
+                roughness: 0.9,
+                metalness: 0.1,
+                color: 0x808080,
+                bumpMap: stoneTexture,
+                bumpScale: 0.5
+            });
+            
+            const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+            
+            // Set position and rotation
+            stone.position.set(
+                stoneData.position.x,
+                stoneData.position.y,
+                stoneData.position.z
+            );
+            
+            stone.rotation.set(
+                stoneData.rotation.x,
+                stoneData.rotation.y,
+                stoneData.rotation.z
+            );
+            
+            // Restore userData
+            stone.userData = stoneData.userData || {};
+            
+            // Add to scene and arrays
+            scene.add(stone);
+            newStones.push(stone);
+        }
+        
+        // Restore stone velocities
+        for (const velocityData of gameState.stoneVelocities) {
+            newStoneVelocities.push(new THREE.Vector3(
+                velocityData.x,
+                velocityData.y,
+                velocityData.z
+            ));
+        }
+        
+        // First pass: create tower bases without parent relationships
+        const tempTowers = [];
+        for (const towerData of gameState.towerBases) {
+            const towerBase = createTowerBaseForRestore(
+                towerData.position.x,
+                towerData.position.y,
+                towerData.position.z,
+                towerData.level
+            );
+            
+            tempTowers.push(towerBase);
+            newTowerBases.push(towerBase);
+        }
+        
+        // Second pass: establish parent-child relationships
+        for (let i = 0; i < gameState.towerBases.length; i++) {
+            const towerData = gameState.towerBases[i];
+            const tower = tempTowers[i];
+            
+            if (towerData.parentIndex >= 0 && towerData.parentIndex < tempTowers.length) {
+                const parentTower = tempTowers[towerData.parentIndex];
+                tower.userData.parentTower = parentTower;
+                parentTower.userData.childTower = tower;
+            }
+        }
+        
+        // Instead of reassigning the arrays, clear and repopulate them
+        stones.length = 0;
+        stoneVelocities.length = 0;
+        towerBases.length = 0;
+        
+        // Add all items from new arrays to the original arrays
+        for (const stone of newStones) {
+            stones.push(stone);
+        }
+        
+        for (const velocity of newStoneVelocities) {
+            stoneVelocities.push(velocity);
+        }
+        
+        for (const tower of newTowerBases) {
+            towerBases.push(tower);
+        }
+        
+        console.log('Game state restored!');
+        return true;
+    } catch (error) {
+        console.error('Error restoring game state:', error);
+        return false;
+    }
+}
+
+// Helper function to create a tower base for restore operations
+function createTowerBaseForRestore(x, y, z, level) {
+    // Create a group to hold all parts of the tower base
+    const towerBase = new THREE.Group();
+    
+    // Block dimensions
+    const blockWidth = 0.8;
+    const blockHeight = 1.2;
+    const blockDepth = 1.2;
+    
+    // Create stone-like material
+    const stoneMaterial = new THREE.MeshStandardMaterial({ 
+        roughness: 0.9,
+        metalness: 0.1,
+        color: 0x808080,
+        bumpMap: stoneTexture,
+        bumpScale: 0.5
+    });
+    
+    // Determine radius based on tower level
+    let outerRadius = level > 1 ? 3.2 : 3.5;
+    
+    // Create blocks for outer ring
+    const blockCount = 24;
+    for (let i = 0; i < blockCount; i++) {
+        const angle = (i / blockCount) * Math.PI * 2;
+        const blockX = Math.cos(angle) * outerRadius;
+        const blockZ = Math.sin(angle) * outerRadius;
+        
+        // Create a stone block
+        const blockGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+        const block = new THREE.Mesh(blockGeometry, stoneMaterial);
+        
+        // Position in a ring
+        block.position.set(blockX, blockHeight/2, blockZ);
+        
+        // Rotate to face center
+        block.rotation.y = angle + Math.PI/2;
+        
+        // Add slight random rotation for natural look
+        block.rotation.x += (Math.random() - 0.5) * 0.1;
+        block.rotation.z += (Math.random() - 0.5) * 0.1;
+        
+        // Add to tower base group
+        towerBase.add(block);
+    }
+    
+    // Position the entire tower base
+    towerBase.position.set(x, y, z);
+    
+    // Set tower level
+    towerBase.userData.level = level || 1;
+    
+    // Add to scene
+    scene.add(towerBase);
+    
+    return towerBase;
+}
+
+// Auto-save every 10 seconds
+setInterval(saveGameState, 10 * 1000);
+
+// Try to restore game state on page load
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        restoreGameState();
+    }, 1000); // Delay to ensure all resources are loaded
+});
