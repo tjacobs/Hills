@@ -16,7 +16,7 @@ const TERRAIN = {
     height: 5,                // Maximum height of terrain hills
     xs: 8,                    // X-scale factor for terrain undulation
     ys: 8,                    // Y-scale factor for terrain undulation
-    shoreRadius: 96,          // Radius where beach/water transition occurs (48% of size)
+    shoreRadius: 96,          // Radius where beach/water transition occurs
     shoreWidth: 5,            // Width of the beach transition band
     waterLevel: -6            // Height of the water surface
 };
@@ -25,11 +25,11 @@ const TERRAIN = {
 const STONE = {
     radius: 0.5,              // Base radius of stones
     gravity: -0.01,           // Gravity force applied to stones
-    rollSpeed: 0.04,          // How fast stones roll (doubled from 0.02 for faster rolling)
+    rollSpeed: 0.04,          // How fast stones roll on terrain
     friction: 0.03,           // Ground friction applied to rolling stones
     minVelocity: 0.003,       // Minimum velocity before stone stops moving
     groundCheckOffset: 0.1,   // Distance to check for ground below stone
-    maxVelocity: 0.24,        // Maximum stone velocity (doubled from 0.12)
+    maxVelocity: 0.24,        // Maximum stone velocity cap
     heightSmoothingFactor: 0.15, // How smoothly stones follow terrain height
     dropInterval: 1000,       // Milliseconds between automatic stone spawns
     pickupDelay: 500,         // Milliseconds delay before pickup is allowed
@@ -102,13 +102,12 @@ const textureLoader = new THREE.TextureLoader();
 // Load grass texture for terrain from Three.js examples repository
 const grassTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
 
-// Load stone texture (currently using same texture as grass - could be replaced with unique texture)
+// Load stone texture from Three.js examples repository
 const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
 
 // Configure grass texture to repeat seamlessly across the terrain
 grassTexture.wrapS = THREE.RepeatWrapping; // Horizontal wrapping
 grassTexture.wrapT = THREE.RepeatWrapping; // Vertical wrapping
-grassTexture.repeat.set(8, 8);             // Repeat 8 times in each direction for finer detail
 
 // Create custom shader material for ground
 const groundMaterial = new THREE.ShaderMaterial({
@@ -124,7 +123,7 @@ const groundMaterial = new THREE.ShaderMaterial({
         varying vec3 vViewPosition;
         
         void main() {
-            vUv = uv * 8.0; // Scale UV coordinates for smaller texture
+            vUv = uv * 32.0; // Scale UV coordinates for smaller texture
             vPosition = position.xy / 200.0; // Normalize by size (200)
             
             // Calculate view-space position and normal for lighting
