@@ -981,8 +981,6 @@ function checkThrownStones() {
             .sub(thrownStone.lastPosition)
             .length();
         
-        console.log("Stone movement: " + movement);
-        
         // Update last position
         thrownStone.lastPosition.copy(stone.position);
         
@@ -1284,7 +1282,6 @@ function animate() {
 
         // Check for tower climbing before handling terrain height
         const isClimbing = checkTowerClimbing();
-        console.log("Climbing:", isClimbing, "Target height:", targetHeight);
         
         // Smoothly interpolate current height to target height
         if (!isJumping) {  // Only smooth terrain following when not jumping
