@@ -49,8 +49,6 @@ const PLAYER = {
     gravity: -0.02,           // Gravity force applied to player
     baseHeight: 3,            // Default camera height above ground
     heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
-    pickupRange: 2.5,          // Default pickup range
-    autoPickupRange: 1.5      // Default auto-pickup range (smaller than manual pickup)
 };
 
 // Held stone configuration
@@ -71,10 +69,10 @@ const HELD_STONE = {
 
 // Tower building parameters
 const TOWER = {
-    stackingRadius: 3.5,      // Maximum distance for stacking stones
-    minTowerDistance: 8.0,    // Minimum distance between separate towers
-    transformDelay: 2000,     // Milliseconds before stone transforms to tower
-    ringHeight: 1.5,          // Height of each tower ring
+    stackingRadius: 8.5,      // Maximum distance for stacking stones
+    minTowerDistance: 18.0,   // Minimum distance between separate towers
+    transformDelay: 0,        // Milliseconds before stone transforms to tower
+    ringHeight: 2.5,          // Height of each tower ring
     blockCount: 8             // Number of blocks in each tower ring
 };
 
