@@ -20,6 +20,23 @@ const TERRAIN = {
     shoreWidth: 5,            // Width of the beach transition band
 };
 
+// Player movement parameters
+const PLAYER = {
+    maxSpeed: 0.5,            // Maximum movement speed
+    rotateSpeed: 0.02,        // Base rotation speed
+    maxTurnSpeed: 0.03,       // Maximum turning speed
+    acceleration: 0.03,       // Movement acceleration
+    turnAcceleration: 0.006,  // Turning acceleration
+    deceleration: 0.02,       // Movement deceleration
+    turnDeceleration: 0.002,  // Turning deceleration
+    strafeSpeed: 0.5,         // Base strafe movement speed
+    sprintMultiplier: 2.0,    // Speed multiplier when sprinting
+    jumpForce: 0.5,           // Initial upward velocity when jumping
+    gravity: -0.02,           // Gravity force applied to player
+    baseHeight: 3,            // Default height above ground
+    heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
+};
+
 // Stone physics parameters
 const STONE = {
     radius: 0.5,              // Base radius of stones
@@ -37,23 +54,6 @@ const STONE = {
     width: 0.8,               // Width of stone
     height: 0.4,              // Height of stone
     depth: 0.6                // Depth of stone
-};
-
-// Player movement parameters
-const PLAYER = {
-    moveSpeed: 0.5,           // Base movement speed
-    rotateSpeed: 0.02,        // Base rotation speed
-    sprintMultiplier: 2.0,    // Speed multiplier when sprinting
-    jumpForce: 0.5,           // Initial upward velocity when jumping
-    gravity: -0.02,           // Gravity force applied to player
-    baseHeight: 3,            // Default camera height above ground
-    heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
-    maxSpeed: 0.5,            // Maximum movement speed
-    maxTurnSpeed: 0.03,       // Maximum turning speed
-    acceleration: 0.03,       // Movement acceleration
-    turnAcceleration: 0.006,  // Turning acceleration
-    deceleration: 0.02,       // Movement deceleration
-    turnDeceleration: 0.002   // Turning deceleration
 };
 
 // Held stone configuration
@@ -1409,7 +1409,7 @@ function animate() {
             }
             
             // Strafe movement
-            const strafeSpeed = PLAYER.moveSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1);
+            const strafeSpeed = PLAYER.strafeSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1);
             if (keys.KeyA) {
                 newX -= Math.cos(cameraAngle) * strafeSpeed;
                 newZ += Math.sin(cameraAngle) * strafeSpeed;
