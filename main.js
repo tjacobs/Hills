@@ -16,9 +16,8 @@ const TERRAIN = {
     height: 5,                // Maximum height of terrain hills
     xs: 8,                    // X-scale factor for terrain undulation
     ys: 8,                    // Y-scale factor for terrain undulation
-    shoreRadius: 96,          // Radius where beach/water transition occurs
+    shoreRadius: 90,          // Percentage where beach/water transition occurs
     shoreWidth: 5,            // Width of the beach transition band
-    waterLevel: -6            // Height of the water surface
 };
 
 // Stone physics parameters
