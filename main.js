@@ -33,7 +33,9 @@ const STONE = {
     heightSmoothingFactor: 0.15, // How smoothly stones follow terrain height
     dropInterval: 1000,       // Milliseconds between automatic stone spawns
     pickupDelay: 500,         // Milliseconds delay before pickup is allowed
-    waveStrength: 0.18        // Force of waves pushing stones inland
+    waveStrength: 0.18,       // Force of waves pushing stones inland
+    throwForce: 0.8,          // Force of the throw
+    throwUpward: 0.5          // Upward component of the throw
 };
 
 // Player movement parameters
@@ -44,7 +46,9 @@ const PLAYER = {
     jumpForce: 0.5,           // Initial upward velocity when jumping
     gravity: -0.02,           // Gravity force applied to player
     baseHeight: 3,            // Default camera height above ground
-    heightSmoothness: 0.2     // How smoothly camera follows terrain (lower = smoother)
+    heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
+    pickupRange: 2.5,          // Default pickup range
+    autoPickupRange: 1.5      // Default auto-pickup range (smaller than manual pickup)
 };
 
 // Held stone configuration
