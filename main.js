@@ -584,6 +584,8 @@ function findNearbyTowerBase(position) {
             .setY(0) // Ignore Y difference for horizontal distance
             .length();
         
+        console.log("Distance to tower:", distance);
+        
         // If very close, consider for stacking
         if (distance < minDistance) {
             // Find the top-most tower in this stack
@@ -620,6 +622,7 @@ function findNearbyTowerBase(position) {
         }
         // If too close but not for stacking, prevent new tower creation
         else if (distance < tooCloseDistance) {
+            console.log("Too close to existing tower:", distance);
             // Return a special value to indicate "too close for new tower"
             return { tooClose: true, tower: tower };
         }
