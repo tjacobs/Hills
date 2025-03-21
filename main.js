@@ -2013,14 +2013,14 @@ function createTowerBaseForRestore(x, y, z, level) {
     return towerBase;
 }
 
-// Also update the transformStoneToTowerBase function if it exists
+// Fix the transformStoneToTowerBase function to ensure consistent stone sizes
 if (typeof transformStoneToTowerBase === 'function') {
     const originalTransform = transformStoneToTowerBase;
     window.transformStoneToTowerBase = function(stone, parentTower) {
         // Call the original function
         const newTower = originalTransform(stone, parentTower);
         
-        // If we have a new tower, update its blocks to have variation
+        // If we have a new tower, update its blocks to have consistent size and variation
         if (newTower) {
             // Get the level
             const level = newTower.userData.level || 1;
@@ -2034,12 +2034,32 @@ if (typeof transformStoneToTowerBase === 'function') {
             // Add random variation to block positions
             const randomSeed = level * 123.456;
             
+            // Block dimensions - ensure consistent size
+            const blockWidth = 0.8;
+            const blockHeight = 1.2;
+            const blockDepth = 1.2;
+            
             // Update each block in the tower
             for (let i = 0; i < newTower.children.length; i++) {
                 const block = newTower.children[i];
                 
                 // Skip non-mesh children
                 if (!block.isMesh) continue;
+                
+                // Ensure consistent size for all blocks
+                block.scale.set(1, 1, 1);
+                
+                // Replace geometry if it's not the right size
+                if (block.geometry.parameters && 
+                    (Math.abs(block.geometry.parameters.width - blockWidth) > 0.1 ||
+                     Math.abs(block.geometry.parameters.height - blockHeight) > 0.1 ||
+                     Math.abs(block.geometry.parameters.depth - blockDepth) > 0.1)) {
+                    
+                    // Create new geometry with correct dimensions
+                    const newGeometry = new THREE.BoxGeometry(blockWidth, blockHeight, blockDepth);
+                    block.geometry.dispose(); // Clean up old geometry
+                    block.geometry = newGeometry;
+                }
                 
                 // Calculate the original angle based on block index
                 const angle = (i / newTower.children.length) * Math.PI * 2 + levelRotationOffset;
@@ -2052,6 +2072,7 @@ if (typeof transformStoneToTowerBase === 'function') {
                 // Update position
                 block.position.x = Math.cos(angle) * blockRadius;
                 block.position.z = Math.sin(angle) * blockRadius;
+                block.position.y = blockHeight/2; // Ensure consistent height
                 
                 // Update rotation with variation
                 const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
