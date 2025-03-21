@@ -177,29 +177,14 @@ window.addEventListener('keydown', (e) => {
     if (keys.hasOwnProperty(e.code)) {
         keys[e.code] = true;
         keyboardControlActive = true;
-
-        // Handle stone throwing on key press (not in animate)
-        if (e.code === 'Space' && heldStone) {
-            // Get forward direction from camera
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(camera.quaternion);
-            
-            // Add stone back to physics arrays with throw velocity
-            stones.push(heldStone);
-            const throwVelocity = new THREE.Vector3(
-                forward.x * throwForce,
-                throwUpward,
-                forward.z * throwForce
-            );
-            stoneVelocities.push(throwVelocity);
-            
-            // Reset held stone and record throw time
-            heldStone = null;
-            lastThrowTime = Date.now();
-            
-            // Prevent jump
-            e.preventDefault();
-            return;
+        
+        // Handle jumping with space key when not holding a stone
+        if (e.code === 'Space') {
+            // If holding a stone, throw it
+            if (heldStone) {
+                handleThrowAction();
+            }
+            // Otherwise jump (handled in the animation loop)
         }
     }
 });
@@ -239,6 +224,7 @@ function isMobileDevice() {
 // Create touch joystick elements only for mobile
 if (isMobileDevice()) {
     const joystickContainer = document.createElement('div');
+    joystickContainer.className = 'joystick-container'; // Add class for identification
     joystickContainer.style.cssText = `
         position: fixed;
         bottom: 50px;
@@ -264,7 +250,7 @@ if (isMobileDevice()) {
     joystickContainer.appendChild(joystickKnob);
     document.body.appendChild(joystickContainer);
 
-    // Touch event handlers
+    // Touch event handlers for joystick
     joystickContainer.addEventListener('touchstart', (e) => {
         isTouching = true;
         keyboardControlActive = true;
@@ -527,26 +513,42 @@ function createNewStone() {
 let targetHeight = 3;
 const heightSmoothness = 0.2; // Adjust this value between 0 and 1 (lower = smoother)
 
-// Add throw function with adjusted parameters
-function throwHeldStone() {
-    if (heldStone) {
+// Add global tracking for thrown stones
+const thrownStones = [];
+
+// Add a unified function for throwing stones (via space key or tap)
+function handleThrowAction() {
+    // Check if we're holding a stone and enough time has passed since last throw
+    if (heldStone && (Date.now() - lastThrowTime > pickupDelay)) {
+        console.log("Throwing stone via unified throw function");
+        
         // Add stone back to physics arrays
         stones.push(heldStone);
         
         // Calculate throw direction and force
-        const forward = new THREE.Vector3(0, 0, -0.5);
+        const forward = new THREE.Vector3(0, 0, -1);
         forward.applyQuaternion(camera.quaternion);
         
         // Create initial velocity based on camera direction
-        const throwForce = 0.2; // Reduced from 0.4 for less powerful throw
+        const throwForce = 0.8;
+        const throwUpward = 0.8;
         const throwVelocity = new THREE.Vector3(
             forward.x * throwForce,
-            -0.05, // Negative value for downward trajectory
-            forward.z * 0.1
+            throwUpward,
+            forward.z * throwForce
         );
         
         // Add to velocities array
         stoneVelocities.push(throwVelocity);
+        
+        // Track this stone as thrown
+        thrownStones.push({
+            stone: heldStone,
+            throwTime: Date.now(),
+            lastPosition: new THREE.Vector3().copy(heldStone.position),
+            stationaryTime: 0,
+            transformed: false
+        });
         
         // Reset stone scale
         heldStone.scale.set(1, 1, 1);
@@ -556,18 +558,191 @@ function throwHeldStone() {
         
         // Track throw time for pickup delay
         lastThrowTime = Date.now();
+        
+        console.log("Stone thrown and tracked");
+        return true; // Throw was successful
+    }
+    return false; // No throw occurred
+}
+
+// Add function to transform stone into tower base
+function transformStoneToTowerBase(stone, index) {
+    console.log("Transforming stone to tower base");
+    
+    // Create octagonal tower base
+    const outerRadius = 3.5;      // Larger radius for walkable area
+    const innerRadius = 2.2;      // Larger inner radius
+    const height = 0.6;           // Taller height for a proper base
+    const segments = 8;           // 8 sides for octagon
+    
+    // Create a group to hold all parts of the tower base
+    const towerBase = new THREE.Group();
+    
+    // Create the main octagonal ring
+    const shape = new THREE.Shape();
+    
+    // Draw octagon outer edge
+    for (let i = 0; i < segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * outerRadius;
+        const y = Math.sin(angle) * outerRadius;
+        if (i === 0) {
+            shape.moveTo(x, y);
+        } else {
+            shape.lineTo(x, y);
+        }
+    }
+    shape.closePath();
+    
+    // Create inner hole (octagonal too)
+    const hole = new THREE.Path();
+    for (let i = 0; i < segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const x = Math.cos(angle) * innerRadius;
+        const y = Math.sin(angle) * innerRadius;
+        if (i === 0) {
+            hole.moveTo(x, y);
+        } else {
+            hole.lineTo(x, y);
+        }
+    }
+    hole.closePath();
+    shape.holes.push(hole);
+    
+    // Extrude the shape to create a 3D ring
+    const extrudeSettings = {
+        depth: height,
+        bevelEnabled: true,
+        bevelThickness: 0.1,
+        bevelSize: 0.1,
+        bevelSegments: 2
+    };
+    
+    const ringGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    
+    // Create stone-like material
+    const stoneMaterial = new THREE.MeshStandardMaterial({ 
+        roughness: 0.9,
+        metalness: 0.1,
+        color: 0x808080,
+        flatShading: true
+    });
+    
+    // Create the ring mesh
+    const ringMesh = new THREE.Mesh(ringGeometry, stoneMaterial);
+    
+    // Rotate to lay flat
+    ringMesh.rotation.x = -Math.PI / 2;
+    
+    // Add to tower base group
+    towerBase.add(ringMesh);
+    
+    // Add stone texture details - small stones around the perimeter
+    const stoneCount = 16;  // Number of stones around the perimeter
+    const stoneSize = 0.3;  // Size of individual stones
+    
+    for (let i = 0; i < stoneCount; i++) {
+        const angle = (i / stoneCount) * Math.PI * 2;
+        const x = Math.cos(angle) * (outerRadius - stoneSize/2);
+        const z = Math.sin(angle) * (outerRadius - stoneSize/2);
+        
+        // Create a small stone
+        const stoneGeometry = new THREE.BoxGeometry(stoneSize, stoneSize*0.6, stoneSize);
+        const stoneMesh = new THREE.Mesh(stoneGeometry, stoneMaterial);
+        
+        // Position around the perimeter
+        stoneMesh.position.set(x, height/2, z);
+        
+        // Rotate to face outward
+        stoneMesh.rotation.y = angle + Math.PI/2;
+        
+        // Add random rotation for natural look
+        stoneMesh.rotation.x += (Math.random() - 0.5) * 0.2;
+        stoneMesh.rotation.z += (Math.random() - 0.5) * 0.2;
+        
+        // Add to tower base group
+        towerBase.add(stoneMesh);
+    }
+    
+    // Position the entire tower base
+    towerBase.position.x = stone.position.x;
+    towerBase.position.z = stone.position.z;
+    
+    // Get terrain height at this position
+    const terrainHeight = getTerrainHeight(stone.position.x, stone.position.z);
+    towerBase.position.y = terrainHeight; // Directly on ground
+    
+    // Add to scene
+    scene.add(towerBase);
+    
+    // Remove original stone
+    scene.remove(stone);
+    stones.splice(index, 1);
+    stoneVelocities.splice(index, 1);
+    
+    console.log("Transformation complete");
+    
+    // Return the tower base
+    return towerBase;
+}
+
+// Add function to check thrown stones
+function checkThrownStones() {
+    console.log("Checking thrown stones: " + thrownStones.length);
+    
+    for (let i = thrownStones.length - 1; i >= 0; i--) {
+        const thrownStone = thrownStones[i];
+        
+        // Skip if already transformed
+        if (thrownStone.transformed) {
+            thrownStones.splice(i, 1);
+            continue;
+        }
+        
+        // Find stone in stones array
+        const stoneIndex = stones.indexOf(thrownStone.stone);
+        if (stoneIndex === -1) {
+            // Stone no longer exists
+            thrownStones.splice(i, 1);
+            continue;
+        }
+        
+        // Check if stone has moved
+        const stone = thrownStone.stone;
+        const movement = new THREE.Vector3()
+            .copy(stone.position)
+            .sub(thrownStone.lastPosition)
+            .length();
+        
+        console.log("Stone movement: " + movement);
+        
+        // Update last position
+        thrownStone.lastPosition.copy(stone.position);
+        
+        // If stone has barely moved
+        if (movement < 0.01) {
+            // Increment stationary time
+            thrownStone.stationaryTime += 16; // Assuming ~60fps
+            console.log("Stone stationary time: " + thrownStone.stationaryTime);
+            
+            // If stone has been stationary for 0.5 seconds
+            if (thrownStone.stationaryTime > 500) {
+                console.log("Stone has been stationary for 0.5 seconds, transforming");
+                transformStoneToTowerBase(stone, stoneIndex);
+                thrownStone.transformed = true;
+            }
+        } else {
+            // Reset stationary time if moving
+            thrownStone.stationaryTime = 0;
+        }
     }
 }
 
-// Update stones with simplified physics for smooth movement
+// Modify updateStones function to also check for transformation
 function updateStones() {
-    for (let i = 0; i < stones.length; i++) {
+    for (let i = stones.length - 1; i >= 0; i--) {
         const stone = stones[i];
         const stoneVelocity = stoneVelocities[i];
-
-        // Store previous position for interpolation
-        const prevX = stone.position.x;
-        const prevZ = stone.position.z;
 
         // Update horizontal position first
         stone.position.x += stoneVelocity.x;
@@ -615,12 +790,21 @@ function updateStones() {
         stoneVelocity.x *= (1 - friction);
         stoneVelocity.z *= (1 - friction);
         
+        // Calculate current velocity magnitude
+        const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
+        
+        // Check if stone has settled (very low velocity) and was thrown by player
+        if (currentVelocity < minVelocity && stone.userData.thrown === true) {
+            console.log("Stone has settled naturally, transforming to tower base");
+            transformStoneToTowerBase(stone, i);
+            continue; // Skip the rest of the loop for this stone
+        }
+        
         // Stop if moving very slowly
         if (Math.abs(stoneVelocity.x) < minVelocity) stoneVelocity.x = 0;
         if (Math.abs(stoneVelocity.z) < minVelocity) stoneVelocity.z = 0;
 
         // Limit maximum velocity
-        const currentVelocity = Math.sqrt(stoneVelocity.x * stoneVelocity.x + stoneVelocity.z * stoneVelocity.z);
         if (currentVelocity > maxVelocity) {
             const scale = maxVelocity / currentVelocity;
             stoneVelocity.x *= scale;
@@ -838,6 +1022,9 @@ function animate() {
     // Update stones with simplified physics
     updateStones();
     
+    // Check thrown stones for transformation
+    checkThrownStones();
+    
     // Check for stone collection
     const playerRadius = 4;
     for (let i = stones.length - 1; i >= 0; i--) {
@@ -928,13 +1115,13 @@ function onWindowResize() {
 // Add key handler for throwing
 document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyE' && heldStone) {
-        throwHeldStone();
+        handleThrowAction();
     }
 });
 
 // Add mouse click handler for throwing
 document.addEventListener('mousedown', (e) => {
     if (e.button === 0 && heldStone) { // Left mouse button
-        throwHeldStone();
+        handleThrowAction();
     }
 });
