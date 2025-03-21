@@ -48,6 +48,12 @@ const PLAYER = {
     gravity: -0.02,           // Gravity force applied to player
     baseHeight: 3,            // Default camera height above ground
     heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
+    maxSpeed: 0.5,            // Maximum movement speed
+    maxTurnSpeed: 0.03,       // Maximum turning speed
+    acceleration: 0.03,       // Movement acceleration
+    turnAcceleration: 0.006,  // Turning acceleration
+    deceleration: 0.02,       // Movement deceleration
+    turnDeceleration: 0.002   // Turning deceleration
 };
 
 // Held stone configuration
@@ -286,12 +292,6 @@ let velocity = {
     forward: 0,
     turning: 0
 };
-const maxSpeed = 0.5;
-const maxTurnSpeed = 0.03;
-const acceleration = 0.03;
-const turnAcceleration = 0.006;
-const deceleration = 0.02;
-const turnDeceleration = 0.002;
 
 // Add touch controls
 let touchStart = { x: 0, y: 0 };
@@ -1340,31 +1340,31 @@ function animate() {
         
         // Handle keyboard and touch movement with acceleration
         if (keys.ArrowLeft || (isTouching && (touchEnd.x - touchStart.x) < -20)) {
-            velocity.turning = Math.min(velocity.turning + turnAcceleration, 
-                maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
+            velocity.turning = Math.min(velocity.turning + PLAYER.turnAcceleration, 
+                PLAYER.maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else if (keys.ArrowRight || (isTouching && (touchEnd.x - touchStart.x) > 20)) {
-            velocity.turning = Math.max(velocity.turning - turnAcceleration, 
-                -maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
+            velocity.turning = Math.max(velocity.turning - PLAYER.turnAcceleration, 
+                -PLAYER.maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else {
             // Decelerate turning
             if (velocity.turning > 0) {
-                velocity.turning = Math.max(0, velocity.turning - turnDeceleration);
+                velocity.turning = Math.max(0, velocity.turning - PLAYER.turnDeceleration);
             } else if (velocity.turning < 0) {
-                velocity.turning = Math.min(0, velocity.turning + turnDeceleration);
+                velocity.turning = Math.min(0, velocity.turning + PLAYER.turnDeceleration);
             }
         }
         
         // Forward/backward movement
         if (keys.ArrowUp || (isTouching && (touchStart.y - touchEnd.y) > 20)) {
-            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
+            velocity.forward = Math.min(velocity.forward + PLAYER.acceleration, PLAYER.maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else if (keys.ArrowDown || (isTouching && (touchStart.y - touchEnd.y) < -20)) {
-            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
+            velocity.forward = Math.max(velocity.forward - PLAYER.acceleration, -PLAYER.maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else {
             // Decelerate forward/backward
             if (velocity.forward > 0) {
-                velocity.forward = Math.max(0, velocity.forward - deceleration);
+                velocity.forward = Math.max(0, velocity.forward - PLAYER.deceleration);
             } else if (velocity.forward < 0) {
-                velocity.forward = Math.min(0, velocity.forward + deceleration);
+                velocity.forward = Math.min(0, velocity.forward + PLAYER.deceleration);
             }
         }
 
@@ -1373,7 +1373,7 @@ function animate() {
         
         // Smoothly interpolate current height to target height
         if (!isJumping) {  // Only smooth terrain following when not jumping
-            camera.position.y += (targetHeight - camera.position.y) * heightSmoothness;
+            camera.position.y += (targetHeight - camera.position.y) * PLAYER.heightSmoothness;
         }
 
         // Handle jumping (only if not holding stone and not throwing)
