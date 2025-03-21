@@ -24,20 +24,19 @@ const TERRAIN = {
 const STONE = {
     radius: 0.5,              // Base radius of stones
     gravity: -0.01,           // Gravity force applied to stones
-    rollSpeed: 0.04,          // How fast stones roll on terrain
     friction: 0.03,           // Ground friction applied to rolling stones
-    minVelocity: 0.003,       // Minimum velocity before stone stops moving
     groundCheckOffset: 0.1,   // Distance to check for ground below stone
     maxVelocity: 0.24,        // Maximum stone velocity cap
-    heightSmoothingFactor: 0.15, // How smoothly stones follow terrain height
     dropInterval: 1000,       // Milliseconds between automatic stone spawns
     pickupDelay: 500,         // Milliseconds delay before pickup is allowed
-    waveStrength: 0.18,       // Force of waves pushing stones inland
     throwForce: 0.5,          // Force of the throw
-    throwUpward: 0.2,         // Upward component of the throw
+    throwUpward: 0.5,         // Upward component of the throw
     bounce: 0.2,              // Bounce coefficient (lower = less bouncy)
     stopThreshold: 0.01,      // Velocity threshold for stopping
-    rollFactor: 0.03          // Factor for rolling down hills
+    rollFactor: 0.03,         // Factor for rolling down hills
+    width: 0.8,               // Width of stone
+    height: 0.4,              // Height of stone
+    depth: 0.6                // Depth of stone
 };
 
 // Player movement parameters
@@ -1345,15 +1344,15 @@ function animate() {
     } else {
         // Check if either shift key is pressed
         const isSprinting = keys.ShiftLeft || keys.ShiftRight;
-        const currentSpeed = isSprinting ? moveSpeed * sprintMultiplier : moveSpeed;
+        const currentSpeed = isSprinting ? PLAYER.sprintMultiplier : 1;
         
         // Handle keyboard and touch movement with acceleration
         if (keys.ArrowLeft || (isTouching && (touchEnd.x - touchStart.x) < -20)) {
             velocity.turning = Math.min(velocity.turning + turnAcceleration, 
-                maxTurnSpeed * (isSprinting ? sprintMultiplier : 1));
+                maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else if (keys.ArrowRight || (isTouching && (touchEnd.x - touchStart.x) > 20)) {
             velocity.turning = Math.max(velocity.turning - turnAcceleration, 
-                -maxTurnSpeed * (isSprinting ? sprintMultiplier : 1));
+                -maxTurnSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else {
             // Decelerate turning
             if (velocity.turning > 0) {
@@ -1365,9 +1364,9 @@ function animate() {
         
         // Forward/backward movement
         if (keys.ArrowUp || (isTouching && (touchStart.y - touchEnd.y) > 20)) {
-            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed * (isSprinting ? sprintMultiplier : 1));
+            velocity.forward = Math.min(velocity.forward + acceleration, maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else if (keys.ArrowDown || (isTouching && (touchStart.y - touchEnd.y) < -20)) {
-            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed * (isSprinting ? sprintMultiplier : 1));
+            velocity.forward = Math.max(velocity.forward - acceleration, -maxSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1));
         } else {
             // Decelerate forward/backward
             if (velocity.forward > 0) {
@@ -1386,14 +1385,14 @@ function animate() {
         }
 
         // Handle jumping (only if not holding stone and not throwing)
-        if (keys.Space && !isJumping && !heldStone && Math.abs(camera.position.y - targetHeight) < 0.1 && (Date.now() - lastThrowTime > pickupDelay)) {
-            playerVerticalVelocity = jumpForce;
+        if (keys.Space && !isJumping && !heldStone && Math.abs(camera.position.y - targetHeight) < 0.1 && (Date.now() - lastThrowTime > STONE.pickupDelay)) {
+            playerVerticalVelocity = PLAYER.jumpForce;
             isJumping = true;
         }
 
         // Apply gravity and update vertical position when jumping
         if (isJumping) {
-            playerVerticalVelocity += playerGravity;
+            playerVerticalVelocity += PLAYER.gravity;
             camera.position.y += playerVerticalVelocity;
 
             // Check for landing
@@ -1418,7 +1417,7 @@ function animate() {
             }
             
             // Strafe movement
-            const strafeSpeed = moveSpeed * (isSprinting ? sprintMultiplier : 1);
+            const strafeSpeed = PLAYER.moveSpeed * (isSprinting ? PLAYER.sprintMultiplier : 1);
             if (keys.KeyA) {
                 newX -= Math.cos(cameraAngle) * strafeSpeed;
                 newZ += Math.sin(cameraAngle) * strafeSpeed;
@@ -1453,7 +1452,7 @@ function animate() {
         const distance = Math.sqrt(dx * dx + dz * dz);
         
         // If player is close enough and not holding a stone and enough time has passed since throwing
-        if (distance < playerRadius && !heldStone && (currentTime - lastThrowTime > pickupDelay)) {
+        if (distance < playerRadius && !heldStone && (currentTime - lastThrowTime > STONE.pickupDelay)) {
             // Remove stone from physics arrays
             stones.splice(i, 1);
             stoneVelocities.splice(i, 1);
@@ -1463,9 +1462,9 @@ function animate() {
             
             // Scale down the held stone
             heldStone.scale.set(
-                heldStoneOffset.scale, 
-                heldStoneOffset.scale, 
-                heldStoneOffset.scale
+                HELD_STONE.offset.scale, 
+                HELD_STONE.offset.scale, 
+                HELD_STONE.offset.scale
             );
         }
     }
@@ -1477,29 +1476,29 @@ function animate() {
         forward.applyQuaternion(camera.quaternion);
         
         heldStonePhysics.targetPos.set(
-            camera.position.x + forward.x * heldStoneOffset.forward,
-            camera.position.y - heldStoneOffset.down,
-            camera.position.z + forward.z * heldStoneOffset.forward
+            camera.position.x + forward.x * HELD_STONE.offset.forward,
+            camera.position.y - HELD_STONE.offset.down,
+            camera.position.z + forward.z * HELD_STONE.offset.forward
         );
         
         // Add bobbing based on movement
         const time = Date.now() * 0.003;
         if (velocity.forward !== 0) {
-            heldStonePhysics.targetPos.y += Math.sin(time * 5) * heldStonePhysics.bobStrength;
-            heldStonePhysics.targetPos.x += Math.cos(time * 2.5) * heldStonePhysics.swayStrength;
+            heldStonePhysics.targetPos.y += Math.sin(time * 5) * HELD_STONE.physics.bobStrength;
+            heldStonePhysics.targetPos.x += Math.cos(time * 2.5) * HELD_STONE.physics.swayStrength;
         }
         
         // Apply spring physics
         const deltaPos = new THREE.Vector3().subVectors(heldStonePhysics.targetPos, heldStone.position);
-        heldStonePhysics.velocity.add(deltaPos.multiplyScalar(heldStonePhysics.springStrength));
-        heldStonePhysics.velocity.multiplyScalar(heldStonePhysics.dampening);
+        heldStonePhysics.velocity.add(deltaPos.multiplyScalar(HELD_STONE.physics.springStrength));
+        heldStonePhysics.velocity.multiplyScalar(HELD_STONE.physics.dampening);
         
         // Update position
         heldStone.position.add(heldStonePhysics.velocity);
         
         // Smooth rotation
         heldStonePhysics.targetRot.y = camera.rotation.y;
-        heldStone.rotation.y += (heldStonePhysics.targetRot.y - heldStone.rotation.y) * heldStonePhysics.rotationLag;
+        heldStone.rotation.y += (heldStonePhysics.targetRot.y - heldStone.rotation.y) * HELD_STONE.physics.rotationLag;
         
         // Add slight tilt based on movement
         if (velocity.forward !== 0) {
@@ -2080,7 +2079,7 @@ function handleSpaceAction() {
         handleThrowAction();
     } else if (!isJumping && Math.abs(camera.position.y - targetHeight) < 0.1) {
         // Jump if not already jumping and on the ground
-        playerVerticalVelocity = jumpForce;
+        playerVerticalVelocity = PLAYER.jumpForce;
         isJumping = true;
     }
 }
