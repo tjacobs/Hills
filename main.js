@@ -572,7 +572,7 @@ function handleThrowAction() {
 function findNearbyTowerBase(position) {
     const maxDistance = 5.0; // Distance for stacking
     const minDistance = 0.5; // Minimum distance to consider for stacking (very close)
-    const tooCloseDistance = 15.0; // Increased from 8.0 to 15.0 to prevent towers being built too close
+    const tooCloseDistance = 8.0 * 2; // Doubled to 16.0 - approximately two ring diameters
     
     let closestTower = null;
     let closestDistance = Infinity;
@@ -856,7 +856,6 @@ function createDustEffect(position) {
 
 // Add function to check thrown stones
 function checkThrownStones() {
-    console.log("Checking thrown stones: " + thrownStones.length);
     
     for (let i = thrownStones.length - 1; i >= 0; i--) {
         const thrownStone = thrownStones[i];
@@ -989,6 +988,60 @@ function updateStones() {
             stone.rotateOnAxis(rotationAxis, rotationAmount);
         }
     }
+}
+
+// Add tower climbing functionality
+function checkTowerClimbing() {
+    // Get player position (camera position)
+    const playerPosition = new THREE.Vector3().copy(camera.position);
+    
+    // Track the highest tower found
+    let highestTower = null;
+    let highestLevel = 0;
+    
+    // Check distance to all tower bases
+    for (const tower of towerBases) {
+        // Calculate horizontal distance to tower
+        const distance = new THREE.Vector3()
+            .copy(playerPosition)
+            .sub(tower.position)
+            .setY(0) // Ignore Y difference
+            .length();
+        
+        // If player is inside tower radius
+        const climbRadius = 3.0; // Slightly smaller than tower radius
+        if (distance < climbRadius) {
+            // Find the top-most tower in this stack
+            let topTower = tower;
+            while (topTower.userData.childTower) {
+                topTower = topTower.userData.childTower;
+            }
+            
+            // Check if this is higher than our current highest
+            if (!highestTower || topTower.position.y > highestTower.position.y) {
+                highestTower = topTower;
+                highestLevel = topTower.userData.level || 1;
+            }
+        }
+    }
+    
+    // If we found a tower to climb
+    if (highestTower) {
+        // Debug the tower position
+        console.log("Tower position:", highestTower.position.y);
+        console.log("Tower level:", highestLevel);
+        
+        // Calculate the exact height - ensure it's a positive value
+        const blockHeight = 1.2; // This should match the height of blocks in transformStoneToTowerBase
+        targetHeight = Math.max(highestTower.position.y + blockHeight, 3);
+        
+        console.log(`Climbing to tower level ${highestLevel} at exact height ${targetHeight}`);
+        return true;
+    }
+    
+    // If not in any tower, set target height to normal walking height
+    targetHeight = getTerrainHeight(playerPosition.x, playerPosition.z) + 3;
+    return false;
 }
 
 // Modify the animate function to handle cloud movement
@@ -1125,11 +1178,9 @@ function animate() {
             }
         }
 
-        // Get terrain height at camera position
-        const terrainHeight = getTerrainHeight(camera.position.x, camera.position.z);
-        
-        // Calculate target height (3 units above terrain)
-        targetHeight = terrainHeight + 2;
+        // Check for tower climbing before handling terrain height
+        const isClimbing = checkTowerClimbing();
+        console.log("Climbing:", isClimbing, "Target height:", targetHeight);
         
         // Smoothly interpolate current height to target height
         if (!isJumping) {  // Only smooth terrain following when not jumping
