@@ -37,38 +37,48 @@ const PLAYER = {
     heightSmoothness: 0.2,    // How smoothly camera follows terrain (lower = smoother)
 };
 
-// Stone physics parameters
+// Stone physics and appearance parameters
 const STONE = {
+    // Basic properties
     radius: 0.5,              // Base radius of stones
+    width: 0.8,               // Width of stone
+    height: 0.4,              // Height of stone
+    depth: 0.6,               // Depth of stone
+    
+    // Physics parameters
     gravity: -0.01,           // Gravity force applied to stones
     friction: 0.03,           // Ground friction applied to rolling stones
     groundCheckOffset: 0.1,   // Distance to check for ground below stone
     maxVelocity: 0.24,        // Maximum stone velocity cap
-    dropInterval: 1000,       // Milliseconds between automatic stone spawns
-    pickupDelay: 500,         // Milliseconds delay before pickup is allowed
-    throwForce: 0.2,          // Force of the throw
-    throwUpward: 0.2,         // Upward component of the throw
     bounce: 0.2,              // Bounce coefficient (lower = less bouncy)
     stopThreshold: 0.01,      // Velocity threshold for stopping
     rollFactor: 0.03,         // Factor for rolling down hills
-    width: 0.8,               // Width of stone
-    height: 0.4,              // Height of stone
-    depth: 0.6                // Depth of stone
-};
-
-// Held stone configuration
-const HELD_STONE = {
-    offset: {
-        forward: 1.2,         // How far in front of player the stone appears
-        down: 0.8,            // How far below eye level the stone appears
-        scale: 0.5            // Scale factor applied to held stones
-    },
-    physics: {
-        springStrength: 0.35, // How strongly stone is pulled to target position
-        dampening: 0.6,       // How quickly oscillations are reduced
-        rotationLag: 0.15,    // How slowly rotation catches up to movement
-        bobStrength: 0.02,    // Amplitude of up/down bobbing motion
-        swayStrength: 0.03    // Amplitude of side-to-side swaying
+    
+    // Interaction parameters
+    dropInterval: 1000,       // Milliseconds between automatic stone spawns
+    pickupDelay: 500,         // Milliseconds delay before pickup is allowed
+    throwForce: 0.4,          // Force of the throw
+    throwUpward: 0.2,         // Upward component of the throw
+    
+    // Wave interaction
+    waveStrength: 0.18,       // Force of waves pushing stones inland
+    
+    // Held stone parameters
+    held: {
+        // Positioning
+        offset: {
+            forward: 1.2,     // How far in front of player the stone appears
+            down: 0.8,        // How far below eye level the stone appears
+            scale: 0.5        // Scale factor applied to held stones
+        },
+        // Physics
+        physics: {
+            springStrength: 0.35, // How strongly stone is pulled to target position
+            dampening: 0.6,   // How quickly oscillations are reduced
+            rotationLag: 0.15, // How slowly rotation catches up to movement
+            bobStrength: 0.02, // Amplitude of up/down bobbing motion
+            swayStrength: 0.03 // Amplitude of side-to-side swaying
+        }
     }
 };
 
@@ -531,20 +541,13 @@ const waveStrength = 0.18; // Significantly increased for much further inland mo
 
 // Add held stone tracking with physics
 let heldStone = null;
-const heldStoneOffset = {
-    forward: 1.2,
-    down: 0.8,
-    scale: 0.5
-};
-const heldStonePhysics = {
+
+// Add this variable declaration at the appropriate place in your code
+// (likely near other stone-related variables)
+let heldStonePhysics = {
     velocity: new THREE.Vector3(),
     targetPos: new THREE.Vector3(),
-    targetRot: new THREE.Euler(),
-    springStrength: 0.35,    // Increased from 0.1 for tighter control
-    dampening: 0.6,          // Reduced from 0.8 for heavier feel
-    rotationLag: 0.15,       // Increased from 0.1 for slower rotation
-    bobStrength: 0.02,       // Reduced from 0.05 for less bouncing
-    swayStrength: 0.03       // Reduced from 0.1 for less swaying
+    targetRot: new THREE.Vector3()
 };
 
 function createNewStone() {
@@ -1454,9 +1457,9 @@ function animate() {
             
             // Scale down the held stone
             heldStone.scale.set(
-                HELD_STONE.offset.scale, 
-                HELD_STONE.offset.scale, 
-                HELD_STONE.offset.scale
+                STONE.held.offset.scale, 
+                STONE.held.offset.scale, 
+                STONE.held.offset.scale
             );
         }
     }
@@ -1468,29 +1471,29 @@ function animate() {
         forward.applyQuaternion(camera.quaternion);
         
         heldStonePhysics.targetPos.set(
-            camera.position.x + forward.x * HELD_STONE.offset.forward,
-            camera.position.y - HELD_STONE.offset.down,
-            camera.position.z + forward.z * HELD_STONE.offset.forward
+            camera.position.x + forward.x * STONE.held.offset.forward,
+            camera.position.y - STONE.held.offset.down,
+            camera.position.z + forward.z * STONE.held.offset.forward
         );
         
         // Add bobbing based on movement
         const time = Date.now() * 0.003;
         if (velocity.forward !== 0) {
-            heldStonePhysics.targetPos.y += Math.sin(time * 5) * HELD_STONE.physics.bobStrength;
-            heldStonePhysics.targetPos.x += Math.cos(time * 2.5) * HELD_STONE.physics.swayStrength;
+            heldStonePhysics.targetPos.y += Math.sin(time * 5) * STONE.held.physics.bobStrength;
+            heldStonePhysics.targetPos.x += Math.cos(time * 2.5) * STONE.held.physics.swayStrength;
         }
         
         // Apply spring physics
         const deltaPos = new THREE.Vector3().subVectors(heldStonePhysics.targetPos, heldStone.position);
-        heldStonePhysics.velocity.add(deltaPos.multiplyScalar(HELD_STONE.physics.springStrength));
-        heldStonePhysics.velocity.multiplyScalar(HELD_STONE.physics.dampening);
+        heldStonePhysics.velocity.add(deltaPos.multiplyScalar(STONE.held.physics.springStrength));
+        heldStonePhysics.velocity.multiplyScalar(STONE.held.physics.dampening);
         
         // Update position
         heldStone.position.add(heldStonePhysics.velocity);
         
         // Smooth rotation
         heldStonePhysics.targetRot.y = camera.rotation.y;
-        heldStone.rotation.y += (heldStonePhysics.targetRot.y - heldStone.rotation.y) * HELD_STONE.physics.rotationLag;
+        heldStone.rotation.y += (heldStonePhysics.targetRot.y - heldStone.rotation.y) * STONE.held.physics.rotationLag;
         
         // Add slight tilt based on movement
         if (velocity.forward !== 0) {
