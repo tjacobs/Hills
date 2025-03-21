@@ -1771,63 +1771,16 @@ function restoreGameState() {
             scene.remove(stone);
         }
         
+        // Clear existing towers only
         for (const tower of towerBases) {
             scene.remove(tower);
         }
         
-        // Create new arrays
-        const newStones = [];
-        const newStoneVelocities = [];
+        // Create new array for towers
         const newTowerBases = [];
         
-        // Restore stones
-        for (const stoneData of gameState.stones) {
-            // Create a rectangular stone instead of spherical
-            const stoneGeometry = new THREE.BoxGeometry(
-                STONE.width || 0.8, 
-                STONE.height || 0.4, 
-                STONE.depth || 0.6
-            );
-            
-            const stoneMaterial = new THREE.MeshStandardMaterial({
-                roughness: 0.9,
-                metalness: 0.1,
-                color: 0x808080,
-                bumpMap: stoneTexture,
-                bumpScale: 0.5
-            });
-            
-            const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
-            
-            // Set position and rotation
-            stone.position.set(
-                stoneData.position.x,
-                stoneData.position.y,
-                stoneData.position.z
-            );
-            
-            stone.rotation.set(
-                stoneData.rotation.x,
-                stoneData.rotation.y,
-                stoneData.rotation.z
-            );
-            
-            // Restore userData
-            stone.userData = stoneData.userData || {};
-            
-            // Add to scene and arrays
-            scene.add(stone);
-            newStones.push(stone);
-        }
-        
-        // Restore stone velocities
-        for (const velocityData of gameState.stoneVelocities) {
-            newStoneVelocities.push(new THREE.Vector3(
-                velocityData.x,
-                velocityData.y,
-                velocityData.z
-            ));
-        }
+        // Skip stone restoration
+        console.log(`Skipping restoration of ${gameState.stones.length} stones`);
         
         // First pass: create tower bases without parent relationships
         const tempTowers = [];
@@ -1838,6 +1791,15 @@ function restoreGameState() {
                 towerData.position.z,
                 towerData.level
             );
+            
+            // Set exact rotation if available
+            if (towerData.rotation) {
+                towerBase.rotation.set(
+                    towerData.rotation.x,
+                    towerData.rotation.y,
+                    towerData.rotation.z
+                );
+            }
             
             tempTowers.push(towerBase);
             newTowerBases.push(towerBase);
@@ -1855,31 +1817,119 @@ function restoreGameState() {
             }
         }
         
-        // Instead of reassigning the arrays, clear and repopulate them
-        stones.length = 0;
-        stoneVelocities.length = 0;
+        // Clear and repopulate only the towerBases array
         towerBases.length = 0;
         
-        // Add all items from new arrays to the original arrays
-        for (const stone of newStones) {
-            stones.push(stone);
-        }
-        
-        for (const velocity of newStoneVelocities) {
-            stoneVelocities.push(velocity);
-        }
-        
+        // Add all towers from new array to the original array
         for (const tower of newTowerBases) {
             towerBases.push(tower);
         }
         
-        console.log('Game state restored!');
         return true;
     } catch (error) {
         console.error('Error restoring game state:', error);
         return false;
     }
 }
+
+// Add a function to only restore towers
+function restoreTowersOnly() {
+    // Try to load from localStorage
+    const savedState = localStorage.getItem('stoneGameState');
+    if (!savedState) {
+        console.log('No saved game state found.');
+        return false;
+    }
+    
+    try {
+        const gameState = JSON.parse(savedState);
+        
+        // Clear existing towers
+        for (const tower of towerBases) {
+            scene.remove(tower);
+        }
+        
+        // Create new array for towers
+        const newTowerBases = [];
+        
+        // First pass: create tower bases without parent relationships
+        const tempTowers = [];
+        for (const towerData of gameState.towerBases) {
+            const towerBase = createTowerBaseForRestore(
+                towerData.position.x,
+                towerData.position.y,
+                towerData.position.z,
+                towerData.level
+            );
+            
+            // Set exact rotation if available
+            if (towerData.rotation) {
+                towerBase.rotation.set(
+                    towerData.rotation.x,
+                    towerData.rotation.y,
+                    towerData.rotation.z
+                );
+            }
+            
+            tempTowers.push(towerBase);
+            newTowerBases.push(towerBase);
+        }
+        
+        // Second pass: establish parent-child relationships
+        for (let i = 0; i < gameState.towerBases.length; i++) {
+            const towerData = gameState.towerBases[i];
+            const tower = tempTowers[i];
+            
+            if (towerData.parentIndex >= 0 && towerData.parentIndex < tempTowers.length) {
+                const parentTower = tempTowers[towerData.parentIndex];
+                tower.userData.parentTower = parentTower;
+                parentTower.userData.childTower = tower;
+            }
+        }
+        
+        // Clear and repopulate only the towerBases array
+        towerBases.length = 0;
+        
+        // Add all towers from new array to the original array
+        for (const tower of newTowerBases) {
+            towerBases.push(tower);
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error restoring towers:', error);
+        return false;
+    }
+}
+
+// Update keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+    // Save game state with Ctrl+S
+    if (e.code === 'KeyS' && e.ctrlKey) {
+        e.preventDefault(); // Prevent browser save dialog
+        saveGameState();
+        console.log('Game state saved!');
+    }
+    
+    // Restore towers only with Ctrl+L
+    if (e.code === 'KeyL' && e.ctrlKey) {
+        e.preventDefault();
+        restoreTowersOnly(); // Only restore towers
+    }
+    
+    // Full restore (including stones) with Ctrl+Shift+L
+    if (e.code === 'KeyL' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        restoreGameState(); // Full restore
+    }
+});
+
+// Try to restore only towers on page load
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        restoreTowersOnly();
+    }, 1000); // Delay to ensure all resources are loaded
+});
 
 // Helper function to create a tower base for restore operations
 function createTowerBaseForRestore(x, y, z, level) {
@@ -1939,13 +1989,3 @@ function createTowerBaseForRestore(x, y, z, level) {
     
     return towerBase;
 }
-
-// Auto-save every 10 seconds
-setInterval(saveGameState, 10 * 1000);
-
-// Try to restore game state on page load
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        restoreGameState();
-    }, 1000); // Delay to ensure all resources are loaded
-});
