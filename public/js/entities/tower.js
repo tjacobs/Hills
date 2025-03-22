@@ -8,55 +8,70 @@ class Tower {
         this.mesh = null;
         
         // Create the mesh immediately
-        this.createSimpleStoneRing();
+        this.createSimpleTower();
     }
     
-    createSimpleStoneRing() {
+    createSimpleTower() {
         // Create a group to hold all stones
         this.mesh = new THREE.Group();
         
-        // Position the tower at a visible height
-        this.position.y = 0.5; // Just above ground level
+        // Position the tower on the terrain
+        const terrainHeight = Game.getHeightAtPosition(this.position.x, this.position.z);
+        this.position.y = terrainHeight + 0.4;
         this.mesh.position.copy(this.position);
         
-        // Use the same stone dimensions as regular stones
+        // Create stone geometry
         const stoneGeometry = new THREE.BoxGeometry(
             CONFIG.STONE.width,
             CONFIG.STONE.height,
             CONFIG.STONE.depth
         );
         
-        // Use the same stone material as regular stones
+        // Create stone material - matching Stone class exactly
         const stoneMaterial = new THREE.MeshStandardMaterial({
-            color: 0x888888,
-            roughness: 0.9,
-            metalness: 0.1
+            color: 0x777777,  // Medium-dark gray
+            roughness: 0.9,   // Very rough surface
+            metalness: 0.1,   // Low metalness
+            bumpMap: null,    // No bump map initially
+            bumpScale: 0.05   // Bump scale for when map is loaded
         });
+        
+        // Load bump map texture asynchronously
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg',
+            (texture) => {
+                stoneMaterial.bumpMap = texture;
+                stoneMaterial.needsUpdate = true;
+            }
+        );
         
         // Create rings of stones for each level
         for (let level = 0; level < this.level; level++) {
-            const ringY = level * CONFIG.STONE.height * 1.2; // Slight spacing between levels
+            const ringY = level * CONFIG.STONE.height; // Stack directly on top
             
             // Create a ring of stones
-            const stoneCount = 8; // Fixed number for consistent appearance
-            const radius = 2; // Fixed radius for consistent appearance
+            const stoneCount = 24; // Fixed number of stones
+            const radius = CONFIG.TOWER.baseRadius;
             
             for (let i = 0; i < stoneCount; i++) {
-                // Calculate position around the circle
                 const angle = (i / stoneCount) * Math.PI * 2;
-                const x = Math.sin(angle) * radius;
-                const z = Math.cos(angle) * radius;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
                 
-                // Create stone
-                const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+                // Create stone with unique material instance
+                const stone = new THREE.Mesh(stoneGeometry, stoneMaterial.clone());
+                
+                // Enable shadows
+                stone.castShadow = true;
+                stone.receiveShadow = true;
                 
                 // Position stone
                 stone.position.set(x, ringY, z);
                 
-                // Rotate stone to face center
+                // Rotate to face center
                 stone.rotation.y = angle + Math.PI / 2;
                 
-                // Add to group
                 this.mesh.add(stone);
             }
         }
