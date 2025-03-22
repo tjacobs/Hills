@@ -1808,7 +1808,7 @@ function saveGameState() {
     
     // Save to localStorage
     localStorage.setItem('stoneGameState', JSON.stringify(gameState));    
-    console.log('Game state saved');
+    //console.log('Game state saved');
     return gameState;
 }
 
