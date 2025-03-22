@@ -37,11 +37,11 @@ const CONFIG = {
 
         // Physics parameters
         gravity: -9.8,
-        bounce: 0.3,
-        friction: 0.05,
-        rollFactor: 0.05,
+        bounce: 0.9,
+        friction: 0.35,
+        rollFactor: 0.25,
         maxVelocity: 0.5,
-        stopThreshold: 0.01,
+        stopThreshold: 0.05,
         
         // Interaction parameters
         throwForce: 0.2,
