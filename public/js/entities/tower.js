@@ -27,22 +27,29 @@ class Tower {
             CONFIG.STONE.depth
         );
         
-        // Create stone material - matching Stone class exactly
-        const stoneMaterial = new THREE.MeshStandardMaterial({
-            color: 0x777777,  // Medium-dark gray
-            roughness: 0.9,   // Very rough surface
-            metalness: 0.1,   // Low metalness
-            bumpMap: null,    // No bump map initially
-            bumpScale: 0.05   // Bump scale for when map is loaded
+        // Create base material
+        const baseMaterial = new THREE.MeshStandardMaterial({
+            color: 0x777777,
+            roughness: 0.9,
+            metalness: 0.1,
+            bumpScale: 0.05
         });
         
-        // Load bump map texture asynchronously
+        // Load texture once and reuse
         const textureLoader = new THREE.TextureLoader();
         textureLoader.load(
             'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg',
-            (texture) => {
-                stoneMaterial.bumpMap = texture;
-                stoneMaterial.needsUpdate = true;
+            (bumpMap) => {
+                baseMaterial.bumpMap = bumpMap;
+                baseMaterial.needsUpdate = true;
+                
+                // Update all stone materials
+                this.mesh.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material.bumpMap = bumpMap;
+                        child.material.needsUpdate = true;
+                    }
+                });
             }
         );
         
@@ -50,12 +57,11 @@ class Tower {
         for (let level = 0; level < this.level; level++) {
             // Each level has 4 vertical layers
             for (let verticalLayer = 0; verticalLayer < 4; verticalLayer++) {
-                const ringY = (level * 4 + verticalLayer) * CONFIG.STONE.height; // Stack 4 high per level
+                const ringY = (level * 4 + verticalLayer) * CONFIG.STONE.depth;
                 
                 // Create concentric rings at each height
                 const ringRadii = [
-                    //CONFIG.TOWER.baseRadius * 0.6,  // Inner ring
-                    CONFIG.TOWER.baseRadius         // Outer ring
+                    CONFIG.TOWER.baseRadius
                 ];
                 
                 for (let ringIndex = 0; ringIndex < ringRadii.length; ringIndex++) {
@@ -72,8 +78,12 @@ class Tower {
                         const x = Math.cos(angle) * radius;
                         const z = Math.sin(angle) * radius;
                         
-                        // Create stone with unique material instance
-                        const stone = new THREE.Mesh(stoneGeometry, stoneMaterial.clone());
+                        // Create stone with cloned material
+                        const stoneMaterial = baseMaterial.clone();
+                        const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+                        
+                        stone.castShadow = true;
+                        stone.receiveShadow = true;
                         
                         // Position stone
                         stone.position.set(x, ringY, z);
