@@ -75,12 +75,12 @@ class Stone {
         
         // Calculate world radius and beach position
         const worldHalfSize = CONFIG.WORLD.size / 2;
-        const beachDistance = worldHalfSize * 0.9; // Beach is at 90% of world radius
+        const beachDistance = worldHalfSize * 0.95; // Beach edge is at 95% of world radius
         
-        // Check if in water (below sea level or beyond beach)
-        const isInWater = this.mesh.position.y < 0 || distanceFromCenter > beachDistance;
+        // Check if in water (beyond beach boundary)
+        const isInWater = distanceFromCenter > beachDistance;
         
-        // Apply moderate wave force if in water
+        // Apply gentle wave force if in water
         if (isInWater) {
             // Calculate direction toward island center
             const directionToCenter = new THREE.Vector3(
@@ -89,55 +89,83 @@ class Stone {
                 -this.mesh.position.z
             ).normalize();
             
-            // Apply wave force - MODERATE
-            this.velocity.x += directionToCenter.x * 0.03;
-            this.velocity.z += directionToCenter.z * 0.03;
+            // Apply wave force
+            this.velocity.x += directionToCenter.x * 0.01;
+            this.velocity.z += directionToCenter.z * 0.01;
             
-            // Add random bobbing in water with moderate upward bias
-            this.velocity.y += 0.02;
-            
-            // Create small water ripples occasionally
-            if (Math.random() < 0.05) {
-                Game.createSplashEffect(this.mesh.position.clone());
-            }
+            // Add random bobbing in water with gentle upward bias
+            this.velocity.y += 0.008;
         }
         
-        // Check ground collision
+        // Check ground collision and calculate slope
         const groundHeight = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
         
-        if (this.mesh.position.y < groundHeight + 0.5) {
-            // Place on ground
-            this.mesh.position.y = groundHeight + 0.5;
+        // Sample heights around the stone to determine slope
+        const sampleDistance = 2.0;
+        const heightNorth = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z - sampleDistance);
+        const heightSouth = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z + sampleDistance);
+        const heightEast = Game.getHeightAtPosition(this.mesh.position.x + sampleDistance, this.mesh.position.z);
+        const heightWest = Game.getHeightAtPosition(this.mesh.position.x - sampleDistance, this.mesh.position.z);
+        
+        // Calculate slope vector
+        const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+        const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+        
+        // Calculate slope magnitude (steepness)
+        const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+        
+        // Place stone directly on ground
+        const stoneRadius = CONFIG.STONE.height / 2;
+        if (this.mesh.position.y < groundHeight + stoneRadius) {
+            // Place directly on ground
+            this.mesh.position.y = groundHeight + stoneRadius;
             
-            // Bounce with damping - MODERATE BOUNCE
+            // Bounce with damping
             if (this.velocity.y < -0.05) {
-                this.velocity.y = -this.velocity.y * 0.5;
-                
-                // Create impact effect if significant impact
-                if (-this.velocity.y > 0.1) {
-                    // TODO: Add impact effect
-                }
+                this.velocity.y = -this.velocity.y * 0.3;
             } else {
                 this.velocity.y = 0;
             }
             
-            // Apply friction - MODERATE FRICTION
-            this.velocity.x *= 0.95;
-            this.velocity.z *= 0.95;
+            // Apply friction - variable based on slope
+            const frictionFactor = Math.max(0.75, 0.95 - slopeMagnitude * 5);
+            this.velocity.x *= frictionFactor;
+            this.velocity.z *= frictionFactor;
+            
+            // Apply slope force for valley rolling
+            const rollFactor = CONFIG.STONE.rollFactor * 2;
+            this.velocity.x += slopeX * rollFactor;
+            this.velocity.z += slopeZ * rollFactor;
+            
+            // Add extra downhill acceleration on steeper slopes
+            if (slopeMagnitude > 0.05) {
+                const downhillDirection = new THREE.Vector3(slopeX, 0, slopeZ).normalize();
+                const downhillFactor = slopeMagnitude * 0.1;
+                
+                this.velocity.x += downhillDirection.x * downhillFactor;
+                this.velocity.z += downhillDirection.z * downhillFactor;
+            }
         }
         
-        // Apply air resistance - MODERATE AIR RESISTANCE
-        this.velocity.multiplyScalar(0.99);
+        // Apply air resistance
+        const speed = this.velocity.length();
+        const airResistanceFactor = Math.max(0.95, 0.99 - speed * 0.1);
+        this.velocity.multiplyScalar(airResistanceFactor);
+        
+        // Cap maximum velocity
+        if (speed > CONFIG.STONE.maxVelocity) {
+            this.velocity.normalize().multiplyScalar(CONFIG.STONE.maxVelocity);
+        }
         
         // Check if stone has stopped
-        if (Math.abs(this.velocity.x) < 0.01 && 
-            Math.abs(this.velocity.y) < 0.01 && 
-            Math.abs(this.velocity.z) < 0.01) {
+        if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.y) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
             
             this.velocity.set(0, 0, 0);
             this.isStatic = true;
             
-            // Make sure the stone stays visible and in the scene
+            // Make sure the stone stays visible
             if (this.mesh) {
                 this.mesh.visible = true;
             }
@@ -145,18 +173,16 @@ class Stone {
             this.isStatic = false;
         }
         
-        // Update rotation based on movement
+        // Update rotation based on movement - FIX ROTATION DIRECTION
         if (!this.isStatic) {
-            // Calculate rotation axis perpendicular to movement direction
             const movementDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize();
             if (movementDir.length() > 0.01) {
-                const rotationAxis = new THREE.Vector3(-movementDir.z, 0, movementDir.x);
+                // FIX: Invert the rotation axis to make stones roll forward
+                const rotationAxis = new THREE.Vector3(movementDir.z, 0, -movementDir.x);
                 
-                // Calculate rotation amount based on speed
                 const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
-                const rotationSpeed = speed * 2;
+                const rotationSpeed = speed * 2 / CONFIG.STONE.width;
                 
-                // Apply rotation
                 const quaternion = new THREE.Quaternion();
                 quaternion.setFromAxisAngle(rotationAxis, rotationSpeed);
                 this.mesh.quaternion.premultiply(quaternion);

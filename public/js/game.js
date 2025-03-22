@@ -830,7 +830,7 @@ const Game = {
         return height;
     },
     
-    // Update stone spawning with more natural beach landing
+    // Update stone spawning with even slower movement
     spawnStoneFromOcean() {
         // Choose a random side of the island
         const side = Math.floor(Math.random() * 4); // 0: north, 1: east, 2: south, 3: west
@@ -869,8 +869,8 @@ const Game = {
         // Calculate direction toward island center
         const directionToCenter = new THREE.Vector3(-spawnX, 0, -spawnZ).normalize();
         
-        // Calculate target position (beach area)
-        const beachDistance = worldHalfSize * 0.9; // Beach is at 90% of world radius
+        // Calculate target position (beach edge)
+        const beachDistance = worldHalfSize * 0.95; // Beach edge is at 95% of world radius
         const targetX = -directionToCenter.x * beachDistance;
         const targetZ = -directionToCenter.z * beachDistance;
         
@@ -881,18 +881,18 @@ const Game = {
         );
         
         // Use simpler physics for more predictable arcs
-        // Horizontal velocity component
-        const horizontalSpeed = 0.15; // Reduced from previous values
+        // Horizontal velocity component - EVEN SLOWER
+        const horizontalSpeed = 0.03; // Reduced from 0.05 to 0.03
         
         // Set velocity components
         stone.velocity.x = directionToCenter.x * horizontalSpeed;
         stone.velocity.z = directionToCenter.z * horizontalSpeed;
-        stone.velocity.y = 0.15; // Reduced upward velocity
+        stone.velocity.y = 0.05; // Reduced from 0.08 to 0.05
         
         // Add to game
         this.addStone(stone);
         
-        // Create splash effect
+        // Create splash effect at spawn position (in water)
         this.createSplashEffect(stone.mesh.position.clone());
         
         return stone;
