@@ -602,8 +602,8 @@ class LocalPlayer extends Player {
                 
                 // Calculate target height at top of tower
                 const topHeight = tower.position.y + 
-                    ((tower.level + 0) * 4 * CONFIG.STONE.depth) + 
-                    CONFIG.PLAYER.baseHeight - 1;
+                    ((tower.level) * 4 * CONFIG.STONE.depth) + 
+                    CONFIG.PLAYER.baseHeight - 1.5;
                 
                 // Calculate climb progress
                 const timeElapsed = (Date.now() - this.climbStartTime) / 1000; // seconds
