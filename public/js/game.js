@@ -771,34 +771,54 @@ const Game = {
         // Skip if stone is not static
         if (!stone.isStatic) return;
         
-        // Check if stone is near other stones
-        const nearbyStones = this.findNearbyStonesForTower(stone);
+        // First check if stone is near an existing tower
+        let nearestTower = null;
+        let nearestDistance = Infinity;
         
-        // If enough nearby stones, create a tower
-        if (nearbyStones.length >= 1) {
-            // Calculate center position
-            const center = new THREE.Vector3();
-            for (const s of nearbyStones) {
-                center.add(s.mesh.position);
-            }
-            center.divideScalar(nearbyStones.length);
-            
-            // Create tower
-            const tower = new Tower(null, center);
-            
-            // Log tower creation
-            log(`Tower created at (${center.x.toFixed(1)}, ${center.z.toFixed(1)}) with ${nearbyStones.length} stones!`, 'info');
-            
-            this.towers.push(tower);
-            
-            // Remove stones
-            for (const s of nearbyStones) {
-                this.removeStone(s);
+        for (const tower of this.towers) {
+            const distance = stone.mesh.position.distanceTo(tower.mesh.position);
+            if (distance < CONFIG.TOWER.baseRadius * 1.5 && distance < nearestDistance) {
+                nearestTower = tower;
+                nearestDistance = distance;
             }
         }
         
-        // Do NOT remove the stone if it doesn't form a tower
-        // It should stay on the beach
+        if (nearestTower) {
+            // Stone landed near a tower - add a level
+            nearestTower.addLevel();
+            
+            // Remove the stone
+            this.removeStone(stone);
+            
+            // Log tower level up
+            log(`Tower leveled up to level ${nearestTower.level}!`, 'info');
+        } else {
+            // No nearby tower - check for creating new tower
+            const nearbyStones = this.findNearbyStonesForTower(stone);
+            
+            // If enough nearby stones, create a tower
+            if (nearbyStones.length >= 1) {
+                // Calculate center position
+                const center = new THREE.Vector3();
+                for (const s of nearbyStones) {
+                    center.add(s.mesh.position);
+                }
+                center.divideScalar(nearbyStones.length);
+                
+                // Create tower
+                const tower = new Tower(null, center);
+                
+                // Log tower creation
+                log(`Tower created at (${center.x.toFixed(1)}, ${center.z.toFixed(1)}) with ${nearbyStones.length} stones!`, 'info');
+                
+                this.towers.push(tower);
+                
+                // Remove stones
+                for (const s of nearbyStones) {
+                    this.removeStone(s);
+                }
+            }
+        }
     },
     
     // Get height at position using the heightmap

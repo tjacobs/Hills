@@ -50,12 +50,15 @@ class Tower {
         for (let level = 0; level < this.level; level++) {
             const ringY = level * CONFIG.STONE.height; // Stack directly on top
             
+            // Add rotation offset for each level to interleave stones
+            const levelRotationOffset = (level * Math.PI / CONFIG.TOWER.blockCount);
+            
             // Create a ring of stones
-            const stoneCount = 24; // Fixed number of stones
+            const stoneCount = CONFIG.TOWER.blockCount; // Use config value
             const radius = CONFIG.TOWER.baseRadius;
             
             for (let i = 0; i < stoneCount; i++) {
-                const angle = (i / stoneCount) * Math.PI * 2;
+                const angle = (i / stoneCount) * Math.PI * 2 + levelRotationOffset;
                 const x = Math.cos(angle) * radius;
                 const z = Math.sin(angle) * radius;
                 
@@ -69,8 +72,15 @@ class Tower {
                 // Position stone
                 stone.position.set(x, ringY, z);
                 
-                // Rotate to face center
-                stone.rotation.y = angle + Math.PI / 2;
+                // Add rotation variations
+                const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
+                stone.rotation.y = angle + Math.PI/2 + rotationVariation;
+                
+                // Add random tilts
+                const xTilt = Math.sin(i * 0.7 + level * 1.3) * 0.05;
+                const zTilt = Math.cos(i * 0.9 + level * 1.7) * 0.05;
+                stone.rotation.x = xTilt;
+                stone.rotation.z = zTilt;
                 
                 this.mesh.add(stone);
             }
@@ -80,6 +90,17 @@ class Tower {
         if (Game.scene) {
             Game.scene.add(this.mesh);
         }
+    }
+    
+    // Add a new level to the tower
+    addLevel() {
+        this.level++;
+        // Remove old mesh
+        if (this.mesh && this.mesh.parent) {
+            this.mesh.parent.remove(this.mesh);
+        }
+        // Create new mesh with updated levels
+        this.createSimpleTower();
     }
     
     // Convert to JSON for network transmission

@@ -57,7 +57,7 @@ const CONFIG = {
     // Tower settings
     TOWER: {
         baseRadius: 3.5,
-        blockCount: 24,
+        blockCount: 35,
         maxLevel: 100
     },
     
