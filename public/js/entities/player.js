@@ -441,10 +441,20 @@ class LocalPlayer extends Player {
         // Apply vertical movement
         this.position.y += this.verticalVelocity;
         
-        // Check ground collision
+        // Check if we're in a tower before handling normal terrain height
+        const inTower = this.checkTowerClimbing();
+
+        // Not in tower
         const terrainHeight = Game.getHeightAtPosition(this.position.x, this.position.z);
-        const playerHeight = CONFIG.PLAYER.baseHeight;
+        if (!inTower) {
+            // Normal terrain height handling
+            const targetHeight = terrainHeight + CONFIG.PLAYER.baseHeight;
+            const smoothness = CONFIG.PLAYER.heightSmoothness;
+            this.position.y += (targetHeight - this.position.y) * smoothness;
+        }
         
+        // Check ground collision
+        const playerHeight = CONFIG.PLAYER.baseHeight;
         if (this.position.y < terrainHeight + playerHeight) {
             this.position.y = terrainHeight + playerHeight;
             this.verticalVelocity = 0;
@@ -453,11 +463,9 @@ class LocalPlayer extends Player {
         }
         
         // Smooth camera height over terrain
-        const targetHeight = terrainHeight + playerHeight;
         const currentHeight = this.position.y;
         const smoothness = CONFIG.PLAYER.heightSmoothness;
-        
-        this.position.y = currentHeight + (targetHeight - currentHeight) * smoothness;
+        this.position.y = currentHeight + (terrainHeight + playerHeight - currentHeight) * smoothness;
         
         // Update camera position
         if (this.camera) {
@@ -569,5 +577,31 @@ class LocalPlayer extends Player {
             this.isJumping = true;
             this.isGrounded = false;
         }
+    }
+
+    checkTowerClimbing() {
+        // Check distance to all towers
+        for (const tower of Game.towers) {
+            // Calculate horizontal distance to tower center
+            const dx = this.position.x - tower.position.x;
+            const dz = this.position.z - tower.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            // If player is inside tower radius
+            if (distance < CONFIG.TOWER.baseRadius * 0.8) {
+                // Calculate target height: tower base + ((levels + 1) * 4 layers * stone depth) + player height
+                const targetHeight = tower.position.y + 
+                    ((tower.level + 1) * 4 * CONFIG.STONE.depth) + // Add one more level to put player on top
+                    CONFIG.PLAYER.baseHeight;
+                
+                // Smoothly move to target height
+                const smoothness = CONFIG.PLAYER.heightSmoothness;
+                this.position.y += (targetHeight - this.position.y) * smoothness;
+                
+                return true; // We're in a tower, no need to check others
+            }
+        }
+        
+        return false; // Not in any tower
     }
 }
