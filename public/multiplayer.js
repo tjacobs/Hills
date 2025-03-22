@@ -32,8 +32,7 @@ class RemotePlayer {
     }
     
     createMesh() {
-        // Create a simple player representation
-        const geometry = new THREE.CapsuleGeometry(0.5, 1.0, 4, 8);
+        const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2.0, 8);
         const material = new THREE.MeshStandardMaterial({ 
             color: 0x3366FF,
             roughness: 0.7,
