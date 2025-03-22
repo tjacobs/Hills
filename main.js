@@ -2379,7 +2379,6 @@ window.centerCloudTargetY = 0;
 
 // Initialize the center cloud - make sure this is called before the animation loop starts
 function initializeCenterCloud() {
-    console.log("Initializing center cloud");
     
     // Create a simple cloud mesh
     const cloudGeometry = new THREE.SphereGeometry(5, 16, 16);
@@ -2423,7 +2422,6 @@ function initializeCenterCloud() {
     }
     
     window.centerCloud.add(particles);
-    console.log("Center cloud initialized:", window.centerCloud);
     
     return window.centerCloud;
 }
@@ -2434,7 +2432,6 @@ window.addEventListener('load', function() {
     // Wait a short time to ensure Three.js is initialized
     setTimeout(function() {
         initializeCenterCloud();
-        console.log("Cloud initialization triggered");
     }, 1000);
 });
 
