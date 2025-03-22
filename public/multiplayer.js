@@ -488,12 +488,19 @@ function getPlayerRotation() {
     };
 }
 
+// Fix the getHeldStonesData function to properly reference the heldStones array
 function getHeldStonesData() {
+    // If we're using the old single stone system
+    if (window.heldStone) {
+        return window.heldStone ? [{ size: window.heldStone.geometry.parameters.radius || 0.5 }] : [];
+    }
+    return []; // Return empty array if no stones are held
+    
     // Return data about stones the player is holding
-    return heldStones.map(stone => ({
+//    return window.heldStones.map(stone => ({
         // Include any relevant stone data here
-        size: stone.geometry.parameters.radius || 0.5
-    }));
+//        size: stone.geometry.parameters.radius || 0.5
+//    }));
 }
 
 function generatePlayerId() {
