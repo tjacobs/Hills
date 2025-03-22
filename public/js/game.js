@@ -775,7 +775,7 @@ const Game = {
         const nearbyStones = this.findNearbyStonesForTower(stone);
         
         // If enough nearby stones, create a tower
-        if (nearbyStones.length >= 3) {
+        if (nearbyStones.length >= 1) {
             // Calculate center position
             const center = new THREE.Vector3();
             for (const s of nearbyStones) {

@@ -343,11 +343,9 @@ class Stone {
         // Use easeOutQuad for smooth deceleration
         const t = 1 - (1 - this.settlingAnimation.progress) * (1 - this.settlingAnimation.progress);
         
-        // Interpolate quaternion
-        THREE.Quaternion.slerp(
-            this.settlingAnimation.startQuaternion,
+        // Use non-deprecated quaternion interpolation
+        this.mesh.quaternion.copy(this.settlingAnimation.startQuaternion).slerp(
             this.settlingAnimation.targetQuaternion,
-            this.mesh.quaternion,
             t
         );
         
