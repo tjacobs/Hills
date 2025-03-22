@@ -279,6 +279,9 @@ const Input = {
     },
     
     createVirtualButton() {
+        // Only create button for touch devices
+        if (!('ontouchstart' in window)) return;
+        
         const button = document.createElement('button');
         button.innerHTML = '⬆️';
         button.style.cssText = `
