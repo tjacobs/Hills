@@ -28,9 +28,9 @@ const CONFIG = {
     
     // Stone settings
     STONE: {
-        width: 0.5,
-        height: 0.3,
-        depth: 0.5,
+        width: 1.2,
+        height: 1.0,
+        depth: 0.8,
 
         // Maximum number of stones player can hold
         maxHeld: 5,
@@ -56,8 +56,8 @@ const CONFIG = {
     
     // Tower settings
     TOWER: {
-        baseRadius: 3.5,
-        blockCount: 35,
+        baseRadius: 3.0,
+        blockCount: 24,
         maxLevel: 100
     },
     

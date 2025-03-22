@@ -48,41 +48,54 @@ class Tower {
         
         // Create rings of stones for each level
         for (let level = 0; level < this.level; level++) {
-            const ringY = level * CONFIG.STONE.height; // Stack directly on top
-            
-            // Add rotation offset for each level to interleave stones
-            const levelRotationOffset = (level * Math.PI / CONFIG.TOWER.blockCount);
-            
-            // Create a ring of stones
-            const stoneCount = CONFIG.TOWER.blockCount; // Use config value
-            const radius = CONFIG.TOWER.baseRadius;
-            
-            for (let i = 0; i < stoneCount; i++) {
-                const angle = (i / stoneCount) * Math.PI * 2 + levelRotationOffset;
-                const x = Math.cos(angle) * radius;
-                const z = Math.sin(angle) * radius;
+            // Each level has 4 vertical layers
+            for (let verticalLayer = 0; verticalLayer < 4; verticalLayer++) {
+                const ringY = (level * 4 + verticalLayer) * CONFIG.STONE.height; // Stack 4 high per level
                 
-                // Create stone with unique material instance
-                const stone = new THREE.Mesh(stoneGeometry, stoneMaterial.clone());
+                // Create concentric rings at each height
+                const ringRadii = [
+                    //CONFIG.TOWER.baseRadius * 0.6,  // Inner ring
+                    CONFIG.TOWER.baseRadius         // Outer ring
+                ];
                 
-                // Enable shadows
-                stone.castShadow = true;
-                stone.receiveShadow = true;
-                
-                // Position stone
-                stone.position.set(x, ringY, z);
-                
-                // Add rotation variations
-                const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
-                stone.rotation.y = angle + Math.PI/2 + rotationVariation;
-                
-                // Add random tilts
-                const xTilt = Math.sin(i * 0.7 + level * 1.3) * 0.05;
-                const zTilt = Math.cos(i * 0.9 + level * 1.7) * 0.05;
-                stone.rotation.x = xTilt;
-                stone.rotation.z = zTilt;
-                
-                this.mesh.add(stone);
+                for (let ringIndex = 0; ringIndex < ringRadii.length; ringIndex++) {
+                    // Add rotation offset for each level, layer, and ring to interleave stones
+                    const levelRotationOffset = (level * Math.PI / CONFIG.TOWER.blockCount);
+                    const layerRotationOffset = (verticalLayer * Math.PI / (CONFIG.TOWER.blockCount * 2));
+                    const ringRotationOffset = (ringIndex * Math.PI / (CONFIG.TOWER.blockCount * 2));
+                    
+                    // Create a ring of stones
+                    const stoneCount = CONFIG.TOWER.blockCount;
+                    const radius = ringRadii[ringIndex];
+                    for (let i = 0; i < stoneCount; i++) {
+                        const angle = (i / stoneCount) * Math.PI * 2 + levelRotationOffset + layerRotationOffset + ringRotationOffset;
+                        const x = Math.cos(angle) * radius;
+                        const z = Math.sin(angle) * radius;
+                        
+                        // Create stone with unique material instance
+                        const stone = new THREE.Mesh(stoneGeometry, stoneMaterial.clone());
+                        
+                        // Position stone
+                        stone.position.set(x, ringY, z);
+                        
+                        // Add rotation variations
+                        const rotationVariation = (Math.cos(angle * 3 + level) * 0.1);
+                        stone.rotation.y = angle + Math.PI/2 + rotationVariation;
+                        
+                        // Add random tilts
+                        const xTilt = Math.sin(i * 0.7 + level * 1.3) * 0.05;
+                        const zTilt = Math.cos(i * 0.9 + level * 1.7) * 0.05;
+                        stone.rotation.x = xTilt;
+                        stone.rotation.z = zTilt;
+                        
+                        // Scale stones slightly smaller for inner rings
+                        const scale = 0.8 + (ringIndex * 0.1);
+                        stone.scale.set(scale, scale, scale);
+                        
+                        // Add stone to mesh
+                        this.mesh.add(stone);
+                    }
+                }
             }
         }
         
