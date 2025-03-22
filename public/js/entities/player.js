@@ -350,6 +350,12 @@ class LocalPlayer extends Player {
         if (this.controls.left) turnAmount += 1;
         if (this.controls.right) turnAmount -= 1;
         
+        // Handle space bar press
+        if (this.controls.jump) {
+            this.handleSpaceBar();
+            this.controls.jump = false; // Reset to prevent continuous jumping/throwing
+        }
+        
         // Handle sprinting
         const sprintMultiplier = this.controls.sprint ? CONFIG.PLAYER.sprintMultiplier : 1.0;
         
@@ -534,25 +540,34 @@ class LocalPlayer extends Player {
     
     updateHeldStones(deltaTime) {
         if (this.heldStones.length === 0) return;
-        
+
+        // Get the last stone
         const stone = this.heldStones[this.heldStones.length - 1];
         if (!stone || !stone.mesh) return;
         
         // Calculate held position
-        const forward = new THREE.Vector3(0, -0.5, -1);
+        const forward = new THREE.Vector3(0, -0.0, -1);
         forward.applyEuler(this.rotation);
-        
+
+        // Calculate target position
         const targetPos = this.position.clone()
             .add(forward.multiplyScalar(1.5))
             .add(new THREE.Vector3(0, -0.8, 0));
         
-        // Add bobbing motion
-//        targetPos.y += Math.sin(Date.now() * 0.005) * 0.1;
-        
-        // Update stone position and rotation
+        // Update stone position
         stone.mesh.position.lerp(targetPos, 0.2);
-//        stone.mesh.rotation.x = Math.sin(Date.now() * 0.003) * 0.1;
-//        stone.mesh.rotation.y += 0.01;
-  //      stone.mesh.rotation.z = Math.cos(Date.now() * 0.003) * 0.1;
+    }
+
+    handleSpaceBar() {
+        // If holding stones, throw
+        if (this.heldStones.length > 0) {
+            this.throwStone();
+        }
+        // Otherwise jump
+        else if (this.isGrounded) {
+            this.verticalVelocity = CONFIG.PLAYER.jumpForce;
+            this.isJumping = true;
+            this.isGrounded = false;
+        }
     }
 }
