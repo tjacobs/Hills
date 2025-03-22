@@ -304,10 +304,33 @@ class LocalPlayer extends Player {
             left: false,
             right: false,
             jump: false,
+            sprint: false,
             throw: false
         };
         this.heldStones = [];
         this.maxStones = CONFIG.PLAYER.maxStones;
+        
+        // Add camera pitch property
+        this.cameraPitch = 0;
+        
+        // Set up controls
+        this.controls = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            jump: false,
+            sprint: false,
+            throw: false
+        };
+        
+        // Movement physics variables
+        this.velocity = new THREE.Vector3();
+        this.moveSpeed = 0;
+        this.turnSpeed = 0;
+        this.verticalVelocity = 0;
+        this.isJumping = false;
+        this.isGrounded = true;
     }
     
     setCamera(camera) {
@@ -323,87 +346,107 @@ class LocalPlayer extends Player {
     }
     
     update(deltaTime) {
-        // Apply gravity
-        if (!this.isGrounded) {
-            this.velocity.y -= CONFIG.PLAYER.gravity * deltaTime;
-        } else if (!this.controls.jump) {
-            this.velocity.y = 0;
-        }
-        
-        // Handle jumping
-        if (this.controls.jump && this.isGrounded) {
-            this.velocity.y = CONFIG.PLAYER.jumpForce;
-            this.isGrounded = false;
-            this.isJumping = true;
-        }
-        
         // Calculate movement direction
         let moveForward = 0;
         let turnAmount = 0;
         
-        // Fix the movement direction - forward should move forward
+        // Get input
         if (this.controls.forward) moveForward += 1;
         if (this.controls.backward) moveForward -= 1;
         if (this.controls.left) turnAmount += 1;
         if (this.controls.right) turnAmount -= 1;
         
-        // Apply turning - rotate player based on left/right controls
+        // Handle sprinting
+        const sprintMultiplier = this.controls.sprint ? CONFIG.PLAYER.sprintMultiplier : 1.0;
+        
+        // Apply turning with acceleration/deceleration
         if (turnAmount !== 0) {
-            // Get rotation from camera
-            this.rotation.y += turnAmount * 2 * deltaTime;
+            // Accelerate turning
+            this.turnSpeed += CONFIG.PLAYER.turnAcceleration * turnAmount;
             
-            // Update camera rotation to match
-            if (this.camera) {
-                this.camera.rotation.y = this.rotation.y;
+            // Cap maximum turn speed
+            const maxTurn = CONFIG.PLAYER.maxTurnSpeed;
+            this.turnSpeed = Math.max(-maxTurn, Math.min(maxTurn, this.turnSpeed));
+        } else {
+            // Decelerate turning
+            if (Math.abs(this.turnSpeed) < CONFIG.PLAYER.turnDeceleration) {
+                this.turnSpeed = 0;
+            } else {
+                this.turnSpeed -= Math.sign(this.turnSpeed) * CONFIG.PLAYER.turnDeceleration;
             }
         }
         
-        // Apply forward/backward movement in the direction player is facing
+        // Apply rotation
+        this.rotation.y += this.turnSpeed;
+        
+        // Apply forward/backward movement with acceleration/deceleration
         if (moveForward !== 0) {
-            // Create movement vector in the direction player is facing
-            const moveDirection = new THREE.Vector3(
-                -Math.sin(this.rotation.y) * moveForward,
-                0,
-                -Math.cos(this.rotation.y) * moveForward
-            );
+            // Accelerate movement
+            this.moveSpeed += CONFIG.PLAYER.acceleration * moveForward;
             
-            // Apply movement speed
-            moveDirection.multiplyScalar(CONFIG.PLAYER.speed * deltaTime);
-            
-            // Update velocity (horizontal only)
-            this.velocity.x = moveDirection.x;
-            this.velocity.z = moveDirection.z;
+            // Cap maximum speed
+            const maxSpeed = CONFIG.PLAYER.maxSpeed * sprintMultiplier;
+            this.moveSpeed = Math.max(-maxSpeed, Math.min(maxSpeed, this.moveSpeed));
         } else {
-            // Stop horizontal movement
-            this.velocity.x = 0;
-            this.velocity.z = 0;
+            // Decelerate movement
+            if (Math.abs(this.moveSpeed) < CONFIG.PLAYER.deceleration) {
+                this.moveSpeed = 0;
+            } else {
+                this.moveSpeed -= Math.sign(this.moveSpeed) * CONFIG.PLAYER.deceleration;
+            }
         }
         
-        // Update position
-        this.position.x += this.velocity.x;
-        this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z;
+        // Calculate movement vector
+        const moveVector = new THREE.Vector3(
+            -Math.sin(this.rotation.y) * this.moveSpeed,
+            0,
+            -Math.cos(this.rotation.y) * this.moveSpeed
+        );
         
-        // Check ground collision and adjust to terrain height
+        // Apply horizontal movement
+        this.position.x += moveVector.x;
+        this.position.z += moveVector.z;
+        
+        // Apply jumping and gravity
+        if (this.controls.jump && this.isGrounded && !this.isJumping) {
+            this.verticalVelocity = CONFIG.PLAYER.jumpForce;
+            this.isJumping = true;
+            this.isGrounded = false;
+        }
+        
+        // Apply gravity
+        if (!this.isGrounded) {
+            this.verticalVelocity += CONFIG.PLAYER.gravity;
+        }
+        
+        // Apply vertical movement
+        this.position.y += this.verticalVelocity;
+        
+        // Check ground collision
         const terrainHeight = Game.getHeightAtPosition(this.position.x, this.position.z);
-        const playerHeight = CONFIG.PLAYER.height;
+        const playerHeight = CONFIG.PLAYER.baseHeight;
         
         if (this.position.y < terrainHeight + playerHeight) {
             this.position.y = terrainHeight + playerHeight;
+            this.verticalVelocity = 0;
             this.isGrounded = true;
             this.isJumping = false;
-        } else {
-            this.isGrounded = false;
         }
+        
+        // Smooth camera height over terrain
+        const targetHeight = terrainHeight + playerHeight;
+        const currentHeight = this.position.y;
+        const smoothness = CONFIG.PLAYER.heightSmoothness;
+        
+        this.position.y = currentHeight + (targetHeight - currentHeight) * smoothness;
         
         // Update camera position
         if (this.camera) {
             this.camera.position.copy(this.position);
-            this.camera.position.y = this.position.y + CONFIG.PLAYER.height - 0.2;
+            this.camera.position.y = this.position.y;
             
-            // Ensure camera rotation matches player rotation and pitch
+            // Ensure camera rotation matches player rotation
             this.camera.rotation.y = this.rotation.y;
-            this.camera.rotation.x = this.cameraPitch;
         }
         
         // Check for tower collisions

@@ -8,7 +8,8 @@ const Input = {
         right: false,
         jump: false,
         pickup: false,
-        throw: false
+        throw: false,
+        sprint: false
     },
     
     // Mouse state
@@ -57,6 +58,10 @@ const Input = {
             case 'Space':
                 this.keys.jump = true;
                 break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                this.keys.sprint = true;
+                break;
             case 'KeyE':
                 this.keys.pickup = true;
                 this.handlePickup();
@@ -74,7 +79,8 @@ const Input = {
                 backward: this.keys.backward,
                 left: this.keys.left,
                 right: this.keys.right,
-                jump: this.keys.jump
+                jump: this.keys.jump,
+                sprint: this.keys.sprint
             };
         }
     },
@@ -101,6 +107,10 @@ const Input = {
             case 'Space':
                 this.keys.jump = false;
                 break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                this.keys.sprint = false;
+                break;
             case 'KeyE':
                 this.keys.pickup = false;
                 break;
@@ -116,7 +126,8 @@ const Input = {
                 backward: this.keys.backward,
                 left: this.keys.left,
                 right: this.keys.right,
-                jump: this.keys.jump
+                jump: this.keys.jump,
+                sprint: this.keys.sprint
             };
         }
     },
