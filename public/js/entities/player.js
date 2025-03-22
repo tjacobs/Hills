@@ -325,6 +325,11 @@ class LocalPlayer extends Player {
         this.maxStones = CONFIG.STONE.maxHeld;
         this.lastThrowTime = 0;
         this.pickupDelay = 1000; // 1 second delay after throwing
+        
+        // Tower climbing
+        this.climbStartTime = 0;
+        this.isClimbing = false;
+        this.climbSpeed = 4 * CONFIG.STONE.depth; // One ring per second
     }
     
     setCamera(camera) {
@@ -589,19 +594,33 @@ class LocalPlayer extends Player {
             
             // If player is inside tower radius
             if (distance < CONFIG.TOWER.baseRadius * 1.3) {
-                // Calculate target height: tower base + ((levels + 1) * 4 layers * stone depth) + player height
-                const targetHeight = tower.position.y + 
-                    ((tower.level + 1) * 8 * CONFIG.STONE.depth) + // Add one more level to put player on top
-                    CONFIG.PLAYER.baseHeight;
+                // Start climbing if not already
+                if (!this.isClimbing) {
+                    this.climbStartTime = Date.now();
+                    this.isClimbing = true;
+                }
                 
-                // Smoothly move to target height
-                const smoothness = CONFIG.PLAYER.heightSmoothness;
-                this.position.y += (targetHeight - this.position.y) * smoothness;
+                // Calculate target height at top of tower
+                const topHeight = tower.position.y + 
+                    ((tower.level + 0) * 4 * CONFIG.STONE.depth) + 
+                    CONFIG.PLAYER.baseHeight - 1;
                 
-                return true; // We're in a tower, no need to check others
+                // Calculate climb progress
+                const timeElapsed = (Date.now() - this.climbStartTime) / 1000; // seconds
+                const climbHeight = timeElapsed * this.climbSpeed;
+                
+                // Calculate new height
+                const newHeight = tower.position.y + climbHeight + CONFIG.PLAYER.baseHeight;
+                
+                // Don't exceed top height
+                this.position.y = Math.min(newHeight, topHeight);
+                
+                return true;
             }
         }
         
-        return false; // Not in any tower
+        // Reset climbing state when not in tower
+        this.isClimbing = false;
+        return false;
     }
 }
