@@ -15,6 +15,7 @@ const Game = {
     // Game state
     isRunning: false,
     lastTime: 0,
+    lastStoneSpawnTime: null,
     
     // Initialize game
     init() {
@@ -390,13 +391,59 @@ const Game = {
     
     // Update game
     update(time) {
+        if (!this.isRunning) return;
+        
         // Calculate delta time
         const deltaTime = (time - this.lastTime) / 1000;
         this.lastTime = time;
         
-        // Update physics
-        Physics.update(deltaTime);
+        // Cap delta time to prevent large jumps
+        const cappedDeltaTime = Math.min(deltaTime, 0.1);
         
+        // Update game state
+        this.updateGameState(cappedDeltaTime);
+        
+        // Update entities
+        this.updateEntities(cappedDeltaTime);
+        
+        // Render scene
+        this.renderer.render(this.scene, this.camera);
+        
+        // Request next frame
+        requestAnimationFrame(this.update.bind(this));
+    },
+    
+    // Update game state
+    updateGameState(deltaTime) {
+        // Update water
+        this.updateWater(deltaTime);
+        
+        // Update clouds
+//        this.updateClouds(deltaTime);
+        
+        // Spawn stones from ocean - one per second
+        if (!this.lastStoneSpawnTime) {
+            this.lastStoneSpawnTime = performance.now();
+        }
+        
+        const now = performance.now();
+        const timeSinceLastSpawn = now - this.lastStoneSpawnTime;
+        
+        if (timeSinceLastSpawn > 1000 && this.stones.length < CONFIG.STONE.maxCount) {
+            this.spawnStoneFromOcean();
+            this.lastStoneSpawnTime = now;
+        }
+        
+        // Check stones for tower transformation
+        for (const stone of this.stones) {
+            if (stone.isStatic) {
+                this.checkStoneForTowerTransformation(stone);
+            }
+        }
+    },
+    
+    // Update entities
+    updateEntities(deltaTime) {
         // Update local player
         if (this.localPlayer) {
             this.localPlayer.update(deltaTime);
@@ -409,41 +456,49 @@ const Game = {
             }
         }
         
-        // Update clouds
-        for (const cloud of this.clouds) {
-            cloud.update(deltaTime);
+        // Update stones
+        for (let i = this.stones.length - 1; i >= 0; i--) {
+            this.stones[i].update(deltaTime);
         }
         
-        // Render scene
-        this.renderer.render(this.scene, this.camera);
+        // Update towers
+        for (let i = this.towers.length - 1; i >= 0; i--) {
+            //this.towers[i].update(deltaTime);
+        }
         
-        // Continue game loop
-        if (this.isRunning) {
-            requestAnimationFrame(this.update.bind(this));
+        // Update clouds
+        for (let i = this.clouds.length - 1; i >= 0; i--) {
+            this.clouds[i].update(deltaTime);
         }
     },
     
     // Add stone to game
     addStone(stone) {
-        // Add to stones array
         this.stones.push(stone);
-        
-        // Add to scene
-        this.scene.add(stone.mesh);
-        
         return stone;
     },
     
     // Remove stone from game
     removeStone(stone) {
-        // Remove from scene
-        this.scene.remove(stone.mesh);
-        
-        // Remove from stones array
         const index = this.stones.indexOf(stone);
-        
         if (index !== -1) {
             this.stones.splice(index, 1);
+            
+            // Remove from scene if it has a mesh
+            if (stone.mesh) {
+                if (stone.mesh.parent) {
+                    stone.mesh.parent.remove(stone.mesh);
+                }
+                // Dispose of geometry and material to prevent memory leaks
+                if (stone.mesh.geometry) stone.mesh.geometry.dispose();
+                if (stone.mesh.material) {
+                    if (Array.isArray(stone.mesh.material)) {
+                        stone.mesh.material.forEach(material => material.dispose());
+                    } else {
+                        stone.mesh.material.dispose();
+                    }
+                }
+            }
         }
     },
     
@@ -709,67 +764,33 @@ const Game = {
     
     // Check stone for tower transformation
     checkStoneForTowerTransformation(stone) {
-        // Check if stone is stationary
+        // Skip if stone is not static
         if (!stone.isStatic) return;
         
-        // Check if stone has been stationary for long enough
-        if (Date.now() - stone.throwTime < 1000) return;
+        // Check if stone is near other stones
+        const nearbyStones = this.findNearbyStonesForTower(stone);
         
-        // Check if stone is near an existing tower
-        let nearestTower = null;
-        let nearestDistance = Infinity;
-        
-        for (const tower of this.towers) {
-            const distance = stone.mesh.position.distanceTo(tower.position);
+        // If enough nearby stones, create a tower
+        if (nearbyStones.length >= 3) {
+            // Calculate center position
+            const center = new THREE.Vector3();
+            for (const s of nearbyStones) {
+                center.add(s.mesh.position);
+            }
+            center.divideScalar(nearbyStones.length);
             
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestTower = tower;
+            // Create tower
+            const tower = new Tower(null, center);
+            this.towers.push(tower);
+            
+            // Remove stones
+            for (const s of nearbyStones) {
+                this.removeStone(s);
             }
         }
         
-        // If stone is near a tower, create a new tower on top
-        if (nearestTower && nearestDistance < CONFIG.TOWER.baseRadius * 1.5) {
-            // Create new tower on top of existing tower
-            const newTowerPosition = nearestTower.position.clone();
-            newTowerPosition.y += CONFIG.STONE.blockHeight;
-            
-            // Create new tower
-            const newTower = new Tower(
-                null,
-                newTowerPosition,
-                nearestTower.level + 1
-            );
-            
-            // Set created by
-            newTower.createdBy = this.localPlayer.id;
-            
-            // Add to game
-            this.addTower(newTower);
-            
-            // Remove stone
-            this.removeStone(stone);
-        } else if (nearestDistance > CONFIG.TOWER.baseRadius * 2) {
-            // Create new tower at stone position
-            const newTowerPosition = stone.mesh.position.clone();
-            newTowerPosition.y = 0; // Place on ground
-            
-            // Create new tower
-            const newTower = new Tower(
-                null,
-                newTowerPosition,
-                1
-            );
-            
-            // Set created by
-            newTower.createdBy = this.localPlayer.id;
-            
-            // Add to game
-            this.addTower(newTower);
-            
-            // Remove stone
-            this.removeStone(stone);
-        }
+        // Do NOT remove the stone if it doesn't form a tower
+        // It should stay on the beach
     },
     
     // Get height at position using the heightmap
@@ -807,6 +828,181 @@ const Game = {
         const height = h0 * (1 - fz) + h1 * fz;
         
         return height;
+    },
+    
+    // Update stone spawning with more natural beach landing
+    spawnStoneFromOcean() {
+        // Choose a random side of the island
+        const side = Math.floor(Math.random() * 4); // 0: north, 1: east, 2: south, 3: west
+        
+        // Calculate spawn position on the edge of the water
+        const worldHalfSize = CONFIG.WORLD.size / 2;
+        const spawnDistance = worldHalfSize * 1.1; // Slightly beyond the island edge
+        
+        let spawnX, spawnZ;
+        
+        switch (side) {
+            case 0: // North
+                spawnX = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                spawnZ = -spawnDistance;
+                break;
+            case 1: // East
+                spawnX = spawnDistance;
+                spawnZ = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                break;
+            case 2: // South
+                spawnX = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                spawnZ = spawnDistance;
+                break;
+            case 3: // West
+                spawnX = -spawnDistance;
+                spawnZ = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                break;
+        }
+        
+        // Create stone
+        const stone = new Stone();
+        
+        // Position stone at spawn position
+        stone.mesh.position.set(spawnX, 0, spawnZ);
+        
+        // Calculate direction toward island center
+        const directionToCenter = new THREE.Vector3(-spawnX, 0, -spawnZ).normalize();
+        
+        // Calculate target position (beach area)
+        const beachDistance = worldHalfSize * 0.9; // Beach is at 90% of world radius
+        const targetX = -directionToCenter.x * beachDistance;
+        const targetZ = -directionToCenter.z * beachDistance;
+        
+        // Calculate distance to target
+        const distanceToTarget = Math.sqrt(
+            (targetX - spawnX) * (targetX - spawnX) + 
+            (targetZ - spawnZ) * (targetZ - spawnZ)
+        );
+        
+        // Use simpler physics for more predictable arcs
+        // Horizontal velocity component
+        const horizontalSpeed = 0.15; // Reduced from previous values
+        
+        // Set velocity components
+        stone.velocity.x = directionToCenter.x * horizontalSpeed;
+        stone.velocity.z = directionToCenter.z * horizontalSpeed;
+        stone.velocity.y = 0.15; // Reduced upward velocity
+        
+        // Add to game
+        this.addStone(stone);
+        
+        // Create splash effect
+        this.createSplashEffect(stone.mesh.position.clone());
+        
+        return stone;
+    },
+    
+    // Add splash effect method
+    createSplashEffect(position) {
+        // Create particle system for splash
+        const particleCount = 30;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x5588ff,
+            size: 0.8,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        // Create particle positions
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+        
+        for (let i = 0; i < particleCount; i++) {
+            // Random position around the splash center
+            positions[i * 3] = position.x + (Math.random() * 2 - 1) * 0.5;
+            positions[i * 3 + 1] = position.y;
+            positions[i * 3 + 2] = position.z + (Math.random() * 2 - 1) * 0.5;
+            
+            // Random velocity upward and outward
+            velocities.push(new THREE.Vector3(
+                (Math.random() * 2 - 1) * 0.1,
+                0.1 + Math.random() * 0.2,
+                (Math.random() * 2 - 1) * 0.1
+            ));
+        }
+        
+        // Set geometry attributes
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        // Create particle system
+        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        
+        // Add to scene
+        this.scene.add(particleSystem);
+        
+        // Animate splash
+        const startTime = performance.now();
+        const duration = 1000; // 1 second
+        
+        const animateSplash = (time) => {
+            const elapsed = time - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            // Update particle positions
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] += velocities[i].x;
+                positions[i * 3 + 1] += velocities[i].y;
+                positions[i * 3 + 2] += velocities[i].z;
+                
+                // Add gravity
+                velocities[i].y -= 0.01;
+            }
+            
+            // Update opacity
+            particleMaterial.opacity = 0.8 * (1 - progress);
+            
+            // Update particle positions
+            particleGeometry.attributes.position.needsUpdate = true;
+            
+            // Continue animation if not complete
+            if (progress < 1) {
+                requestAnimationFrame(animateSplash);
+            } else {
+                // Remove from scene
+                this.scene.remove(particleSystem);
+            }
+        };
+        
+        // Start animation
+        requestAnimationFrame(animateSplash);
+    },
+    
+    // Add missing updateWater method
+    updateWater(deltaTime) {
+        // Simple water animation - update water material time
+        if (this.waterMaterial) {
+            // Update water time uniform if it exists
+            if (this.waterMaterial.uniforms && this.waterMaterial.uniforms.time) {
+                this.waterMaterial.uniforms.time.value += deltaTime;
+            }
+        }
+    },
+    
+    // Add missing findNearbyStonesForTower method
+    findNearbyStonesForTower(stone) {
+        const result = [stone];
+        const maxDistance = 3; // Maximum distance between stones to form a tower
+        
+        for (const otherStone of this.stones) {
+            // Skip if same stone or not static
+            if (otherStone === stone || !otherStone.isStatic) continue;
+            
+            // Check distance
+            const distance = stone.mesh.position.distanceTo(otherStone.mesh.position);
+            if (distance < maxDistance) {
+                result.push(otherStone);
+            }
+        }
+        
+        return result;
     }
 };
 

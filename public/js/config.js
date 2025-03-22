@@ -28,20 +28,40 @@ const CONFIG = {
     
     // Stone settings
     STONE: {
-        blockWidth: 0.5,
-        blockHeight: 0.3,
-        blockDepth: 0.5,
-        throwForce: 10.0,
-        throwUpward: 5.0,
-        pickupDelay: 500,
-        maxHeld: 1
+        width: 0.5,
+        height: 0.3,
+        depth: 0.5,
+
+        // Maximum number of stones player can hold
+        maxHeld: 5,
+
+        // Offset from ground
+        groundCheckOffset: 0.0,
+        
+        // Physics parameters
+        gravity: -9.8,
+        bounce: 0.3,
+        friction: 0.05,
+        rollFactor: 0.05,
+        maxVelocity: 0.5,
+        stopThreshold: 0.01,
+        
+        // Interaction parameters
+        throwForce: 0.2,
+        throwUpward: 0.2,
+        
+        // Ocean parameters
+        waveStrength: 0.01,
+        
+        // Spawning parameters
+        maxCount: 20  // Maximum number of stones in the world
     },
     
     // Tower settings
     TOWER: {
         baseRadius: 3.5,
         blockCount: 24,
-        maxLevel: 5
+        maxLevel: 100
     },
     
     // World settings

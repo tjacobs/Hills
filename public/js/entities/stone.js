@@ -56,43 +56,110 @@ class Stone {
     }
     
     update(deltaTime) {
+        // Skip if held by player
         if (this.isHeld || !this.mesh) return;
         
         // Apply gravity
-        this.velocity.y -= CONFIG.WORLD.gravity * deltaTime;
+        this.velocity.y -= 0.01;
         
-        // Update position
-        this.mesh.position.x += this.velocity.x * deltaTime;
-        this.mesh.position.y += this.velocity.y * deltaTime;
-        this.mesh.position.z += this.velocity.z * deltaTime;
+        // Apply velocity
+        this.mesh.position.x += this.velocity.x;
+        this.mesh.position.y += this.velocity.y;
+        this.mesh.position.z += this.velocity.z;
         
-        // Check ground collision
-        if (this.mesh.position.y < CONFIG.STONE.blockHeight / 2) {
-            this.mesh.position.y = CONFIG.STONE.blockHeight / 2;
+        // Calculate distance from center
+        const distanceFromCenter = Math.sqrt(
+            this.mesh.position.x * this.mesh.position.x + 
+            this.mesh.position.z * this.mesh.position.z
+        );
+        
+        // Calculate world radius and beach position
+        const worldHalfSize = CONFIG.WORLD.size / 2;
+        const beachDistance = worldHalfSize * 0.9; // Beach is at 90% of world radius
+        
+        // Check if in water (below sea level or beyond beach)
+        const isInWater = this.mesh.position.y < 0 || distanceFromCenter > beachDistance;
+        
+        // Apply moderate wave force if in water
+        if (isInWater) {
+            // Calculate direction toward island center
+            const directionToCenter = new THREE.Vector3(
+                -this.mesh.position.x,
+                0,
+                -this.mesh.position.z
+            ).normalize();
             
-            // Bounce with damping
-            if (Math.abs(this.velocity.y) > 0.1) {
-                this.velocity.y = -this.velocity.y * 0.5;
-                
-                // Apply friction to horizontal movement
-                this.velocity.x *= 0.8;
-                this.velocity.z *= 0.8;
-            } else {
-                this.velocity.y = 0;
-                this.isStatic = true;
+            // Apply wave force - MODERATE
+            this.velocity.x += directionToCenter.x * 0.03;
+            this.velocity.z += directionToCenter.z * 0.03;
+            
+            // Add random bobbing in water with moderate upward bias
+            this.velocity.y += 0.02;
+            
+            // Create small water ripples occasionally
+            if (Math.random() < 0.05) {
+                Game.createSplashEffect(this.mesh.position.clone());
             }
         }
         
-        // Apply air resistance
+        // Check ground collision
+        const groundHeight = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
+        
+        if (this.mesh.position.y < groundHeight + 0.5) {
+            // Place on ground
+            this.mesh.position.y = groundHeight + 0.5;
+            
+            // Bounce with damping - MODERATE BOUNCE
+            if (this.velocity.y < -0.05) {
+                this.velocity.y = -this.velocity.y * 0.5;
+                
+                // Create impact effect if significant impact
+                if (-this.velocity.y > 0.1) {
+                    // TODO: Add impact effect
+                }
+            } else {
+                this.velocity.y = 0;
+            }
+            
+            // Apply friction - MODERATE FRICTION
+            this.velocity.x *= 0.95;
+            this.velocity.z *= 0.95;
+        }
+        
+        // Apply air resistance - MODERATE AIR RESISTANCE
         this.velocity.multiplyScalar(0.99);
         
-        // Check if stone is stationary
-        if (this.isThrown && this.velocity.lengthSq() < 0.01 && this.mesh.position.y <= CONFIG.STONE.blockHeight / 2 + 0.1) {
+        // Check if stone has stopped
+        if (Math.abs(this.velocity.x) < 0.01 && 
+            Math.abs(this.velocity.y) < 0.01 && 
+            Math.abs(this.velocity.z) < 0.01) {
+            
+            this.velocity.set(0, 0, 0);
             this.isStatic = true;
             
-            // Check if stone should transform into a tower
-            if (Date.now() - this.throwTime > 1000) {
-                Game.checkStoneForTowerTransformation(this);
+            // Make sure the stone stays visible and in the scene
+            if (this.mesh) {
+                this.mesh.visible = true;
+            }
+        } else {
+            this.isStatic = false;
+        }
+        
+        // Update rotation based on movement
+        if (!this.isStatic) {
+            // Calculate rotation axis perpendicular to movement direction
+            const movementDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize();
+            if (movementDir.length() > 0.01) {
+                const rotationAxis = new THREE.Vector3(-movementDir.z, 0, movementDir.x);
+                
+                // Calculate rotation amount based on speed
+                const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
+                const rotationSpeed = speed * 2;
+                
+                // Apply rotation
+                const quaternion = new THREE.Quaternion();
+                quaternion.setFromAxisAngle(rotationAxis, rotationSpeed);
+                this.mesh.quaternion.premultiply(quaternion);
             }
         }
     }
