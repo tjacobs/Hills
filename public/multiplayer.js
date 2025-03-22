@@ -303,6 +303,10 @@ function handleServerMessage(messageData) {
         const message = JSON.parse(messageData);
         
         switch (message.type) {
+            case 'welcome':
+                log(`Connected to server: ${message.message}`);
+                break;
+                
             case 'player_joined':
                 handlePlayerJoined(message);
                 break;
