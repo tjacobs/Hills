@@ -1,4 +1,4 @@
-// Cloud entity
+// Cloud entity with exact original cartoon-style appearance
 class Cloud {
     constructor(id = null, position = new THREE.Vector3()) {
         this.id = id || generateId('cloud_');
@@ -15,40 +15,48 @@ class Cloud {
     }
     
     createMesh() {
+        // Load circle texture for cartoon-style clouds
+        const textureLoader = new THREE.TextureLoader();
+        const cloudTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/circle.png');
+        
         // Create a group to hold all parts of the cloud
         this.mesh = new THREE.Group();
         this.mesh.position.copy(this.position);
         
-        // Create cloud material
-        const cloudMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.9,
-            metalness: 0.1,
+        // Create cloud material with circle texture and additive blending for the outline effect
+        const cloudMaterial = new THREE.MeshBasicMaterial({
+            map: cloudTexture,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,  // Use additive blending for the glow effect
+            color: 0xffffff
         });
         
-        // Create several spheres to form a cloud
-        const sphereCount = 5 + Math.floor(Math.random() * 5);
-        
-        for (let i = 0; i < sphereCount; i++) {
-            const size = 2 + Math.random() * 3;
-            const geometry = new THREE.SphereGeometry(size, 8, 8);
-            const sphere = new THREE.Mesh(geometry, cloudMaterial);
+        // Create several circular planes to form a cloud
+        const circleCount = 20 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < circleCount; i++) {
+            const size = 8 + Math.random() * 8;
+            const geometry = new THREE.PlaneGeometry(size, size);
+            const circle = new THREE.Mesh(geometry, cloudMaterial);
             
             // Position randomly within cloud
-            sphere.position.set(
-                (Math.random() * 2 - 1) * 3,
+            circle.position.set(
+                (Math.random() * 2 - 1) * 10,
                 (Math.random() * 2 - 1) * 1.5,
                 (Math.random() * 2 - 1) * 3
             );
             
-            this.mesh.add(sphere);
+            // Random rotation
+            circle.rotation.z = Math.random() * Math.PI;
+
+            // Add
+            this.mesh.add(circle);
         }
         
         // Store reference to this cloud in the mesh
         this.mesh.userData.cloud = this;
-        
         return this.mesh;
     }
     
@@ -60,10 +68,16 @@ class Cloud {
         // Update mesh position
         this.mesh.position.copy(this.position);
         
+        // Make cloud circles face the camera (billboarding)
+        if (Game.camera) {
+            for (const child of this.mesh.children) {
+                child.lookAt(Game.camera.position);
+            }
+        }
+        
         // Check world boundaries
         const worldSize = CONFIG.WORLD.size / 2;
         let bounced = false;
-        
         if (this.position.x > worldSize) {
             this.direction.x = -Math.abs(this.direction.x);
             bounced = true;
@@ -71,7 +85,6 @@ class Cloud {
             this.direction.x = Math.abs(this.direction.x);
             bounced = true;
         }
-        
         if (this.position.z > worldSize) {
             this.direction.z = -Math.abs(this.direction.z);
             bounced = true;
