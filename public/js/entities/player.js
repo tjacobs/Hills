@@ -403,9 +403,28 @@ class LocalPlayer extends Player {
             -Math.cos(this.rotation.y) * this.moveSpeed
         );
         
-        // Apply horizontal movement
-        this.position.x += moveVector.x;
-        this.position.z += moveVector.z;
+        // Calculate new position
+        const newPosition = this.position.clone();
+        newPosition.x += moveVector.x;
+        newPosition.z += moveVector.z;
+        
+        // Check if new position is beyond the island boundary
+        const worldHalfSize = CONFIG.WORLD.size / 2;
+        const boundaryFactor = 0.95; // Beach starts at 95% of the way to the edge
+        const boundarySize = worldHalfSize * boundaryFactor;
+        
+        // Clamp position to stay within boundary
+        if (Math.abs(newPosition.x) > boundarySize) {
+            // Clamp X position to boundary
+            newPosition.x = Math.sign(newPosition.x) * boundarySize;
+        }        
+        if (Math.abs(newPosition.z) > boundarySize) {
+            // Clamp Z position to boundary
+            newPosition.z = Math.sign(newPosition.z) * boundarySize;
+        }
+        
+        // Apply the clamped position
+        this.position.copy(newPosition);
         
         // Apply jumping and gravity
         if (this.controls.jump && this.isGrounded && !this.isJumping) {
