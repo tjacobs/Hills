@@ -19,6 +19,12 @@ const Input = {
         locked: false
     },
     
+    // Touch state
+    touchStart: { x: 0, y: 0 },
+    touchEnd: { x: 0, y: 0 },
+    isTouching: false,
+    touchThreshold: 20, // Minimum distance for touch movement
+    
     // Initialize input - disable pointer lock
     init() {
         // Set up key listeners
@@ -34,6 +40,14 @@ const Input = {
         // document.addEventListener('click', this.requestPointerLock.bind(this));
         // document.addEventListener('pointerlockchange', this.handlePointerLockChange.bind(this), false);
         // document.addEventListener('mozpointerlockchange', this.handlePointerLockChange.bind(this), false);        
+        
+        // Add touch handlers with passive option
+        document.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: false });
+        document.addEventListener('touchmove', this.handleTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
+        
+        // Add virtual jump/throw button for mobile
+        this.createVirtualButton();
     },
     
     // Handle key down
@@ -219,5 +233,78 @@ const Input = {
             // Notify network
             Network.sendStoneThrown(stone);
         }
+    },
+    
+    handleTouchStart(event) {
+        event.preventDefault();
+        this.isTouching = true;
+        this.touchStart.x = event.touches[0].clientX;
+        this.touchStart.y = event.touches[0].clientY;
+        this.touchEnd.x = this.touchStart.x;
+        this.touchEnd.y = this.touchStart.y;
+    },
+    
+    handleTouchMove(event) {
+        event.preventDefault();
+        if (!this.isTouching) return;
+        
+        this.touchEnd.x = event.touches[0].clientX;
+        this.touchEnd.y = event.touches[0].clientY;
+        
+        // Update player controls based on touch movement
+        if (Game.localPlayer) {
+            const dx = this.touchEnd.x - this.touchStart.x;
+            const dy = this.touchEnd.y - this.touchStart.y;
+            
+            // Forward/backward
+            Game.localPlayer.controls.forward = dy < -this.touchThreshold;
+            Game.localPlayer.controls.backward = dy > this.touchThreshold;
+            
+            // Left/right rotation
+            Game.localPlayer.controls.left = dx < -this.touchThreshold;
+            Game.localPlayer.controls.right = dx > this.touchThreshold;
+        }
+    },
+    
+    handleTouchEnd(event) {
+        this.isTouching = false;
+        
+        // Reset controls
+        if (Game.localPlayer) {
+            Game.localPlayer.controls.forward = false;
+            Game.localPlayer.controls.backward = false;
+            Game.localPlayer.controls.left = false;
+            Game.localPlayer.controls.right = false;
+        }
+    },
+    
+    createVirtualButton() {
+        const button = document.createElement('button');
+        button.innerHTML = '⬆️';
+        button.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.5);
+            border: none;
+            font-size: 24px;
+            z-index: 1000;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        `;
+        
+        // Use touchstart/end instead of click for better mobile response
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (Game.localPlayer) {
+                Game.localPlayer.handleSpaceBar();
+            }
+        }, { passive: false });
+        
+        document.body.appendChild(button);
     }
 }; 
