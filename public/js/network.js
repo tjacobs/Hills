@@ -10,7 +10,7 @@ const Network = {
     
     // Initialize network
     init() {
-        console.log("Network updates temporarily disabled");
+        //console.log("Network updates temporarily disabled");
         this.enabled = false; // Set to true to enable networking
         
         if (this.enabled) {
