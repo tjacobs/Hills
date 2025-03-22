@@ -114,11 +114,13 @@ class Stone {
         // Calculate slope magnitude (steepness)
         const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
         
-        // Place stone directly on ground
+        // Place stone directly on ground with a slight offset
         const stoneRadius = CONFIG.STONE.height / 2;
-        if (this.mesh.position.y < groundHeight + stoneRadius) {
-            // Place directly on ground
-            this.mesh.position.y = groundHeight + stoneRadius;
+        const groundOffset = 0.05; // Add a small offset to raise stones slightly
+        
+        if (this.mesh.position.y < groundHeight + stoneRadius + groundOffset) {
+            // Place slightly above ground
+            this.mesh.position.y = groundHeight + stoneRadius + groundOffset;
             
             // Bounce with damping
             if (this.velocity.y < -0.05) {
@@ -163,21 +165,33 @@ class Stone {
             Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
             
             this.velocity.set(0, 0, 0);
-            this.isStatic = true;
             
-            // Make sure the stone stays visible
-            if (this.mesh) {
-                this.mesh.visible = true;
+            // Only start settling animation if not already static
+            if (!this.isStatic) {
+                this.isStatic = true;
+                
+                // Make sure the stone stays visible
+                if (this.mesh) {
+                    this.mesh.visible = true;
+                    
+                    // Start the settling animation
+                    this.startSettlingAnimation();
+                }
             }
         } else {
             this.isStatic = false;
+            
+            // Reset settling animation if stone starts moving again
+            if (this.settlingAnimation) {
+                this.settlingAnimation = null;
+            }
         }
         
-        // Update rotation based on movement - FIX ROTATION DIRECTION
+        // Update rotation based on movement
         if (!this.isStatic) {
             const movementDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize();
             if (movementDir.length() > 0.01) {
-                // FIX: Invert the rotation axis to make stones roll forward
+                // Rotation axis for correct rolling direction
                 const rotationAxis = new THREE.Vector3(movementDir.z, 0, -movementDir.x);
                 
                 const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
@@ -187,6 +201,9 @@ class Stone {
                 quaternion.setFromAxisAngle(rotationAxis, rotationSpeed);
                 this.mesh.quaternion.premultiply(quaternion);
             }
+        } else if (this.settlingAnimation) {
+            // Continue settling animation if active
+            this.updateSettlingAnimation(deltaTime);
         }
     }
     
@@ -295,5 +312,90 @@ class Stone {
         stone.isStatic = data.isStatic;
         
         return stone;
+    }
+    
+    // Start settling animation
+    startSettlingAnimation() {
+        // Calculate target quaternion (flat position)
+        const targetQuaternion = this.calculateFlatQuaternion();
+        
+        // Store current quaternion
+        const startQuaternion = this.mesh.quaternion.clone();
+        
+        // Setup animation parameters
+        this.settlingAnimation = {
+            startQuaternion: startQuaternion,
+            targetQuaternion: targetQuaternion,
+            duration: 500, // Animation duration in milliseconds
+            startTime: Date.now(),
+            progress: 0
+        };
+    }
+    
+    // Update settling animation
+    updateSettlingAnimation(deltaTime) {
+        if (!this.settlingAnimation) return;
+        
+        // Calculate progress
+        const elapsed = Date.now() - this.settlingAnimation.startTime;
+        this.settlingAnimation.progress = Math.min(1, elapsed / this.settlingAnimation.duration);
+        
+        // Use easeOutQuad for smooth deceleration
+        const t = 1 - (1 - this.settlingAnimation.progress) * (1 - this.settlingAnimation.progress);
+        
+        // Interpolate quaternion
+        THREE.Quaternion.slerp(
+            this.settlingAnimation.startQuaternion,
+            this.settlingAnimation.targetQuaternion,
+            this.mesh.quaternion,
+            t
+        );
+        
+        // Check if animation is complete
+        if (this.settlingAnimation.progress >= 1) {
+            this.settlingAnimation = null;
+        }
+    }
+    
+    // Calculate quaternion for flat position
+    calculateFlatQuaternion() {
+        // Calculate the slope at the stone's position
+        const sampleDistance = 2.0;
+        const x = this.mesh.position.x;
+        const z = this.mesh.position.z;
+        
+        const heightNorth = Game.getHeightAtPosition(x, z - sampleDistance);
+        const heightSouth = Game.getHeightAtPosition(x, z + sampleDistance);
+        const heightEast = Game.getHeightAtPosition(x + sampleDistance, z);
+        const heightWest = Game.getHeightAtPosition(x - sampleDistance, z);
+        
+        // Calculate slope normal vector
+        const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+        const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+        
+        // Create normal vector (perpendicular to slope)
+        const normal = new THREE.Vector3(slopeX, 1, slopeZ).normalize();
+        
+        // Create a rotation that aligns the stone's up vector with the normal
+        const upVector = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion();
+        
+        // Only apply rotation if slope is significant
+        if (Math.abs(slopeX) > 0.05 || Math.abs(slopeZ) > 0.05) {
+            quaternion.setFromUnitVectors(upVector, normal);
+        } else {
+            // On flat ground, just set to identity quaternion (no rotation)
+            quaternion.identity();
+            
+            // Add a very slight tilt for natural look
+            const tiltAxis = new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+            const tiltAngle = Math.random() * 0.05; // Very small random tilt
+            const tiltQuaternion = new THREE.Quaternion();
+            tiltQuaternion.setFromAxisAngle(tiltAxis, tiltAngle);
+            
+            quaternion.multiply(tiltQuaternion);
+        }
+        
+        return quaternion;
     }
 } 
