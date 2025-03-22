@@ -32,22 +32,111 @@ class RemotePlayer {
     }
     
     createMesh() {
-        const geometry = new THREE.CylinderGeometry(0.5, 0.5, 2.0, 8);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: 0x3366FF,
+        // Create a group to hold all player parts
+        this.mesh = new THREE.Group();
+        
+        // Create body (slimmer cylinder)
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 8);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x8B4513, // Brown for peasant clothing
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0.8;
+        this.mesh.add(body);
+        
+        // Add neck to connect head and body
+        const neckGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.15, 8);
+        const neckMaterial = new THREE.MeshStandardMaterial({
+            color: 0xE0AC69, // Skin tone (same as head)
             roughness: 0.7,
-            metalness: 0.3
+            metalness: 0.1
+        });
+        const neck = new THREE.Mesh(neckGeometry, neckMaterial);
+        neck.position.y = 1.35; // Position between head and body
+        this.mesh.add(neck);
+        
+        // Create head (sphere)
+        const headGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({
+            color: 0xE0AC69, // Skin tone
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.6; // Raised slightly to accommodate neck
+        this.mesh.add(head);
+        
+        // Add face features on the opposite side (negative Z)
+        
+        // Eyes
+        const eyeGeometry = new THREE.SphereGeometry(0.05, 6, 6);
+        const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        
+        // Left eye
+        const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        leftEye.position.set(-0.1, 1.65, -0.25); // Adjusted for new head position
+        this.mesh.add(leftEye);
+        
+        // Right eye
+        const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+        rightEye.position.set(0.1, 1.65, -0.25); // Adjusted for new head position
+        this.mesh.add(rightEye);
+        
+        // Mouth
+        const mouthGeometry = new THREE.BoxGeometry(0.15, 0.03, 0.03);
+        const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+        mouth.position.set(0, 1.55, -0.28); // Adjusted for new head position
+        this.mesh.add(mouth);
+        
+        // Create arms (cylinders)
+        const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.7, 6);
+        const armMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8B4513, // Same as body
+            roughness: 0.8,
+            metalness: 0.1
         });
         
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
+        // Left arm
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.4, 1.0, 0);
+        leftArm.rotation.z = Math.PI / 4; // Angle outward
+        this.mesh.add(leftArm);
+        
+        // Right arm
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.4, 1.0, 0);
+        rightArm.rotation.z = -Math.PI / 4; // Angle outward
+        this.mesh.add(rightArm);
+        
+        // Create legs (cylinders)
+        const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 6);
+        const legMaterial = new THREE.MeshStandardMaterial({
+            color: 0x654321, // Darker brown for pants
+            roughness: 0.8,
+            metalness: 0.1
+        });
+        
+        // Left leg
+        const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+        leftLeg.position.set(-0.2, 0.1, 0);
+        this.mesh.add(leftLeg);
+        
+        // Right leg
+        const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+        rightLeg.position.set(0.2, 0.1, 0);
+        this.mesh.add(rightLeg);
         
         // Add a nametag
         this.createNametag();
         
         // Add to scene
         scene.add(this.mesh);
+        
+        // Raise the entire player slightly off the ground
+        this.mesh.position.y = 0.2;
     }
     
     createNametag() {
@@ -73,7 +162,7 @@ class RemotePlayer {
         const material = new THREE.SpriteMaterial({ map: texture });
         const sprite = new THREE.Sprite(material);
         sprite.scale.set(2, 0.5, 1);
-        sprite.position.y = 1.5; // Position above player
+        sprite.position.y = 2.2; // Adjusted position above head (no hat now)
         
         this.nameTag = sprite;
         this.mesh.add(sprite);
@@ -84,7 +173,7 @@ class RemotePlayer {
         if (data.position) {
             this.position.set(
                 data.position.x,
-                data.position.y,
+                data.position.y - 2.8, // Adjusted from 3.0 to 2.8 to raise player slightly
                 data.position.z
             );
             this.mesh.position.copy(this.position);
@@ -154,14 +243,16 @@ class RemotePlayer {
             scene.remove(this.mesh);
             
             // Clean up geometries and materials
-            if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (this.mesh.material) this.mesh.material.dispose();
-            
-            // Clean up nametag
-            if (this.nameTag) {
-                if (this.nameTag.material.map) this.nameTag.material.map.dispose();
-                if (this.nameTag.material) this.nameTag.material.dispose();
-            }
+            this.mesh.traverse((child) => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(material => material.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+            });
         }
     }
 }
@@ -188,9 +279,7 @@ function initializeMultiplayer(username) {
     setInterval(sendPlayerState, 100); // 10 updates per second
     
     // Set up regular cleanup of stale players
-    setInterval(cleanupStalePlayers, 5000); // Check every 5 seconds
-    
-    log('Multiplayer initialized');
+    setInterval(cleanupStalePlayers, 5000); // Check every 5 seconds    
 }
 
 // Connect to the multiplayer server
