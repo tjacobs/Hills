@@ -2432,7 +2432,8 @@ window.addEventListener('load', function() {
     // Wait a short time to ensure Three.js is initialized
     setTimeout(function() {
         initializeCenterCloud();
-    }, 1000);
+        initializeMultiplayer();
+    }, 100);
 });
 
 // Add lightning effect function
