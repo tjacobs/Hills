@@ -238,24 +238,29 @@ class Player {
     }
     
     throwStone() {
-        if (this.heldStones.length === 0) {
-            return null;
-        }
+        if (this.heldStones.length === 0) return null;
         
-        const stoneId = this.heldStones.pop();
-        const stone = Game.getStoneById(stoneId);
+        // Get the last stone
+        const stone = this.heldStones.pop();
+        if (!stone || !stone.mesh) return null;
         
-        if (!stone) {
-            return null;
-        }
+        // Calculate throw direction from player's rotation
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyEuler(this.rotation);
         
-        // Position in front of player
-        const direction = new THREE.Vector3(0, 0, -1).applyEuler(this.rotation);
-        const position = this.position.clone().add(direction.multiplyScalar(1.5));
-        position.y = this.position.y - 0.5; // Slightly below eye level
+        // Position stone in front of player
+        const throwPosition = this.position.clone()
+            .add(forward.multiplyScalar(1.5))
+            .add(new THREE.Vector3(0, -0.3, 0));
         
-        // Throw stone
-        stone.throw(position, direction);
+        // Throw the stone
+        stone.throw(throwPosition, forward);
+        
+        // Add stone back to game
+        Game.stones.push(stone);
+        
+        // Set last throw time
+        this.lastThrowTime = Date.now();
         
         return stone;
     }
@@ -318,12 +323,8 @@ class LocalPlayer extends Player {
         // Stone handling
         this.heldStones = [];
         this.maxStones = CONFIG.STONE.maxHeld;
-        this.lastPickupTime = 0;
-        this.heldStonePhysics = {
-            velocity: new THREE.Vector3(),
-            targetPos: new THREE.Vector3(),
-            targetRot: new THREE.Vector3()
-        };
+        this.lastThrowTime = 0;
+        this.pickupDelay = 1000; // 1 second delay after throwing
     }
     
     setCamera(camera) {
@@ -495,6 +496,9 @@ class LocalPlayer extends Player {
     checkNearbyStones() {
         if (this.heldStones.length >= this.maxStones) return;
         
+        // Check if enough time has passed since last throw
+        if (Date.now() - this.lastThrowTime < this.pickupDelay) return;
+
         for (let i = Game.stones.length - 1; i >= 0; i--) {
             const stone = Game.stones[i];
             if (!stone || !stone.mesh) continue;
@@ -535,12 +539,12 @@ class LocalPlayer extends Player {
         if (!stone || !stone.mesh) return;
         
         // Calculate held position
-        const forward = new THREE.Vector3(0, 0, -1);
+        const forward = new THREE.Vector3(0, -0.5, -1);
         forward.applyEuler(this.rotation);
         
         const targetPos = this.position.clone()
             .add(forward.multiplyScalar(1.5))
-            .add(new THREE.Vector3(0, -0.5, 0));
+            .add(new THREE.Vector3(0, -0.8, 0));
         
         // Add bobbing motion
 //        targetPos.y += Math.sin(Date.now() * 0.005) * 0.1;
