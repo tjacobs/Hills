@@ -6,30 +6,38 @@ function generateId(prefix = '') {
 }
 
 // Logger with timestamp
-function log(message, type = 'info') {
-    if (!CONFIG.DEBUG.enabled && type === 'debug') return;
+function log(message, type = 'debug') {
+    // Log to console
+    console.log(`[${type.toUpperCase()}] ${message}`);
     
-    const timestamp = new Date().toISOString().substring(11, 23);
-    const formattedMessage = `[${timestamp}] ${message}`;
-    
-    console[type](formattedMessage);
-    
-    // Add to debug container if it exists
+    // Get debug container
     const debugContainer = document.getElementById('debug-container');
+    
+    // If debug container exists, add message
     if (debugContainer) {
+        // Create message element
         const messageElement = document.createElement('div');
-        messageElement.textContent = formattedMessage;
-        messageElement.className = `log-${type}`;
-        debugContainer.appendChild(messageElement);
+        messageElement.className = `log-message log-${type}`;
+        messageElement.textContent = message;
         
-        // Limit number of messages
-        while (debugContainer.children.length > 50) {
-            debugContainer.removeChild(debugContainer.firstChild);
-        }
+        // Add timestamp
+        const timestamp = new Date().toLocaleTimeString();
+        messageElement.dataset.timestamp = timestamp;
+        messageElement.innerHTML = `<span class="log-time"></span> ${message}`;
+        
+        // Add to container
+        debugContainer.appendChild(messageElement);
         
         // Scroll to bottom
         debugContainer.scrollTop = debugContainer.scrollHeight;
+        
+        // Limit number of messages (keep last 50)
+        while (debugContainer.children.length > 50) {
+            debugContainer.removeChild(debugContainer.firstChild);
+        }
     }
+    
+    return message;
 }
 
 // Update UI elements

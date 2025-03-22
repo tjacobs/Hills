@@ -76,6 +76,9 @@ const Game = {
         this.lastTime = performance.now();
         this.isRunning = true;
         this.update(this.lastTime);
+
+        log(`Started game`, 'info');
+
     },
     
     // Handle window resize
@@ -418,9 +421,6 @@ const Game = {
         // Update water
         this.updateWater(deltaTime);
         
-        // Update clouds
-//        this.updateClouds(deltaTime);
-        
         // Spawn stones from ocean - one per second
         if (!this.lastStoneSpawnTime) {
             this.lastStoneSpawnTime = performance.now();
@@ -519,20 +519,24 @@ const Game = {
     },
     
     // Add tower to game
-    addTower(tower, notify = true) {
-        // Add to towers array
+    addTower(tower, notifyNetwork = true) {
         this.towers.push(tower);
         
-        // Add to scene
-        this.scene.add(tower.mesh);
-        
-        // Notify network if requested
-        if (notify && Network.isConnected) {
-            Network.sendTowerCreated(tower);
+        // Log tower addition
+        if (tower.createdBy) {
+            const creatorName = tower.createdBy === this.localPlayer.id ? 
+                'You' : 
+                (this.players[tower.createdBy]?.username || 'Another player');
+            
+            log(`${creatorName} created a level ${tower.level} tower!`, 'info');
+        } else {
+            log(`A level ${tower.level} tower was created!`, 'info');
         }
         
-        // Update UI
-        updateUI();
+        // Notify network if needed
+        if (notifyNetwork) {
+            Network.sendTowerCreated(tower);
+        }
         
         return tower;
     },
@@ -781,6 +785,10 @@ const Game = {
             
             // Create tower
             const tower = new Tower(null, center);
+            
+            // Log tower creation
+            log(`Tower created at (${center.x.toFixed(1)}, ${center.z.toFixed(1)}) with ${nearbyStones.length} stones!`, 'info');
+            
             this.towers.push(tower);
             
             // Remove stones
@@ -894,6 +902,9 @@ const Game = {
         
         // Create splash effect at spawn position (in water)
         this.createSplashEffect(stone.mesh.position.clone());
+        
+        // Log stone spawning
+        //log(`Stone spawned from the ${['north', 'east', 'south', 'west'][side]} ocean`, 'info');
         
         return stone;
     },

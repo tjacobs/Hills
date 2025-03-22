@@ -35,9 +35,6 @@ const CONFIG = {
         // Maximum number of stones player can hold
         maxHeld: 5,
 
-        // Offset from ground
-        groundCheckOffset: 0.0,
-        
         // Physics parameters
         gravity: -9.8,
         bounce: 0.3,
