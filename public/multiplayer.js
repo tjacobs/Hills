@@ -276,7 +276,7 @@ function initializeMultiplayer(username) {
     connectToServer(playerUsername);
     
     // Set up regular state updates
-    setInterval(sendPlayerState, 100); // 10 updates per second
+    setInterval(sendPlayerState, 33); // 30 updates per second
     
     // Set up regular cleanup of stale players
     setInterval(cleanupStalePlayers, 5000); // Check every 5 seconds    
