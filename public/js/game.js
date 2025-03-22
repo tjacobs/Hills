@@ -521,6 +521,7 @@ const Game = {
     // Add tower to game
     addTower(tower, notifyNetwork = true) {
         this.towers.push(tower);
+        updateUI();  // Update UI when tower is added
         
         // Log tower addition
         if (tower.createdBy) {
@@ -553,8 +554,7 @@ const Game = {
             this.towers.splice(index, 1);
         }
         
-        // Update UI
-        updateUI();
+        updateUI();  // Update UI when tower is removed
     },
     
     // Destroy tower at index
@@ -808,10 +808,11 @@ const Game = {
                 // Create tower
                 const tower = new Tower(null, center);
                 
+                // Add to game using proper method
+                this.addTower(tower);
+                
                 // Log tower creation
                 log(`Tower created at (${center.x.toFixed(1)}, ${center.z.toFixed(1)}) with ${nearbyStones.length} stones!`, 'info');
-                
-                this.towers.push(tower);
                 
                 // Remove stones
                 for (const s of nearbyStones) {
@@ -861,11 +862,11 @@ const Game = {
     // Update stone spawning with even slower movement
     spawnStoneFromOcean() {
         // Choose a random side of the island
-        const side = Math.floor(Math.random() * 4); // 0: north, 1: east, 2: south, 3: west
+        const side = Math.floor(Math.random() * 4);
         
         // Calculate spawn position on the edge of the water
         const worldHalfSize = CONFIG.WORLD.size / 2;
-        const spawnDistance = worldHalfSize * 1.1; // Slightly beyond the island edge
+        const spawnDistance = worldHalfSize * 1.2; // Spawn further out
         
         let spawnX, spawnZ;
         
@@ -890,41 +891,25 @@ const Game = {
         
         // Create stone
         const stone = new Stone();
-        
-        // Position stone at spawn position
         stone.mesh.position.set(spawnX, 0, spawnZ);
         
         // Calculate direction toward island center
         const directionToCenter = new THREE.Vector3(-spawnX, 0, -spawnZ).normalize();
         
-        // Calculate target position (beach edge)
-        const beachDistance = worldHalfSize * 0.95; // Beach edge is at 95% of world radius
-        const targetX = -directionToCenter.x * beachDistance;
-        const targetZ = -directionToCenter.z * beachDistance;
-        
-        // Calculate distance to target
-        const distanceToTarget = Math.sqrt(
-            (targetX - spawnX) * (targetX - spawnX) + 
-            (targetZ - spawnZ) * (targetZ - spawnZ)
-        );
-        
-        // Use simpler physics for more predictable arcs
-        // Horizontal velocity component - EVEN SLOWER
-        const horizontalSpeed = 0.03; // Reduced from 0.05 to 0.03
+        // Incoming!
+        const horizontalSpeed = 0.5;
+        const verticalSpeed = 0.6;
         
         // Set velocity components
         stone.velocity.x = directionToCenter.x * horizontalSpeed;
         stone.velocity.z = directionToCenter.z * horizontalSpeed;
-        stone.velocity.y = 0.05; // Reduced from 0.08 to 0.05
+        stone.velocity.y = verticalSpeed;
         
         // Add to game
         this.addStone(stone);
         
-        // Create splash effect at spawn position (in water)
+        // Create splash effect
         this.createSplashEffect(stone.mesh.position.clone());
-        
-        // Log stone spawning
-        //log(`Stone spawned from the ${['north', 'east', 'south', 'west'][side]} ocean`, 'info');
         
         return stone;
     },

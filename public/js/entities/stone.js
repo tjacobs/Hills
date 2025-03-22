@@ -152,7 +152,7 @@ class Stone {
         // Apply air resistance
         const speed = this.velocity.length();
         const airResistanceFactor = Math.max(0.95, 0.99 - speed * 0.1);
-        this.velocity.multiplyScalar(airResistanceFactor);
+        //this.velocity.multiplyScalar(airResistanceFactor);
         
         // Cap maximum velocity
         if (speed > CONFIG.STONE.maxVelocity) {
