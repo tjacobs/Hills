@@ -1,7 +1,7 @@
 // Stone entity with exact original appearance from main.js
 class Stone {
     constructor(id = null) {
-        this.id = id || generateId('stone_');
+        this.id = id || Math.random().toString(36).substr(2, 9);
         this.mesh = null;
         this.velocity = new THREE.Vector3();
         this.isHeld = false;
@@ -56,8 +56,7 @@ class Stone {
     }
     
     update(deltaTime) {
-        // Skip if held by player
-        if (this.isHeld || !this.mesh) return;
+        if (!this.mesh || this.isHeld) return;
         
         // Apply gravity
         this.velocity.y -= 0.01;
@@ -214,28 +213,21 @@ class Stone {
         this.heldBy = playerId;
         this.isThrown = false;
         this.isStatic = false;
+        this.velocity.set(0, 0, 0);
         
-        // Remove from scene
-        if (this.mesh && this.mesh.parent) {
-            this.mesh.parent.remove(this.mesh);
-        }
+        // Scale down when held
+        this.mesh.scale.set(0.7, 0.7, 0.7);
         
         return true;
     }
     
-    drop(position, rotation, velocity) {
+    drop() {
         this.isHeld = false;
         this.heldBy = null;
+        this.isStatic = false;
         
-        // Update position and rotation
-        this.mesh.position.copy(position);
-        this.mesh.rotation.copy(rotation);
-        this.velocity.copy(velocity);
-        
-        // Add to scene
-        Game.scene.add(this.mesh);
-        
-        return this;
+        // Reset scale
+        this.mesh.scale.set(1, 1, 1);
     }
     
     throw(position, direction, upwardForce = CONFIG.STONE.throwUpward) {

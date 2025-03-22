@@ -205,18 +205,13 @@ class Player {
     }
     
     pickupStone(stone) {
-        // Check if player can pick up more stones
-        if (this.heldStones.length >= CONFIG.STONE.maxHeld) {
-            return false;
+        if (this.heldStones.length >= this.maxStones) return false;
+        
+        if (stone.pickup(this.id)) {
+            this.heldStones.push(stone.id);
+            return true;
         }
-        
-        // Add stone to held stones
-        this.heldStones.push(stone.id);
-        
-        // Mark stone as held
-        stone.pickup(this.id);
-        
-        return true;
+        return false;
     }
     
     dropStone() {
@@ -298,27 +293,15 @@ class LocalPlayer extends Player {
         this.isLocal = true;
         this.camera = null;
         this.cameraPitch = 0;
+        
+        // Set up controls including strafe
         this.controls = {
             forward: false,
             backward: false,
             left: false,
             right: false,
-            jump: false,
-            sprint: false,
-            throw: false
-        };
-        this.heldStones = [];
-        this.maxStones = CONFIG.PLAYER.maxStones;
-        
-        // Add camera pitch property
-        this.cameraPitch = 0;
-        
-        // Set up controls
-        this.controls = {
-            forward: false,
-            backward: false,
-            left: false,
-            right: false,
+            strafeLeft: false,
+            strafeRight: false,
             jump: false,
             sprint: false,
             throw: false
@@ -331,6 +314,16 @@ class LocalPlayer extends Player {
         this.verticalVelocity = 0;
         this.isJumping = false;
         this.isGrounded = true;
+        
+        // Stone handling
+        this.heldStones = [];
+        this.maxStones = CONFIG.STONE.maxHeld;
+        this.lastPickupTime = 0;
+        this.heldStonePhysics = {
+            velocity: new THREE.Vector3(),
+            targetPos: new THREE.Vector3(),
+            targetRot: new THREE.Vector3()
+        };
     }
     
     setCamera(camera) {
@@ -472,7 +465,10 @@ class LocalPlayer extends Player {
         this.checkTowerCollisions();
         
         // Check for stone pickups
-        this.checkStonePickups();
+        this.checkNearbyStones();
+        
+        // Update held stones
+        this.updateHeldStones(deltaTime);
     }
     
     checkTowerCollisions() {
@@ -496,27 +492,63 @@ class LocalPlayer extends Player {
         }
     }
     
-    checkStonePickups() {
-        // Only check if player can pick up more stones
-        if (this.heldStones.length >= CONFIG.STONE.maxHeld) return;
+    checkNearbyStones() {
+        if (this.heldStones.length >= this.maxStones) return;
         
-        // Check for nearby stones
-        for (const stone of Game.stones) {
-            // Skip stones that are held or not static
-            if (stone.isHeld || !stone.isStatic) continue;
+        for (let i = Game.stones.length - 1; i >= 0; i--) {
+            const stone = Game.stones[i];
+            if (!stone || !stone.mesh) continue;
+            if (stone.isHeld) continue;
             
-            // Calculate distance to stone
-            const distance = this.position.distanceTo(stone.mesh.position);
+            // Calculate distance
+            const dx = this.position.x - stone.mesh.position.x;
+            const dz = this.position.z - stone.mesh.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
             
-            // If player is close enough to pick up
-            if (distance < 2) {
-                // Try to pick up stone
-                if (this.pickupStone(stone)) {
-                    // Notify network
-                    Network.sendStonePickedUp(stone.id);
-                    break;
+            if (distance < CONFIG.PLAYER.radius * 4) {
+                // Remove from stones array
+                Game.stones.splice(i, 1);
+                
+                // Add to held stones
+                this.heldStones.push(stone);
+                
+                // Scale down the stone
+                stone.mesh.scale.set(0.7, 0.7, 0.7);
+                
+                // Update stone state
+                stone.isHeld = true;
+                stone.heldBy = this.id;
+                
+                // Add to scene if needed
+                if (!stone.mesh.parent) {
+                    Game.scene.add(stone.mesh);
                 }
+                break;
             }
         }
     }
-} 
+    
+    updateHeldStones(deltaTime) {
+        if (this.heldStones.length === 0) return;
+        
+        const stone = this.heldStones[this.heldStones.length - 1];
+        if (!stone || !stone.mesh) return;
+        
+        // Calculate held position
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyEuler(this.rotation);
+        
+        const targetPos = this.position.clone()
+            .add(forward.multiplyScalar(1.5))
+            .add(new THREE.Vector3(0, -0.5, 0));
+        
+        // Add bobbing motion
+//        targetPos.y += Math.sin(Date.now() * 0.005) * 0.1;
+        
+        // Update stone position and rotation
+        stone.mesh.position.lerp(targetPos, 0.2);
+//        stone.mesh.rotation.x = Math.sin(Date.now() * 0.003) * 0.1;
+//        stone.mesh.rotation.y += 0.01;
+  //      stone.mesh.rotation.z = Math.cos(Date.now() * 0.003) * 0.1;
+    }
+}
