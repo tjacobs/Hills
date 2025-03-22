@@ -304,7 +304,6 @@ function handleServerMessage(messageData) {
         
         switch (message.type) {
             case 'welcome':
-                log(`Connected to server: ${message.message}`);
                 break;
                 
             case 'player_joined':
