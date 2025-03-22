@@ -60,9 +60,7 @@ class Tower {
                 const ringY = (level * 4 + verticalLayer) * CONFIG.STONE.depth;
                 
                 // Create concentric rings at each height
-                const ringRadii = [
-                    CONFIG.TOWER.baseRadius
-                ];
+                const ringRadii = [CONFIG.TOWER.baseRadius];
                 
                 for (let ringIndex = 0; ringIndex < ringRadii.length; ringIndex++) {
                     // Add rotation offset for each level, layer, and ring to interleave stones
@@ -73,8 +71,27 @@ class Tower {
                     // Create a ring of stones
                     const stoneCount = CONFIG.TOWER.blockCount;
                     const radius = ringRadii[ringIndex];
+                    
                     for (let i = 0; i < stoneCount; i++) {
                         const angle = (i / stoneCount) * Math.PI * 2 + levelRotationOffset + layerRotationOffset + ringRotationOffset;
+                        
+                        // Skip stones in the entrance area for first two levels
+                        if (level < 2) {
+                            // Define entrance angle range (20% of circle)
+                            const entranceStart = -Math.PI * 0.2; // -36 degrees
+                            const entranceEnd = Math.PI * 0.2;    // +36 degrees
+                            
+                            // Normalize angle to -PI to PI range
+                            let normalizedAngle = angle % (Math.PI * 2);
+                            if (normalizedAngle > Math.PI) normalizedAngle -= Math.PI * 2;
+                            if (normalizedAngle < -Math.PI) normalizedAngle += Math.PI * 2;
+                            
+                            // Skip if in entrance range
+                            if (normalizedAngle >= entranceStart && normalizedAngle <= entranceEnd) {
+                                continue;
+                            }
+                        }
+                        
                         const x = Math.cos(angle) * radius;
                         const z = Math.sin(angle) * radius;
                         
