@@ -18,9 +18,9 @@ const CONFIG = {
         turnDeceleration: 0.002,  // Turning deceleration
         
         // Physics parameters
-        jumpForce: 0.5,           // Initial upward velocity when jumping
+        jumpForce: 1.0,           // Jump
         gravity: -0.02,           // Gravity force applied to player
-        heightSmoothness: 0.2,    // How smoothly camera follows terrain
+        heightSmoothness: 0.1,    // How smoothly camera follows terrain
         
         // Interaction parameters
         maxStones: 3              // Maximum number of stones player can hold
