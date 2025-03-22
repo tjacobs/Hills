@@ -22,7 +22,7 @@ const TERRAIN = {
 
 // Player movement parameters
 const PLAYER = {
-    maxSpeed: 0.5,            // Maximum movement speed
+    maxSpeed: 0.2,            // Maximum movement speed
     rotateSpeed: 0.02,        // Base rotation speed
     maxTurnSpeed: 0.03,       // Maximum turning speed
     acceleration: 0.03,       // Movement acceleration
