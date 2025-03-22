@@ -23,14 +23,14 @@ const TERRAIN = {
 // Player movement parameters
 const PLAYER = {
     maxSpeed: 0.2,            // Maximum movement speed
+    strafeSpeed: 0.1,         // Base strafe movement speed
+    sprintMultiplier: 2.0,    // Speed multiplier when sprinting
     rotateSpeed: 0.02,        // Base rotation speed
     maxTurnSpeed: 0.03,       // Maximum turning speed
     acceleration: 0.03,       // Movement acceleration
     turnAcceleration: 0.006,  // Turning acceleration
     deceleration: 0.02,       // Movement deceleration
     turnDeceleration: 0.002,  // Turning deceleration
-    strafeSpeed: 0.5,         // Base strafe movement speed
-    sprintMultiplier: 2.0,    // Speed multiplier when sprinting
     jumpForce: 0.5,           // Initial upward velocity when jumping
     gravity: -0.02,           // Gravity force applied to player
     baseHeight: 3,            // Default height above ground
