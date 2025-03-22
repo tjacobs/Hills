@@ -269,7 +269,6 @@ function sendPlayerState() {
     };
     
     socket.send(JSON.stringify(stateMessage));
-    console.log("Sending player state");
 }
 
 // Send tower creation event
@@ -517,23 +516,6 @@ function log(message) {
         console.log(`[Multiplayer] ${message}`);
     }
 }
-
-// Debug function to log player positions
-function debugPositions() {
-    // Log our position
-    const myPos = getPlayerPosition();
-    log(`My position: x=${myPos.x.toFixed(2)}, y=${myPos.y.toFixed(2)}, z=${myPos.z.toFixed(2)}`);
-    
-    // Log other players' positions
-    for (const id in otherPlayers) {
-        const player = otherPlayers[id];
-        const pos = player.position;
-        log(`Player ${id} position: x=${pos.x.toFixed(2)}, y=${pos.y.toFixed(2)}, z=${pos.z.toFixed(2)}`);
-    }
-}
-
-// Add debug position logging every 5 seconds
-setInterval(debugPositions, 5000);
 
 // Export functions for use in main game
 window.initializeMultiplayer = initializeMultiplayer;
