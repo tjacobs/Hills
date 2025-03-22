@@ -283,7 +283,7 @@ const Input = {
         if (!('ontouchstart' in window)) return;
         
         const button = document.createElement('button');
-        button.innerHTML = '⬆️';
+        button.innerHTML = '';
         button.style.cssText = `
             position: fixed;
             bottom: 20px;
