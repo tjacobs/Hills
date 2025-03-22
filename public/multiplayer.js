@@ -504,7 +504,7 @@ function getHeldStonesData() {
 
 function generatePlayerId() {
     // Generate a random ID
-    return 'player_' + Math.random().toString(36).substring(2, 15);
+    return '_' + Math.random().toString(36).substring(2, 15);
 }
 
 function log(message) {
