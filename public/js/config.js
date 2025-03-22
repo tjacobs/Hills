@@ -20,7 +20,7 @@ const CONFIG = {
         // Physics parameters
         jumpForce: 1.0,           // Jump
         gravity: -0.02,           // Gravity force applied to player
-        heightSmoothness: 0.1,    // How smoothly camera follows terrain
+        heightSmoothness: 0.05,   // How smoothly camera follows terrain
         
         // Interaction parameters
         maxStones: 3              // Maximum number of stones player can hold

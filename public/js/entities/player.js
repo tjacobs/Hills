@@ -588,10 +588,10 @@ class LocalPlayer extends Player {
             const distance = Math.sqrt(dx * dx + dz * dz);
             
             // If player is inside tower radius
-            if (distance < CONFIG.TOWER.baseRadius * 0.8) {
+            if (distance < CONFIG.TOWER.baseRadius * 1.3) {
                 // Calculate target height: tower base + ((levels + 1) * 4 layers * stone depth) + player height
                 const targetHeight = tower.position.y + 
-                    ((tower.level + 1) * 4 * CONFIG.STONE.depth) + // Add one more level to put player on top
+                    ((tower.level + 1) * 8 * CONFIG.STONE.depth) + // Add one more level to put player on top
                     CONFIG.PLAYER.baseHeight;
                 
                 // Smoothly move to target height
