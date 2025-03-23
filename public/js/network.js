@@ -480,10 +480,20 @@ const Network = {
     
     // Send tower created
     sendTowerCreated(tower) {
+        if (!this.isConnected) return;
+        
         this.sendMessage({
             type: 'tower_created',
-            createdBy: Game.localPlayer.id,
-            tower: tower.toJSON()
+            tower: {
+                id: tower.id,
+                position: {
+                    x: tower.mesh.position.x,
+                    y: tower.mesh.position.y,
+                    z: tower.mesh.position.z
+                },
+                level: tower.level,
+                createdBy: tower.createdBy
+            }
         });
     },
     
