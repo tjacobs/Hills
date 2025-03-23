@@ -10,7 +10,6 @@ class Player {
         this.mesh = null;
         this.camera = null;
         this.heldStones = [];
-        this.lastUpdate = Date.now();
         this.isLocal = false;
         
         // Create mesh for remote players only
@@ -198,25 +197,12 @@ class Player {
         // Update held stones
         this.heldStones = data.heldStones || [];
         
-        // Update last update time
-        this.lastUpdate = Date.now();
-        
         // Update mesh
         if (this.mesh) {
             this.mesh.position.copy(this.position);
             this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
             this.mesh.rotation.copy(this.rotation);
         }
-    }
-    
-    pickupStone(stone) {
-        if (this.heldStones.length >= this.maxStones) return false;
-        
-        if (stone.pickup(this.id)) {
-            this.heldStones.push(stone.id);
-            return true;
-        }
-        return false;
     }
     
     dropStone() {
@@ -242,34 +228,6 @@ class Player {
         return stone;
     }
     
-    throwStone() {
-        if (this.heldStones.length === 0) return null;
-        
-        // Get the last stone
-        const stone = this.heldStones.pop();
-        if (!stone || !stone.mesh) return null;
-        
-        // Calculate throw direction from player's rotation
-        const forward = new THREE.Vector3(0, 0, -1);
-        forward.applyEuler(this.rotation);
-        
-        // Position stone in front of player
-        const throwPosition = this.position.clone()
-            .add(forward.multiplyScalar(1.5))
-            .add(new THREE.Vector3(0, -0.3, 0));
-        
-        // Throw the stone
-        stone.throw(throwPosition, forward);
-        
-        // Add stone back to game
-        Game.stones.push(stone);
-        
-        // Set last throw time
-        this.lastThrowTime = Date.now();
-        
-        return stone;
-    }
-    
     toJSON() {
         return {
             id: this.id,
@@ -284,8 +242,7 @@ class Player {
                 y: this.rotation.y,
                 z: this.rotation.z
             },
-            heldStones: this.heldStones,
-            lastUpdate: this.lastUpdate
+            heldStones: this.heldStones
         };
     }
     
