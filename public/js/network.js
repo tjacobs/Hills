@@ -167,7 +167,7 @@ const Network = {
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
         };
         
-        console.log('Sending player update:', updateData.playerId);
+        //console.log('Sending player update:', updateData.playerId);
         this.sendMessage(updateData);
     },
     
