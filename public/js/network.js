@@ -2,17 +2,12 @@
 const Network = {
     // WebSocket connection
     socket: null,
-    
-    // Connection state
     isConnected: false,
     reconnectAttempts: 0,
     enabled: false, // Flag to enable/disable network
     
     // Initialize network
-    init() {
-        //console.log("Network updates temporarily disabled");
-        this.enabled = false; // Set to true to enable networking
-        
+    init() {        
         if (this.enabled) {
             this.connect();
         }
@@ -27,124 +22,152 @@ const Network = {
             this.socket.close();
         }
         
-        // Create new WebSocket connection
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}`;
-        
-        this.socket = new WebSocket(wsUrl);
-        
-        // Set up event handlers
-        this.socket.onopen = this.handleOpen.bind(this);
-        this.socket.onclose = this.handleClose.bind(this);
-        this.socket.onerror = this.handleError.bind(this);
-        this.socket.onmessage = this.handleMessageEvent.bind(this);
-        
-        console.log('Connecting to server...');
+        try {
+            // Use protocol and host from current window location, fallback to localhost if not available
+            const host = window.location.host || 'ramparty.fly.dev';
+            const wsUrl = `wss://${host}`;
+            
+            console.log('Connecting to:', wsUrl);
+            this.socket = new WebSocket(wsUrl);
+            this.setupSocketHandlers();
+        } catch (error) {
+            console.error('WebSocket connection failed:', error);
+            this.handleDisconnect();
+        }
     },
     
-    // Handle WebSocket open
-    handleOpen() {
-        log('Connected to server');
-        this.isConnected = true;
-        this.reconnectAttempts = 0;
+    setupSocketHandlers() {
+        this.socket.onopen = () => {
+            this.isConnected = true;
+            this.reconnectAttempts = 0;
+            
+            // Send initial player data
+            this.sendMessage({
+                type: 'player_join',
+                username: Game.localPlayer.username,
+                position: Game.localPlayer.position.toJSON(),
+                rotation: Game.localPlayer.rotation.toJSON()
+            });
+        };
         
-        // Send join message
-        this.sendJoin();
-        
-        // Start sending regular updates
-        this.startUpdates();
+        this.socket.onclose = () => this.handleDisconnect();
+        this.socket.onerror = (error) => console.error('WebSocket error:', error);
+        this.socket.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
     },
     
-    // Handle WebSocket close
-    handleClose() {
-        log('Disconnected from server');
+    handleDisconnect() {
+        console.log('Disconnected from server');
         this.isConnected = false;
         
         // Try to reconnect
         if (this.reconnectAttempts < CONFIG.NETWORK.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            
-            log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
-            
+            console.log(`Reconnecting (attempt ${this.reconnectAttempts})...`);
             setTimeout(() => {
                 this.connect();
             }, CONFIG.NETWORK.reconnectInterval);
         } else {
-            log('Failed to reconnect to server');
+            console.log('Failed to reconnect to server');
         }
     },
     
-    // Handle WebSocket error
-    handleError(error) {
-        console.error('WebSocket error:', error);
-    },
-    
-    // Handle WebSocket message
-    handleMessageEvent(event) {
-        try {
-            const message = JSON.parse(event.data);
-            
-            if (CONFIG.DEBUG.logNetworkMessages) {
-                console.log('Received message:', message);
-            }
-            
-            // Handle message based on type
-            switch (message.type) {
-                case 'welcome':
-                    this.handleWelcome(message);
-                    break;
-                case 'full_state':
-                    this.handleFullState(message);
-                    break;
-                case 'player_joined':
-                    this.handlePlayerJoined(message);
-                    break;
-                case 'player_left':
-                    this.handlePlayerLeft(message);
-                    break;
-                case 'player_update':
-                    this.handlePlayerUpdate(message);
-                    break;
-                case 'tower_created':
-                    this.handleTowerCreated(message);
-                    break;
-                case 'tower_destroyed':
-                    this.handleTowerDestroyed(message);
-                    break;
-                case 'stone_picked_up':
-                    this.handleStonePickedUp(message);
-                    break;
-                case 'stone_dropped':
-                    this.handleStoneDropped(message);
-                    break;
-                case 'stone_thrown':
-                    this.handleStoneThrown(message);
-                    break;
-                default:
-                    console.warn('Unknown message type:', message.type);
-            }
-        } catch (error) {
-            console.error('Error parsing message:', error);
+    handleMessage(message) {
+        switch (message.type) {
+            case 'initial_state':
+                this.handleInitialState(message);
+                break;
+            case 'player_joined':
+                this.handlePlayerJoined(message);
+                break;
+            case 'player_left':
+                this.handlePlayerLeft(message);
+                break;
+            case 'player_update':
+                this.handlePlayerUpdate(message);
+                break;
+            case 'stone_update':
+                this.handleStoneUpdate(message);
+                break;
+            case 'tower_update':
+                this.handleTowerUpdate(message);
+                break;
         }
     },
     
-    // Send message to server
-    sendMessage(message) {
-        if (!this.enabled || !this.isConnected || !this.socket) return;
+    handleInitialState(message) {
+        // Handle players
+        message.players.forEach(playerData => {
+            if (playerData.id === Game.localPlayer.id) return;
+            const player = new Player(playerData.id, playerData.username);
+            player.position.copy(playerData.position);
+            player.rotation.copy(playerData.rotation);
+            Game.addPlayer(player);
+        });
         
-        this.socket.send(JSON.stringify(message));
+        // Handle stones
+        message.stones.forEach(stoneData => {
+            const stone = new Stone(stoneData.id);
+            stone.mesh.position.copy(stoneData.position);
+            if (stoneData.velocity) {
+                stone.velocity.copy(stoneData.velocity);
+            }
+            Game.addStone(stone);
+        });
+        
+        // Handle towers
+        message.towers.forEach(towerData => {
+            const tower = Tower.fromJSON(towerData);
+            Game.addTower(tower);
+        });
     },
     
-    // Start sending regular updates
-    startUpdates() {
-        setInterval(() => {
-            this.sendPlayerUpdate();
-        }, 1000 / CONFIG.NETWORK.updateRate);
+    // Send regular updates for local player
+    sendPlayerUpdate() {
+        if (!this.isConnected || !Game.localPlayer) return;
+        this.sendMessage({
+            type: 'player_update',
+            position: Game.localPlayer.position.toJSON(),
+            rotation: Game.localPlayer.rotation.toJSON(),
+            heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
+        });
+    },
+    
+    // Send stone updates when thrown or picked up
+    sendStoneUpdate(stone) {
+        if (!this.isConnected) return;
+        this.sendMessage({
+            type: 'stone_update',
+            id: stone.id,
+            position: stone.mesh.position.toJSON(),
+            velocity: stone.velocity?.toJSON(),
+            isStatic: stone.isStatic
+        });
+    },
+    
+    // Send tower updates when created or modified
+    sendTowerUpdate(tower) {
+        if (!this.isConnected) return;        
+        this.sendMessage({
+            type: 'tower_update',
+            id: tower.id,
+            position: tower.position.toJSON(),
+            level: tower.level
+        });
+    },
+    
+    // Helper to send messages
+    sendMessage(message) {
+        if (!this.isConnected) return;
+        try {
+            this.socket.send(JSON.stringify(message));
+        } catch (error) {
+            console.error('Failed to send message:', error);
+        }
     },
     
     // Handle welcome message
     handleWelcome(message) {
-        log(`Welcome to the server! Your ID: ${message.playerId}`);
+        log(`Your ID: ${message.playerId}`);
         
         // Update local player ID
         Game.localPlayer.id = message.playerId;
@@ -152,7 +175,7 @@ const Network = {
     
     // Handle full state message
     handleFullState(message) {
-        log('Received full game state');
+        log('Received game state');
         
         // Update players
         if (message.players && Array.isArray(message.players)) {
@@ -162,7 +185,6 @@ const Network = {
                 
                 // Create or update remote player
                 let player = Game.players[playerData.id];
-                
                 if (!player) {
                     player = new Player(playerData.id, playerData.username);
                     Game.addPlayer(player);
@@ -174,7 +196,6 @@ const Network = {
                     playerData.position.y,
                     playerData.position.z
                 );
-                
                 player.rotation.set(
                     playerData.rotation.x,
                     playerData.rotation.y,
@@ -397,27 +418,6 @@ const Network = {
                 y: Game.localPlayer.rotation.y,
                 z: Game.localPlayer.rotation.z
             }
-        });
-    },
-    
-    // Send player update
-    sendPlayerUpdate() {
-        if (!Game.localPlayer) return;
-        
-        this.sendMessage({
-            type: 'update',
-            playerId: Game.localPlayer.id,
-            position: {
-                x: Game.localPlayer.position.x,
-                y: Game.localPlayer.position.y,
-                z: Game.localPlayer.position.z
-            },
-            rotation: {
-                x: Game.localPlayer.rotation.x,
-                y: Game.localPlayer.rotation.y,
-                z: Game.localPlayer.rotation.z
-            },
-            heldStones: Game.localPlayer.heldStones
         });
     },
     

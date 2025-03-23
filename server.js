@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const http = require('http');
 const express = require('express');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 // Create Express app
 const app = express();
@@ -20,18 +21,59 @@ const wss = new WebSocket.Server({ server });
 // Game state
 const gameState = {
   players: {},
-  towers: []
+  towers: [],
+  stones: [],
+  lastStoneSpawnTime: Date.now()
 };
+
+// Stone spawning configuration
+const STONE_SPAWN_CONFIG = {
+  interval: 5000,  // Spawn stones every 5 seconds
+  maxStones: 20,   // Maximum stones in the world
+  spawnRadius: 100 // Radius within which stones can spawn
+};
+
+// Spawn stones periodically
+setInterval(() => {
+  if (gameState.stones.length < STONE_SPAWN_CONFIG.maxStones) {
+    const stone = spawnStone();
+    broadcastToAll({
+      type: 'stone_spawned',
+      stone: stone
+    });
+  }
+}, STONE_SPAWN_CONFIG.interval);
+
+function spawnStone() {
+  const angle = Math.random() * Math.PI * 2;
+  const radius = Math.random() * STONE_SPAWN_CONFIG.spawnRadius;
+  
+  const stone = {
+    id: uuidv4(),
+    position: {
+      x: Math.cos(angle) * radius,
+      y: 0,
+      z: Math.sin(angle) * radius
+    },
+    velocity: { x: 0, y: 0, z: 0 },
+    isStatic: true
+  };
+  
+  gameState.stones.push(stone);
+  return stone;
+}
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   console.log('Client connected');
   let playerId = null;
 
-  // Send welcome message
+  // Send welcome message with initial state
   ws.send(JSON.stringify({
-    type: 'welcome',
-    message: 'Connected to tower building game server'
+    type: 'initial_state',
+    players: Object.values(gameState.players),
+    towers: gameState.towers,
+    stones: gameState.stones
   }));
 
   // Handle messages from clients
@@ -41,21 +83,21 @@ wss.on('connection', (ws) => {
       
       // Process message based on type
       switch (data.type) {
-        case 'join':
-          handlePlayerJoin(ws, data);
-          playerId = data.playerId;
+        case 'player_join':
+          playerId = uuidv4();
+          handlePlayerJoin(ws, { ...data, playerId });
           break;
           
-        case 'update':
-          handlePlayerUpdate(ws, data);
+        case 'player_update':
+          handlePlayerUpdate(ws, { ...data, playerId });
           break;
           
-        case 'tower_created':
-          handleTowerCreated(ws, data);
+        case 'stone_update':
+          handleStoneUpdate(ws, { ...data, playerId });
           break;
           
-        case 'tower_destroyed':
-          handleTowerDestroyed(ws, data);
+        case 'tower_update':
+          handleTowerUpdate(ws, { ...data, playerId });
           break;
           
         default:
@@ -67,20 +109,7 @@ wss.on('connection', (ws) => {
   });
 
   // Handle client disconnection
-  ws.on('close', () => {
-    if (playerId) {
-      console.log(`Player ${playerId} disconnected`);
-      
-      // Remove player from game state
-      delete gameState.players[playerId];
-      
-      // Notify other clients
-      broadcastToAll({
-        type: 'player_left',
-        playerId: playerId
-      }, null);
-    }
-  });
+  ws.on('close', () => handlePlayerDisconnect(ws, playerId));
 });
 
 // Handle player join
@@ -99,11 +128,10 @@ function handlePlayerJoin(ws, data) {
     lastUpdate: Date.now()
   };
   
-  // Send full game state to new player
+  // Send player their ID
   ws.send(JSON.stringify({
-    type: 'full_state',
-    players: Object.values(gameState.players),
-    towers: gameState.towers
+    type: 'welcome',
+    playerId
   }));
   
   // Notify other clients
@@ -138,50 +166,68 @@ function handlePlayerUpdate(ws, data) {
   }
 }
 
-// Handle tower creation
-function handleTowerCreated(ws, data) {
-  const { playerId, tower } = data;
+function handleStoneUpdate(ws, data) {
+  const { id, position, velocity, isStatic } = data;
   
-  console.log(`Player ${playerId} created a tower`);
-  
-  // Add tower to game state
-  const towerIndex = gameState.towers.length;
-  gameState.towers.push({
-    ...tower,
-    createdBy: playerId,
-    createdAt: Date.now()
-  });
-  
-  // Broadcast to other clients
-  broadcastToAll({
-    type: 'tower_created',
-    playerId,
-    tower,
-    towerIndex
-  }, ws);
-}
-
-// Handle tower destruction
-function handleTowerDestroyed(ws, data) {
-  const { playerId, towerIndex } = data;
-  
-  console.log(`Player ${playerId} destroyed tower at index ${towerIndex}`);
-  
-  // Remove tower from game state
-  if (towerIndex >= 0 && towerIndex < gameState.towers.length) {
-    gameState.towers.splice(towerIndex, 1);
+  // Find and update stone in game state
+  const stoneIndex = gameState.stones.findIndex(s => s.id === id);
+  if (stoneIndex !== -1) {
+    gameState.stones[stoneIndex] = {
+      ...gameState.stones[stoneIndex],
+      position,
+      velocity,
+      isStatic
+    };
     
-    // Broadcast to other clients
+    // Broadcast update to all clients
     broadcastToAll({
-      type: 'tower_destroyed',
-      playerId,
-      towerIndex
+      type: 'stone_update',
+      stone: gameState.stones[stoneIndex]
     }, ws);
   }
 }
 
+function handleTowerUpdate(ws, data) {
+  const { id, position, level } = data;
+  
+  // Find or create tower
+  let tower = gameState.towers.find(t => t.id === id);
+  if (!tower) {
+    tower = {
+      id,
+      position,
+      level,
+      createdAt: Date.now()
+    };
+    gameState.towers.push(tower);
+  } else {
+    tower.position = position;
+    tower.level = level;
+  }
+  
+  broadcastToAll({
+    type: 'tower_update',
+    tower
+  }, ws);
+}
+
+function handlePlayerDisconnect(ws, playerId) {
+  if (playerId) {
+    console.log(`Player ${playerId} disconnected`);
+    
+    // Remove player from game state
+    delete gameState.players[playerId];
+    
+    // Notify other clients
+    broadcastToAll({
+      type: 'player_left',
+      playerId
+    });
+  }
+}
+
 // Broadcast message to all clients except sender
-function broadcastToAll(message, excludeWs) {
+function broadcastToAll(message, excludeWs = null) {
   wss.clients.forEach((client) => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(message));
