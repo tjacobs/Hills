@@ -38,6 +38,7 @@ const Network = {
     
     setupSocketHandlers() {
         this.socket.onopen = () => {
+            console.log('WebSocket connected');
             this.isConnected = true;
             this.reconnectAttempts = 0;
             
@@ -60,7 +61,37 @@ const Network = {
         
         this.socket.onclose = () => this.handleDisconnect();
         this.socket.onerror = (error) => console.error('WebSocket error:', error);
-        this.socket.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
+        
+        this.socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            console.log('Received message:', message);
+            
+            switch (message.type) {
+                case 'welcome':
+                    this.handleWelcome(message);
+                    break;
+                case 'player_joined':
+                    this.handlePlayerJoined(message);
+                    break;
+                case 'player_left':
+                    this.handlePlayerLeft(message);
+                    break;
+                case 'player_update':
+                    this.handlePlayerUpdate(message);
+                    break;
+                case 'initial_state':
+                    this.handleInitialState(message);
+                    break;
+                case 'stone_update':
+                    this.handleStoneUpdate(message);
+                    break;
+                case 'tower_update':
+                    this.handleTowerUpdate(message);
+                    break;
+                default:
+                    console.log('Unknown message type:', message.type);
+            }
+        };
     },
     
     handleDisconnect() {
@@ -76,29 +107,6 @@ const Network = {
             }, CONFIG.NETWORK.reconnectInterval);
         } else {
             console.log('Failed to reconnect to server');
-        }
-    },
-    
-    handleMessage(message) {
-        switch (message.type) {
-            case 'initial_state':
-                this.handleInitialState(message);
-                break;
-            case 'player_joined':
-                this.handlePlayerJoined(message);
-                break;
-            case 'player_left':
-                this.handlePlayerLeft(message);
-                break;
-            case 'player_update':
-                this.handlePlayerUpdate(message);
-                break;
-            case 'stone_update':
-                this.handleStoneUpdate(message);
-                break;
-            case 'tower_update':
-                this.handleTowerUpdate(message);
-                break;
         }
     },
     
@@ -157,7 +165,9 @@ const Network = {
                 z: Game.localPlayer.rotation.z
             },
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
-        };        
+        };
+        
+        console.log('Sending player update:', updateData.playerId);
         this.sendMessage(updateData);
     },
     
@@ -196,10 +206,14 @@ const Network = {
     
     // Handle welcome message
     handleWelcome(message) {
-        log(`Your ID: ${message.playerId}`);
-        
-        // Update local player ID
+        console.log('Received welcome message:', message);
+        // Update local player's ID with server-assigned ID
         Game.localPlayer.id = message.playerId;
+
+        // Request initial game state
+        this.sendMessage({
+            type: 'request_state'
+        });
     },
     
     // Handle full state message
