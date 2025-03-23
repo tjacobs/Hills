@@ -346,8 +346,7 @@ const Network = {
                 position: message.position,
                 rotation: message.rotation,
                 heldStones: message.heldStones
-            });
-            
+            });            
             player.lastUpdate = Date.now();
         }
     },
