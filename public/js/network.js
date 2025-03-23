@@ -510,5 +510,12 @@ const Network = {
             playerId: Game.localPlayer.id,
             stone: stone.toJSON()
         });
+    },
+    
+    disconnect() {
+        if (this.socket && this.isConnected) {
+            this.socket.close();
+            this.isConnected = false;
+        }
     }
 }; 

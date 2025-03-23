@@ -546,15 +546,22 @@ function updateTowersFromData(towersData) {
 // Clean up players that haven't sent updates recently
 function cleanupStalePlayers() {
     const now = Date.now();
-    const timeout = 5000; // Reduced from 10000 to 5000 (5 seconds)
+    const timeout = 5000; // 5 seconds timeout
     
     for (const playerId in otherPlayers) {
         const player = otherPlayers[playerId];
         
         if (now - player.lastUpdate > timeout) {
             log(`Player ${player.username} timed out`);
-            Game.removePlayer(playerId);  // Changed from player.remove()
+            // Remove from game
+            Game.removePlayer(playerId);
+            // Remove from other players
             delete otherPlayers[playerId];
+            // Notify server
+            socket.send(JSON.stringify({
+                type: 'player_left',
+                playerId: playerId
+            }));
         }
     }
 }

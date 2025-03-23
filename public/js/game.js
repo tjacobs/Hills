@@ -1036,10 +1036,16 @@ const Game = {
     },
 
     removePlayer(playerId) {
-        console.log('Removing player:', playerId);
         const player = this.players[playerId];
         if (player) {
-            player.remove();  // Call the new remove method
+            console.log('Removing player:', playerId);
+            // Remove mesh from scene
+            if (player.mesh && player.mesh.parent) {
+                player.mesh.parent.remove(player.mesh);
+            }
+            // Clean up player resources
+            player.remove();
+            // Remove from players object
             delete this.players[playerId];
         }
     },
