@@ -1,7 +1,7 @@
 {
-  "name": "ramparty-server",
+  "name": "ramparty",
   "version": "1.0.0",
-  "description": "WebSocket server for tower building game",
+  "description": "Multiplayer tower building game",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,12 +9,13 @@
   },
   "dependencies": {
     "express": "^4.18.2",
-    "ws": "^8.13.0"
+    "ws": "^8.16.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.0.3"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   }
 }
