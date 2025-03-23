@@ -1,4 +1,4 @@
-// Cloud entity with exact original cartoon-style appearance
+// Cloud
 class Cloud {
     constructor(id = null, position = new THREE.Vector3()) {
         this.id = id || generateId('cloud_');
@@ -10,7 +10,6 @@ class Cloud {
             0,
             Math.random() * 2 - 1
         ).normalize();
-        
         this.createMesh();
     }
     
@@ -112,21 +111,19 @@ class Cloud {
         // Check if player is on a tower
         let playerTower = null;
         let playerTowerIndex = -1;
-        
         for (let i = 0; i < Game.towers.length; i++) {
             const tower = Game.towers[i];
             const horizontalDistance = new THREE.Vector2(
                 player.position.x - tower.position.x,
                 player.position.z - tower.position.z
             ).length();
-            
             if (horizontalDistance < CONFIG.TOWER.baseRadius) {
                 playerTower = tower;
                 playerTowerIndex = i;
                 break;
             }
         }
-        
+
         // If player is on a tower and close to cloud
         if (playerTower) {
             const distanceToCloud = player.position.distanceTo(this.position);
@@ -162,17 +159,13 @@ class Cloud {
             data.position.y,
             data.position.z
         );
-        
         const cloud = new Cloud(data.id, position);
-        
         cloud.direction.set(
             data.direction.x,
             data.direction.y,
             data.direction.z
         );
-        
         cloud.speed = data.speed;
-        
         return cloud;
     }
 } 
