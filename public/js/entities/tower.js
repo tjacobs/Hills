@@ -159,14 +159,28 @@ class Tower {
     
     // Create from JSON data
     static fromJSON(data) {
-        const position = new THREE.Vector3(
-            data.position.x,
-            data.position.y,
-            data.position.z
+        // Handle both position object formats
+        let position;
+        if (data.position) {
+            position = new THREE.Vector3(
+                data.position.x || 0,
+                data.position.y || 0,
+                data.position.z || 0
+            );
+        } else {
+            position = new THREE.Vector3(0, 0, 0);
+        }
+        
+        // Create new tower with data
+        const tower = new Tower(
+            data.id || null,
+            position,
+            data.level || 1
         );
         
-        const tower = new Tower(data.id, position, data.level);
-        tower.createdBy = data.createdBy;
+        if (data.createdBy) {
+            tower.createdBy = data.createdBy;
+        }
         
         return tower;
     }
