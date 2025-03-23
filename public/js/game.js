@@ -72,6 +72,9 @@ const Game = {
         // Initialize physics
         Physics.init();
         
+        // Add window resize listener
+        window.addEventListener('resize', this.handleResize.bind(this));
+        
         // Start game loop
         this.lastTime = performance.now();
         this.isRunning = true;
@@ -81,28 +84,29 @@ const Game = {
     
     // Handle window resize
     handleResize() {
-        // Update camera aspect ratio
+        // Update camera
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         
         // Update renderer size
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
     },
     
     // Setup lighting
     setupLighting() {
         // Clear any existing lights
         this.scene.children = this.scene.children.filter(child => !(child instanceof THREE.Light));
-        
+
         // Add ambient light to see the texture (matches original)
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         this.scene.add(ambientLight);
-        
+
         // Add directional light for better visibility (matches original)
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(5, 5, 5);
         directionalLight.castShadow = true;
-        
+
         // Configure shadow properties
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
@@ -112,20 +116,19 @@ const Game = {
         directionalLight.shadow.camera.right = 100;
         directionalLight.shadow.camera.top = 100;
         directionalLight.shadow.camera.bottom = -100;
-        
         this.scene.add(directionalLight);
-        
+
         // Add a secondary directional light from another angle
         const secondaryLight = new THREE.DirectionalLight(0xffffff, 0.3);
         secondaryLight.position.set(-5, 3, -5);
         this.scene.add(secondaryLight);
-        
+
         // Enable shadows in the renderer
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     },
     
-    // Create sky with gradient to match original
+    // Create sky with gradient
     createSky() {
         const vertexShader = `
         varying vec3 vWorldPosition;
@@ -134,7 +137,6 @@ const Game = {
             vWorldPosition = worldPosition.xyz;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`;
-        
         const fragmentShader = `
         uniform vec3 topColor;
         uniform vec3 bottomColor;
@@ -145,14 +147,12 @@ const Game = {
             float h = normalize(vWorldPosition + offset).y;
             gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
         }`;
-        
         const uniforms = {
             topColor: { value: new THREE.Color(0x0077ff) },  // Light blue
             bottomColor: { value: new THREE.Color(0xffffff) },  // White
             offset: { value: 33 },
             exponent: { value: 0.6 }
         };
-        
         const skyGeo = new THREE.SphereGeometry(400, 32, 15);
         const skyMat = new THREE.ShaderMaterial({
             uniforms: uniforms,
@@ -160,12 +160,11 @@ const Game = {
             fragmentShader: fragmentShader,
             side: THREE.BackSide
         });
-        
         const sky = new THREE.Mesh(skyGeo, skyMat);
         this.scene.add(sky);
     },
     
-    // Create ground with hills and textures matching the original implementation
+    // Create ground with hills
     createGround() {
         // Load textures first
         const textureLoader = new THREE.TextureLoader();
@@ -177,7 +176,7 @@ const Game = {
         
         // Create ground geometry with hills
         const groundSize = CONFIG.WORLD.size;
-        const segments = 200; // Match original resolution
+        const segments = 200;
         const geometry = new THREE.PlaneGeometry(
             groundSize, 
             groundSize, 
@@ -187,10 +186,10 @@ const Game = {
         
         // Generate heightmap for hills based on original code
         const vertices = geometry.attributes.position.array;
-        const maxHeight = 5; // Maximum height of terrain hills
-        const xs = 8; // X-scale factor for terrain undulation
-        const ys = 8; // Y-scale factor for terrain undulation
-        const shoreRadius = 0.9; // Percentage where beach/water transition occurs
+        const maxHeight = CONFIG.WORLD.maxTerrainHeight;
+        const xs = CONFIG.WORLD.terrainXScale;
+        const ys = CONFIG.WORLD.terrainYScale;
+        const shoreRadius = CONFIG.WORLD.shoreRadius;
         
         for (let i = 0; i <= segments; i++) {
             for (let j = 0; j <= segments; j++) {

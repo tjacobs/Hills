@@ -64,9 +64,11 @@ const CONFIG = {
     // World settings
     WORLD: {
         size: 200,
-        groundY: 0,
-        gravity: 9.8,
-        cloudHeight: 50
+        cloudHeight: 50,
+        maxTerrainHeight: 5,      // Maximum height of terrain hills
+        terrainXScale: 8,         // X-scale factor for terrain undulation
+        terrainYScale: 8,         // Y-scale factor for terrain undulation
+        shoreRadius: 0.9          // Percentage where beach/water transition occurs
     },
     
     // Input settings
