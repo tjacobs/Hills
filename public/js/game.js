@@ -391,10 +391,12 @@ const Game = {
     
     // Update entities
     updateEntities(deltaTime) {
+        // Update physics
+        Physics.update(deltaTime);
+        
         // Update local player
         if (this.localPlayer) {
             this.localPlayer.update(deltaTime);
-
             // Send network update
             Network.sendPlayerUpdate();
         }
@@ -404,22 +406,7 @@ const Game = {
             if (id !== this.localPlayer.id) {
                 this.players[id].update(deltaTime);
             }
-        }
-        
-        // Update stones
-        for (let i = this.stones.length - 1; i >= 0; i--) {
-            this.stones[i].update(deltaTime);
-        }
-        
-        // Update towers
-        for (let i = this.towers.length - 1; i >= 0; i--) {
-            //this.towers[i].update(deltaTime);
-        }
-        
-        // Update clouds
-        for (let i = this.clouds.length - 1; i >= 0; i--) {
-            this.clouds[i].update(deltaTime);
-        }
+        }        
     },
     
     // Add stone to game
