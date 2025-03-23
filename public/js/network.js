@@ -185,12 +185,19 @@ const Network = {
     
     // Send tower updates when created or modified
     sendTowerUpdate(tower) {
-        if (!this.isConnected) return;        
+        if (!this.isConnected) return;
+        
         this.sendMessage({
             type: 'tower_update',
-            id: tower.id,
-            position: tower.position.toJSON(),
-            level: tower.level
+            tower: {
+                id: tower.id,
+                position: {
+                    x: tower.mesh.position.x,
+                    y: tower.mesh.position.y,
+                    z: tower.mesh.position.z
+                },
+                level: tower.level
+            }
         });
     },
     
