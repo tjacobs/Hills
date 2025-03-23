@@ -184,13 +184,12 @@ const Game = {
             segments
         );
         
-        // Generate heightmap for hills based on original code
+        // Generate heightmap for hills
         const vertices = geometry.attributes.position.array;
         const maxHeight = CONFIG.WORLD.maxTerrainHeight;
         const xs = CONFIG.WORLD.terrainXScale;
         const ys = CONFIG.WORLD.terrainYScale;
         const shoreRadius = CONFIG.WORLD.shoreRadius;
-        
         for (let i = 0; i <= segments; i++) {
             for (let j = 0; j <= segments; j++) {
                 const index = (i * (segments + 1) + j) * 3;
@@ -217,7 +216,7 @@ const Game = {
         const groundMaterial = new THREE.ShaderMaterial({
             uniforms: {
                 grassTexture: { value: grassTexture },
-                centerDistance: { value: shoreRadius },    // Distance from center where beach starts (0-1)
+                centerDistance: { value: shoreRadius },
                 transitionWidth: { value: 0.05 }   // Width of the beach transition
             },
             vertexShader: `
@@ -234,7 +233,6 @@ const Game = {
                     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                     vViewPosition = -mvPosition.xyz;
                     vNormal = normalMatrix * normal;
-                    
                     gl_Position = projectionMatrix * mvPosition;
                 }
             `,
@@ -275,8 +273,7 @@ const Game = {
                     vec3 diffuse = diff * vec3(1.0);
                     
                     // Combine lighting
-                    vec3 lighting = ambient + diffuse;
-                    
+                    vec3 lighting = ambient + diffuse;                    
                     gl_FragColor = vec4(baseColor.rgb * lighting, 1.0);
                 }
             `,
@@ -313,18 +310,15 @@ const Game = {
             transparent: true,
             opacity: 0.9      // Slight transparency
         });
-        
         const water = new THREE.Mesh(borderGeometry, borderMaterial);
         water.rotation.x = -Math.PI / 2;
-        water.position.y = -6; // Position below the terrain
-        
+        water.position.y = -6; // Position below the terrain        
         this.scene.add(water);
     },
     
     // Create heightmap for efficient height lookups
     createHeightmap(vertices, segments) {
         this.heightMap = [];
-        
         for (let i = 0; i <= segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= segments; j++) {
@@ -332,7 +326,6 @@ const Game = {
                 this.heightMap[i][j] = vertices[index + 2];
             }
         }
-        
         this.segments = segments;
         this.groundSize = CONFIG.WORLD.size;
     },
@@ -347,9 +340,8 @@ const Game = {
                 CONFIG.WORLD.cloudHeight + (Math.random() * 10 - 5),
                 (Math.random() * 2 - 1) * CONFIG.WORLD.size / 2
             );
-            
             const cloud = new Cloud(null, position);
-            
+
             // Add to game
             this.addCloud(cloud);
         }
@@ -357,33 +349,31 @@ const Game = {
     
     // Update game
     update(time) {
+        // Don't update if game is not running
         if (!this.isRunning) return;
-        
+
         // Calculate delta time
         const deltaTime = (time - this.lastTime) / 1000;
         this.lastTime = time;
-        
+
         // Cap delta time to prevent large jumps
         const cappedDeltaTime = Math.min(deltaTime, 0.1);
-        
+
         // Update game state
         this.updateGameState(cappedDeltaTime);
-        
+
         // Update entities
         this.updateEntities(cappedDeltaTime);
-        
+
         // Render scene
         this.renderer.render(this.scene, this.camera);
-        
+
         // Request next frame
         requestAnimationFrame(this.update.bind(this));
     },
     
     // Update game state
     updateGameState(deltaTime) {
-        // Update water
-        this.updateWater(deltaTime);
-        
         // Spawn stones from ocean - one per second
         if (!this.lastStoneSpawnTime) {
             this.lastStoneSpawnTime = performance.now();
@@ -392,7 +382,8 @@ const Game = {
         const now = performance.now();
         const timeSinceLastSpawn = now - this.lastStoneSpawnTime;
         
-        if (timeSinceLastSpawn > 1000 && this.stones.length < CONFIG.STONE.maxCount) {
+        // Spawn stones from ocean - one per second
+        if (timeSinceLastSpawn > 1000 && this.stones.length < 100) {
             this.spawnStoneFromOcean();
             this.lastStoneSpawnTime = now;
         }        
@@ -460,18 +451,7 @@ const Game = {
             }
         }
     },
-    
-    // Clear all stones
-    clearStones() {
-        // Remove all stones from scene
-        for (const stone of this.stones) {
-            this.scene.remove(stone.mesh);
-        }
-        
-        // Clear stones array
-        this.stones.length = 0;
-    },
-    
+
     // Get stone by ID
     getStoneById(id) {
         return this.stones.find(stone => stone.id === id);
@@ -487,7 +467,6 @@ const Game = {
             const creatorName = tower.createdBy === this.localPlayer.id ? 
                 'You' : 
                 (this.players[tower.createdBy]?.username || 'Another player');
-            
             log(`${creatorName} created a level ${tower.level} tower!`, 'info');
         } else {
             log(`A level ${tower.level} tower was created!`, 'info');
@@ -497,25 +476,9 @@ const Game = {
         if (notifyNetwork) {
             Network.sendTowerCreated(tower);
         }
-        
         return tower;
     },
-    
-    // Remove tower from game
-    removeTower(tower) {
-        // Remove from scene
-        this.scene.remove(tower.mesh);
-        
-        // Remove from towers array
-        const index = this.towers.indexOf(tower);
-        
-        if (index !== -1) {
-            this.towers.splice(index, 1);
-        }
-        
-        updateUI();  // Update UI when tower is removed
-    },
-    
+
     // Destroy tower at index
     destroyTower(index, notify = true) {
         // Check if index is valid
@@ -526,30 +489,21 @@ const Game = {
         // Get tower
         const tower = this.towers[index];
         
-        // Create explosion effect
-        this.createExplosionEffect(tower.position);
-        
         // Remove tower
-        this.removeTower(tower);
+        this.scene.remove(tower.mesh);
         
+        // Remove from towers array
+        if (index !== -1) {
+            this.towers.splice(index, 1);
+        }
+        
+        // Update UI when tower is removed
+        updateUI(); 
+
         // Notify network if requested
         if (notify && Network.isConnected) {
             Network.sendTowerDestroyed(index);
         }
-    },
-    
-    // Clear all towers
-    clearTowers() {
-        // Remove all towers from scene
-        for (const tower of this.towers) {
-            this.scene.remove(tower.mesh);
-        }
-        
-        // Clear towers array
-        this.towers.length = 0;
-        
-        // Update UI
-        updateUI();
     },
     
     // Add cloud to game
@@ -559,170 +513,12 @@ const Game = {
         
         // Add to scene
         this.scene.add(cloud.mesh);
-        
         return cloud;
     },
-    
-    // Remove cloud from game
-    removeCloud(cloud) {
-        // Remove from scene
-        this.scene.remove(cloud.mesh);
-        
-        // Remove from clouds array
-        const index = this.clouds.indexOf(cloud);
-        
-        if (index !== -1) {
-            this.clouds.splice(index, 1);
-        }
-    },
-    
-    // Clear all clouds
-    clearClouds() {
-        // Remove all clouds from scene
-        for (const cloud of this.clouds) {
-            this.scene.remove(cloud.mesh);
-        }
-        
-        // Clear clouds array
-        this.clouds.length = 0;
-    },
-    
-    // Update remote player
-    updateRemotePlayer(data) {
-        // Check if player exists
-        if (this.players[data.id]) {
-            // Update existing player
-            this.players[data.id].updateFromData(data);
-        } else {
-            // Create new player
-            const player = new Player(data.id, data.username);
-            player.updateFromData(data);
-            
-            // Add to players
-            this.players[data.id] = player;
-            
-            // Add to scene
-            this.scene.add(player.mesh);
-            
-            // Update UI
-            updateUI();
-        }
-    },
-    
-    // Remove remote player
-    removeRemotePlayer(id) {
-        // Check if player exists
-        if (this.players[id]) {
-            // Remove from scene
-            this.scene.remove(this.players[id].mesh);
-            
-            // Remove from players
-            delete this.players[id];
-            
-            // Update UI
-            updateUI();
-        }
-    },
-    
+
     // Get player by ID
     getPlayerById(id) {
         return this.players[id];
-    },
-    
-    // Create explosion effect
-    createExplosionEffect(position) {
-        // Create particle system for explosion
-        const particleCount = 100;
-        const particles = new THREE.BufferGeometry();
-        
-        const positions = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
-        const sizes = new Float32Array(particleCount);
-        
-        const color = new THREE.Color();
-        
-        for (let i = 0; i < particleCount; i++) {
-            // Random position within sphere
-            const radius = 2 + Math.random() * 2;
-            const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI;
-            
-            positions[i * 3] = position.x + radius * Math.sin(phi) * Math.cos(theta);
-            positions[i * 3 + 1] = position.y + radius * Math.sin(phi) * Math.sin(theta);
-            positions[i * 3 + 2] = position.z + radius * Math.cos(phi);
-            
-            // Random color (orange to red)
-            color.setHSL(0.05 + Math.random() * 0.05, 1.0, 0.5 + Math.random() * 0.3);
-            
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
-            
-            // Random size
-            sizes[i] = 0.5 + Math.random() * 0.5;
-        }
-        
-        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-        particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-        
-        // Create material
-        const material = new THREE.PointsMaterial({
-            size: 1,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8
-        });
-        
-        // Create particle system
-        const particleSystem = new THREE.Points(particles, material);
-        
-        // Add to scene
-        this.scene.add(particleSystem);
-        
-        // Animate explosion
-        const startTime = performance.now();
-        const duration = 1000; // 1 second
-        
-        const animateExplosion = (time) => {
-            const elapsed = time - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            
-            // Scale particles outward
-            for (let i = 0; i < particleCount; i++) {
-                const px = positions[i * 3];
-                const py = positions[i * 3 + 1];
-                const pz = positions[i * 3 + 2];
-                
-                const dx = px - position.x;
-                const dy = py - position.y;
-                const dz = pz - position.z;
-                
-                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                const direction = new THREE.Vector3(dx, dy, dz).normalize();
-                
-                positions[i * 3] = position.x + direction.x * distance * (1 + progress * 2);
-                positions[i * 3 + 1] = position.y + direction.y * distance * (1 + progress * 2);
-                positions[i * 3 + 2] = position.z + direction.z * distance * (1 + progress * 2);
-            }
-            
-            // Update opacity
-            material.opacity = 0.8 * (1 - progress);
-            
-            // Update particle positions
-            particles.attributes.position.needsUpdate = true;
-            
-            // Continue animation if not complete
-            if (progress < 1) {
-                requestAnimationFrame(animateExplosion);
-            } else {
-                // Remove from scene
-                this.scene.remove(particleSystem);
-            }
-        };
-        
-        // Start animation
-        requestAnimationFrame(animateExplosion);
     },
     
     // Get height at position using the heightmap
@@ -761,18 +557,16 @@ const Game = {
         
         return height;
     },
-    
+
     // Update stone spawning with even slower movement
     spawnStoneFromOcean() {
         // Choose a random side of the island
         const side = Math.floor(Math.random() * 4);
-        
+
         // Calculate spawn position on the edge of the water
         const worldHalfSize = CONFIG.WORLD.size / 2;
         const spawnDistance = worldHalfSize * 1.2; // Spawn further out
-        
         let spawnX, spawnZ;
-        
         switch (side) {
             case 0: // North
                 spawnX = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
@@ -791,33 +585,32 @@ const Game = {
                 spawnZ = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
                 break;
         }
-        
+
         // Create stone
         const stone = new Stone();
         stone.mesh.position.set(spawnX, 0, spawnZ);
-        
+
         // Calculate direction toward island center
         const directionToCenter = new THREE.Vector3(-spawnX, 0, -spawnZ).normalize();
-        
+
         // Incoming!
         const horizontalSpeed = 0.5;
         const verticalSpeed = 0.6;
-        
+
         // Set velocity components
         stone.velocity.x = directionToCenter.x * horizontalSpeed;
         stone.velocity.z = directionToCenter.z * horizontalSpeed;
         stone.velocity.y = verticalSpeed;
-        
+
         // Add to game
         this.addStone(stone);
-        
+
         // Create splash effect
         this.createSplashEffect(stone.mesh.position.clone());
-        
         return stone;
     },
     
-    // Add splash effect method
+    // Add splash effect
     createSplashEffect(position) {
         // Create particle system for splash
         const particleCount = 30;
@@ -833,7 +626,6 @@ const Game = {
         // Create particle positions
         const positions = new Float32Array(particleCount * 3);
         const velocities = [];
-        
         for (let i = 0; i < particleCount; i++) {
             // Random position around the splash center
             positions[i * 3] = position.x + (Math.random() * 2 - 1) * 0.5;
@@ -856,31 +648,30 @@ const Game = {
         
         // Add to scene
         this.scene.add(particleSystem);
-        
+
         // Animate splash
         const startTime = performance.now();
         const duration = 1000; // 1 second
-        
         const animateSplash = (time) => {
             const elapsed = time - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             // Update particle positions
             for (let i = 0; i < particleCount; i++) {
                 positions[i * 3] += velocities[i].x;
                 positions[i * 3 + 1] += velocities[i].y;
                 positions[i * 3 + 2] += velocities[i].z;
-                
+
                 // Add gravity
                 velocities[i].y -= 0.01;
             }
-            
+
             // Update opacity
             particleMaterial.opacity = 0.8 * (1 - progress);
-            
+
             // Update particle positions
             particleGeometry.attributes.position.needsUpdate = true;
-            
+
             // Continue animation if not complete
             if (progress < 1) {
                 requestAnimationFrame(animateSplash);
@@ -889,41 +680,11 @@ const Game = {
                 this.scene.remove(particleSystem);
             }
         };
-        
+
         // Start animation
         requestAnimationFrame(animateSplash);
     },
     
-    // Add missing updateWater method
-    updateWater(deltaTime) {
-        // Simple water animation - update water material time
-        if (this.waterMaterial) {
-            // Update water time uniform if it exists
-            if (this.waterMaterial.uniforms && this.waterMaterial.uniforms.time) {
-                this.waterMaterial.uniforms.time.value += deltaTime;
-            }
-        }
-    },
-    
-    // Add missing findNearbyStonesForTower method
-    findNearbyStonesForTower(stone) {
-        const result = [stone];
-        const maxDistance = 3; // Maximum distance between stones to form a tower
-        
-        for (const otherStone of this.stones) {
-            // Skip if same stone or not static
-            if (otherStone === stone || !otherStone.isStatic) continue;
-            
-            // Check distance
-            const distance = stone.mesh.position.distanceTo(otherStone.mesh.position);
-            if (distance < maxDistance) {
-                result.push(otherStone);
-            }
-        }
-        
-        return result;
-    },
-
     // Player management
     addPlayer(player) {
         console.log('Adding player:', player.id);
@@ -954,4 +715,4 @@ const Game = {
 // Initialize game when page loads
 window.addEventListener('load', () => {
     Game.init();
-}); 
+});
