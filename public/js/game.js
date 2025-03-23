@@ -39,7 +39,7 @@ const Game = {
         // Setup lighting
         this.setupLighting();
         
-        // Add fog for distance fade (matches original)
+        // Add fog for distance fade
         this.scene.fog = new THREE.Fog(0xffffff, 100, 500);
         
         // Create sky
@@ -76,9 +76,7 @@ const Game = {
         this.lastTime = performance.now();
         this.isRunning = true;
         this.update(this.lastTime);
-
         log(`Started game`, 'info');
-
     },
     
     // Handle window resize
@@ -340,40 +338,6 @@ const Game = {
         this.groundSize = CONFIG.WORLD.size;
     },
     
-    // Create local player
-    createLocalPlayer() {
-        // Generate username
-        const username = 'Player_' + Math.floor(Math.random() * 1000);
-        
-        // Create local player
-        this.localPlayer = new LocalPlayer(null, username);
-        
-        // Set camera
-        this.localPlayer.setCamera(this.camera);
-        
-        // Add to players
-        this.players[this.localPlayer.id] = this.localPlayer;
-    },
-    
-    // Create initial stones
-    createInitialStones() {
-        // Create some initial stones
-        for (let i = 0; i < 20; i++) {
-            // Create stone
-            const stone = new Stone();
-            
-            // Position randomly
-            stone.mesh.position.set(
-                (Math.random() * 2 - 1) * 20,
-                0.5,
-                (Math.random() * 2 - 1) * 20
-            );
-            
-            // Add to game
-            this.addStone(stone);
-        }
-    },
-    
     // Create clouds
     createClouds() {
         // Create some clouds
@@ -432,14 +396,7 @@ const Game = {
         if (timeSinceLastSpawn > 1000 && this.stones.length < CONFIG.STONE.maxCount) {
             this.spawnStoneFromOcean();
             this.lastStoneSpawnTime = now;
-        }
-        
-        // Check stones for tower transformation
-        for (const stone of this.stones) {
-            if (stone.isStatic) {
-                this.checkStoneForTowerTransformation(stone);
-            }
-        }
+        }        
     },
     
     // Update entities
@@ -769,62 +726,6 @@ const Game = {
         requestAnimationFrame(animateExplosion);
     },
     
-    // Check stone for tower transformation
-    checkStoneForTowerTransformation(stone) {
-        // Skip if stone is not static
-        if (!stone.isStatic) return;
-        
-        // First check if stone is near an existing tower
-        let nearestTower = null;
-        let nearestDistance = Infinity;
-        
-        for (const tower of this.towers) {
-            const distance = stone.mesh.position.distanceTo(tower.mesh.position);
-            if (distance < CONFIG.TOWER.baseRadius * 1.5 && distance < nearestDistance) {
-                nearestTower = tower;
-                nearestDistance = distance;
-            }
-        }
-        
-        if (nearestTower) {
-            // Stone landed near a tower - add a level
-            nearestTower.addLevel();
-            
-            // Remove the stone
-            this.removeStone(stone);
-            
-            // Log tower level up
-            log(`Tower leveled up to level ${nearestTower.level}!`, 'info');
-        } else {
-            // No nearby tower - check for creating new tower
-            const nearbyStones = this.findNearbyStonesForTower(stone);
-            
-            // If enough nearby stones, create a tower
-            if (nearbyStones.length >= 5) {
-                // Calculate center position
-                const center = new THREE.Vector3();
-                for (const s of nearbyStones) {
-                    center.add(s.mesh.position);
-                }
-                center.divideScalar(nearbyStones.length);
-                
-                // Create tower
-                const tower = new Tower(null, center);
-                
-                // Add to game using proper method
-                this.addTower(tower);
-                
-                // Log tower creation
-                log(`Tower created at (${center.x.toFixed(1)}, ${center.z.toFixed(1)}) with ${nearbyStones.length} stones!`, 'info');
-                
-                // Remove stones
-                for (const s of nearbyStones) {
-                    this.removeStone(s);
-                }
-            }
-        }
-    },
-    
     // Get height at position using the heightmap
     getHeightAtPosition(x, z) {
         if (!this.heightMap) return 0;
@@ -1047,22 +948,6 @@ const Game = {
             player.remove();
             // Remove from players object
             delete this.players[playerId];
-        }
-    },
-
-    updatePlayer(playerData) {
-        const player = this.players[playerData.id];
-        if (player && player !== this.localPlayer) {
-            player.position.set(
-                playerData.position.x,
-                playerData.position.y,
-                playerData.position.z
-            );
-            player.rotation.set(
-                playerData.rotation.x,
-                playerData.rotation.y,
-                playerData.rotation.z
-            );
         }
     }
 };
