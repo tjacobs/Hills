@@ -2,7 +2,7 @@ class Player {
     constructor(id = null, username = 'Player') {
         this.id = id || generateId('player_');
         this.username = username;
-        this.position = new THREE.Vector3(0, CONFIG.PLAYER.height, 0);
+        this.position = new THREE.Vector3(0, 0, 0);
         this.rotation = new THREE.Euler();
         this.velocity = new THREE.Vector3();
         this.isGrounded = false;
@@ -19,30 +19,32 @@ class Player {
         }
     }
     
+    static MESH_HEIGHT_OFFSET = -2.0;  // Added constant here
+    
     createMesh() {
         // Create a group to hold all player parts
         this.mesh = new THREE.Group();
         
-        // Create body
-        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.2, 8);
+        // Create body (made shorter)
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 0.8, 8); // Height reduced from 1.2 to 0.8
         const bodyMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x8B4513,
             roughness: 0.8,
             metalness: 0.1
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0.8;
+        body.position.y = 0.2; // Adjusted to account for shorter body
         this.mesh.add(body);
         
         // Add neck to connect head and body
-        const neckGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.15, 8);
+        const neckGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.25, 8);
         const neckMaterial = new THREE.MeshStandardMaterial({
             color: 0xE0AC69,
             roughness: 0.7,
             metalness: 0.1
         });
         const neck = new THREE.Mesh(neckGeometry, neckMaterial);
-        neck.position.y = 1.35; // Position between head and body
+        neck.position.y = 0.65;
         this.mesh.add(neck);
         
         // Create head (sphere)
@@ -53,7 +55,7 @@ class Player {
             metalness: 0.1
         });
         const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 1.6; // Raised slightly to accommodate neck
+        head.position.y = 0.8;
         this.mesh.add(head);
         
         // Eyes
@@ -62,19 +64,19 @@ class Player {
         
         // Left eye
         const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        leftEye.position.set(-0.1, 1.65, -0.25);
+        leftEye.position.set(-0.1, 0.85, -0.25);
         this.mesh.add(leftEye);
         
         // Right eye
         const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-        rightEye.position.set(0.1, 1.65, -0.25);
+        rightEye.position.set(0.1, 0.85, -0.25);
         this.mesh.add(rightEye);
         
         // Mouth
         const mouthGeometry = new THREE.BoxGeometry(0.15, 0.03, 0.03);
         const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
         const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-        mouth.position.set(0, 1.55, -0.28);
+        mouth.position.set(0, 0.75, -0.28);
         this.mesh.add(mouth);
         
         // Create arms
@@ -87,42 +89,41 @@ class Player {
         
         // Left arm
         const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-        leftArm.position.set(-0.4, 1.0, 0);
-        leftArm.rotation.z = Math.PI / 4; // Angle outward
+        leftArm.position.set(-0.4, 0.2, 0);
+        leftArm.rotation.z = Math.PI / 4;
         this.mesh.add(leftArm);
         
         // Right arm
         const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-        rightArm.position.set(0.4, 1.0, 0);
-        rightArm.rotation.z = -Math.PI / 4; // Angle outward
+        rightArm.position.set(0.4, 0.2, 0);
+        rightArm.rotation.z = -Math.PI / 4;
         this.mesh.add(rightArm);
         
-        // Create legs (cylinders)
-        const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 6);
+        // Create legs (made longer)
+        const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.2, 6); // Height increased from 0.8 to 1.2
         const legMaterial = new THREE.MeshStandardMaterial({
-            color: 0x654321, // Darker brown for pants
+            color: 0x654321,
             roughness: 0.8,
             metalness: 0.1
         });
         
         // Left leg
         const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-        leftLeg.position.set(-0.2, 0.1, 0);
+        leftLeg.position.set(-0.2, -0.4, 0);
         this.mesh.add(leftLeg);
         
         // Right leg
         const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-        rightLeg.position.set(0.2, 0.1, 0);
+        rightLeg.position.set(0.2, -0.4, 0);
         this.mesh.add(rightLeg);
         
         // Add nametag
         this.createNametag();
         
-        // Raise the entire player slightly off the ground
-        this.mesh.position.y = 0.2;
-        
         // Store reference to this player in the mesh
         this.mesh.userData.player = this;
+        
+        this.mesh.position.y = -0.6;
         
         return this.mesh;
     }
@@ -172,6 +173,7 @@ class Player {
         // Update mesh position
         if (this.mesh) {
             this.mesh.position.copy(this.position);
+            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
             this.mesh.rotation.copy(this.rotation);
         }
     }
@@ -188,7 +190,8 @@ class Player {
         this.rotation.set(
             data.rotation.x,
             data.rotation.y,
-            data.rotation.z
+            data.rotation.z,
+            'YXZ'
         );
         
         // Update held stones
@@ -200,6 +203,7 @@ class Player {
         // Update mesh
         if (this.mesh) {
             this.mesh.position.copy(this.position);
+            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
             this.mesh.rotation.copy(this.rotation);
         }
     }
