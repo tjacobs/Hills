@@ -1039,10 +1039,7 @@ const Game = {
         console.log('Removing player:', playerId);
         const player = this.players[playerId];
         if (player) {
-            // Remove player mesh from scene if it exists
-            if (player.mesh) {
-                this.scene.remove(player.mesh);
-            }
+            player.remove();  // Call the new remove method
             delete this.players[playerId];
         }
     },

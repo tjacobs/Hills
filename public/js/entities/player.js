@@ -135,8 +135,8 @@ class Player {
         canvas.width = 256;
         canvas.height = 64;
         
-        // Draw background
-        context.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        // Draw background (optional)
+        context.fillStyle = 'rgba(0, 0, 0, 0.3)';
         context.fillRect(0, 0, canvas.width, canvas.height);
         
         // Draw text
@@ -144,20 +144,21 @@ class Player {
         context.fillStyle = 'white';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText(this.username, canvas.width / 2, canvas.height / 2);
         
-        // Create texture
+        // Draw username and ID
+        const displayText = `${this.username} (${this.id})`;
+        context.fillText(displayText, canvas.width/2, canvas.height/2);
+        
+        // Create sprite
         const texture = new THREE.CanvasTexture(canvas);
-        
-        // Create material
-        const material = new THREE.SpriteMaterial({
+        const spriteMaterial = new THREE.SpriteMaterial({ 
             map: texture,
             transparent: true
         });
+        const sprite = new THREE.Sprite(spriteMaterial);
         
-        // Create sprite
-        const sprite = new THREE.Sprite(material);
-        sprite.position.y = 2.2;
+        // Position sprite above player
+        sprite.position.y = 2;
         sprite.scale.set(2, 0.5, 1);
         
         // Add to mesh
@@ -203,7 +204,6 @@ class Player {
         // Update mesh
         if (this.mesh) {
             this.mesh.position.copy(this.position);
-            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
             this.mesh.rotation.copy(this.rotation);
         }
     }
@@ -292,6 +292,19 @@ class Player {
         const player = new Player(data.id, data.username);
         player.updateFromData(data);
         return player;
+    }
+
+    remove() {
+        if (this.mesh) {
+            // Remove nametag and other meshes
+            while(this.mesh.children.length > 0) { 
+                this.mesh.remove(this.mesh.children[0]); 
+            }
+            // Remove the mesh itself if it's in the scene
+            if (this.mesh.parent) {
+                this.mesh.parent.remove(this.mesh);
+            }
+        }
     }
 }
 

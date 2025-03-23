@@ -1,8 +1,13 @@
 // Utility functions
 
-// Generate a unique ID
-function generateId(prefix = '') {
-    return prefix + Math.random().toString(36).substring(2, 15);
+// Generate a 6-letter lowercase ID
+function generateId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
 }
 
 // Logger with timestamp
