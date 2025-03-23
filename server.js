@@ -143,7 +143,8 @@ function handlePlayerJoin(ws, data) {
     lastUpdate: Date.now()
   };
   
-  // Send player their ID
+  // Send welcome message to new player
+  console.log('Sending welcome message:', { type: 'welcome', playerId });
   ws.send(JSON.stringify({
     type: 'welcome',
     playerId
