@@ -45,8 +45,16 @@ const Network = {
             this.sendMessage({
                 type: 'player_join',
                 username: Game.localPlayer.username,
-                position: Game.localPlayer.position.toJSON(),
-                rotation: Game.localPlayer.rotation.toJSON()
+                position: {
+                    x: Game.localPlayer.position.x,
+                    y: Game.localPlayer.position.y,
+                    z: Game.localPlayer.position.z
+                },
+                rotation: {
+                    x: Game.localPlayer.rotation.x,
+                    y: Game.localPlayer.rotation.y,
+                    z: Game.localPlayer.rotation.z
+                }
             });
         };
         
@@ -98,9 +106,19 @@ const Network = {
         // Handle players
         message.players.forEach(playerData => {
             if (playerData.id === Game.localPlayer.id) return;
+            
             const player = new Player(playerData.id, playerData.username);
-            player.position.copy(playerData.position);
-            player.rotation.copy(playerData.rotation);
+            player.position.set(
+                playerData.position.x,
+                playerData.position.y,
+                playerData.position.z
+            );
+            player.rotation.set(
+                playerData.rotation.x,
+                playerData.rotation.y,
+                playerData.rotation.z,
+                'YXZ' // Specify rotation order
+            );
             Game.addPlayer(player);
         });
         
@@ -124,10 +142,20 @@ const Network = {
     // Send regular updates for local player
     sendPlayerUpdate() {
         if (!this.isConnected || !Game.localPlayer) return;
+        
         this.sendMessage({
             type: 'player_update',
-            position: Game.localPlayer.position.toJSON(),
-            rotation: Game.localPlayer.rotation.toJSON(),
+            playerId: Game.localPlayer.id,
+            position: {
+                x: Game.localPlayer.position.x,
+                y: Game.localPlayer.position.y,
+                z: Game.localPlayer.position.z
+            },
+            rotation: {
+                x: Game.localPlayer.rotation.x,
+                y: Game.localPlayer.rotation.y,
+                z: Game.localPlayer.rotation.z
+            },
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
         });
     },
@@ -275,7 +303,7 @@ const Network = {
         player.updateFromData(message);
         
         // Add to game
-        Game.addRemotePlayer(player);
+        Game.addPlayer(player);
         
         // Update UI
         updateUI();
@@ -286,7 +314,7 @@ const Network = {
         log(`Player left: ${message.playerId}`);
         
         // Remove from game
-        Game.removeRemotePlayer(message.playerId);
+        Game.removePlayer(message.playerId);
         
         // Update UI
         updateUI();
@@ -297,8 +325,26 @@ const Network = {
         // Skip local player
         if (message.playerId === Game.localPlayer.id) return;
         
-        // Update remote player
-        Game.updateRemotePlayer(message);
+        const player = Game.players[message.playerId];
+        if (player) {
+            player.position.set(
+                message.position.x,
+                message.position.y,
+                message.position.z
+            );
+            player.rotation.set(
+                message.rotation.x,
+                message.rotation.y,
+                message.rotation.z,
+                'YXZ'
+            );
+            
+            // Update mesh if it exists
+            if (player.mesh) {
+                player.mesh.position.copy(player.position);
+                player.mesh.rotation.copy(player.rotation);
+            }
+        }
     },
     
     // Handle tower created message

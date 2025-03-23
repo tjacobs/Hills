@@ -447,6 +447,9 @@ const Game = {
         // Update local player
         if (this.localPlayer) {
             this.localPlayer.update(deltaTime);
+
+            // Send network update
+            Network.sendPlayerUpdate();
         }
         
         // Update remote players
@@ -1019,6 +1022,45 @@ const Game = {
         }
         
         return result;
+    },
+
+    // Player management
+    addPlayer(player) {
+        console.log('Adding player:', player.id);
+        this.players[player.id] = player;
+        
+        // Add player mesh to scene if it exists
+        if (player.mesh) {
+            this.scene.add(player.mesh);
+        }
+    },
+
+    removePlayer(playerId) {
+        console.log('Removing player:', playerId);
+        const player = this.players[playerId];
+        if (player) {
+            // Remove player mesh from scene if it exists
+            if (player.mesh) {
+                this.scene.remove(player.mesh);
+            }
+            delete this.players[playerId];
+        }
+    },
+
+    updatePlayer(playerData) {
+        const player = this.players[playerData.id];
+        if (player && player !== this.localPlayer) {
+            player.position.set(
+                playerData.position.x,
+                playerData.position.y,
+                playerData.position.z
+            );
+            player.rotation.set(
+                playerData.rotation.x,
+                playerData.rotation.y,
+                playerData.rotation.z
+            );
+        }
     }
 };
 
