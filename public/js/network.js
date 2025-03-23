@@ -143,7 +143,7 @@ const Network = {
     sendPlayerUpdate() {
         if (!this.isConnected || !Game.localPlayer) return;
         
-        this.sendMessage({
+        const updateData = {
             type: 'player_update',
             playerId: Game.localPlayer.id,
             position: {
@@ -157,7 +157,8 @@ const Network = {
                 z: Game.localPlayer.rotation.z
             },
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
-        });
+        };        
+        this.sendMessage(updateData);
     },
     
     // Send stone updates when thrown or picked up
@@ -327,23 +328,13 @@ const Network = {
         
         const player = Game.players[message.playerId];
         if (player) {
-            player.position.set(
-                message.position.x,
-                message.position.y,
-                message.position.z
-            );
-            player.rotation.set(
-                message.rotation.x,
-                message.rotation.y,
-                message.rotation.z,
-                'YXZ'
-            );
+            player.updateFromData({
+                position: message.position,
+                rotation: message.rotation,
+                heldStones: message.heldStones
+            });
             
-            // Update mesh if it exists
-            if (player.mesh) {
-                player.mesh.position.copy(player.position);
-                player.mesh.rotation.copy(player.rotation);
-            }
+            player.lastUpdate = Date.now();
         }
     },
     

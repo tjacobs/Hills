@@ -170,6 +170,9 @@ function handlePlayerUpdate(ws, data) {
     gameState.players[playerId].heldStones = heldStones || [];
     gameState.players[playerId].lastUpdate = Date.now();
     
+    // Debug log
+    console.log('Broadcasting player update:', playerId, position);
+    
     // Broadcast update to other clients
     broadcastToAll({
       type: 'player_update',
@@ -247,9 +250,10 @@ function handlePlayerDisconnect(ws) {
 
 // Broadcast message to all clients except sender
 function broadcastToAll(message, excludeWs = null) {
-  wss.clients.forEach((client) => {
+  const messageStr = JSON.stringify(message);
+  wss.clients.forEach(client => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(message));
+      client.send(messageStr);
     }
   });
 }

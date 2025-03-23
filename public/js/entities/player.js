@@ -199,11 +199,12 @@ class Player {
         this.heldStones = data.heldStones || [];
         
         // Update last update time
-        this.lastUpdate = data.lastUpdate || Date.now();
+        this.lastUpdate = Date.now();
         
         // Update mesh
         if (this.mesh) {
             this.mesh.position.copy(this.position);
+            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
             this.mesh.rotation.copy(this.rotation);
         }
     }
