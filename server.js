@@ -3,7 +3,6 @@ const WebSocket = require('ws');
 const http = require('http');
 const express = require('express');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 
 // Create Express app
 const app = express();
@@ -44,12 +43,21 @@ setInterval(() => {
   }
 }, STONE_SPAWN_CONFIG.interval);
 
+function generatePlayerId() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 function spawnStone() {
   const angle = Math.random() * Math.PI * 2;
   const radius = Math.random() * STONE_SPAWN_CONFIG.spawnRadius;
   
   const stone = {
-    id: uuidv4(),
+    id: generatePlayerId(), // Using same ID generator for stones
     position: {
       x: Math.cos(angle) * radius,
       y: 0,
@@ -84,7 +92,6 @@ wss.on('connection', (ws) => {
       // Process message based on type
       switch (data.type) {
         case 'player_join':
-          playerId = uuidv4();
           handlePlayerJoin(ws, { ...data, playerId });
           break;
           
@@ -114,7 +121,8 @@ wss.on('connection', (ws) => {
 
 // Handle player join
 function handlePlayerJoin(ws, data) {
-  const { playerId, username, position, rotation } = data;
+  const playerId = generatePlayerId();  // Generate new 6-letter ID
+  const { username, position, rotation } = data;
   
   console.log(`Player ${username} (${playerId}) joined`);
   
