@@ -25,6 +25,9 @@ const gameState = {
   lastStoneSpawnTime: Date.now()
 };
 
+// Add at the top with other state
+const connections = new Map(); // Map playerId to WebSocket connection
+
 // Stone spawning configuration
 const STONE_SPAWN_CONFIG = {
   interval: 5000,  // Spawn stones every 5 seconds
@@ -116,13 +119,17 @@ wss.on('connection', (ws) => {
   });
 
   // Handle client disconnection
-  ws.on('close', () => handlePlayerDisconnect(ws, playerId));
+  ws.on('close', () => handlePlayerDisconnect(ws));
 });
 
 // Handle player join
 function handlePlayerJoin(ws, data) {
-  const playerId = generatePlayerId();  // Generate new 6-letter ID
+  const playerId = generatePlayerId();
   const { username, position, rotation } = data;
+  
+  // Store connection
+  connections.set(playerId, ws);
+  ws.playerId = playerId; // Store playerId on socket for disconnect
   
   console.log(`Player ${username} (${playerId}) joined`);
   
@@ -219,9 +226,13 @@ function handleTowerUpdate(ws, data) {
   }, ws);
 }
 
-function handlePlayerDisconnect(ws, playerId) {
+function handlePlayerDisconnect(ws) {
+  const playerId = ws.playerId;
   if (playerId) {
     console.log(`Player ${playerId} disconnected`);
+    
+    // Remove from connections map
+    connections.delete(playerId);
     
     // Remove player from game state
     delete gameState.players[playerId];
