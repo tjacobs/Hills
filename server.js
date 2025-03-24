@@ -124,7 +124,6 @@ wss.on('connection', (ws) => {
   // Handle client disconnection
   ws.on('close', () => {
     const playerId = ws.playerId;
-    console.log(`Player disconnected: ${playerId}`);
     
     // Remove from connections
     connections.delete(playerId);
@@ -145,12 +144,6 @@ function handlePlayerJoin(ws, data) {
     const playerId = data.playerId;
     const { username, position, rotation } = data;
     
-    console.log('Handling player join:', {
-        receivedPlayerId: playerId,
-        receivedData: data,
-        existingPlayers: Object.keys(gameState.players)
-    });
-    
     // Store connection
     connections.set(playerId, ws);
     ws.playerId = playerId;
@@ -165,7 +158,6 @@ function handlePlayerJoin(ws, data) {
         lastUpdate: Date.now()
     };
     
-    console.log('Adding player to game state:', playerData);
     gameState.players[playerId] = playerData;
     
     // Send welcome message
@@ -174,7 +166,6 @@ function handlePlayerJoin(ws, data) {
         playerId,
         players: Object.values(gameState.players)
     };
-    console.log('Sending welcome message:', welcomeMessage);
     ws.send(JSON.stringify(welcomeMessage));
     
     // Notify other clients
