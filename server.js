@@ -109,6 +109,9 @@ wss.on('connection', (ws) => {
         case 'tower_update':
           handleTowerUpdate(ws, { ...data, playerId });
           break;
+        case 'tower_created':
+          handleTowerCreated(ws, data);
+          break;
         default:
           console.log(`Unknown message type: ${data.type}`);
       }
@@ -263,6 +266,21 @@ function handleRequestState(ws) {
         towers: gameState.towers,
         stones: gameState.stones
     }));
+}
+
+// Add this function to handle tower creation
+function handleTowerCreated(ws, data) {
+    const tower = data.tower;
+    
+    // Add tower to game state
+    gameState.towers.push(tower);
+    
+    // Broadcast to all clients except sender
+    broadcastToAll({
+        type: 'tower_created',
+        tower: tower,
+        createdBy: ws.playerId
+    }, ws);
 }
 
 // Start server
