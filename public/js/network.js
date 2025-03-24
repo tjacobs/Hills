@@ -114,7 +114,11 @@ const Network = {
     handleInitialState(message) {
         // Handle players
         message.players.forEach(playerData => {
-            if (playerData.playerId === Game.localPlayer.id) return;
+            // Skip if this is our local player or if player already exists
+            if (playerData.playerId === Game.localPlayer.id || Game.getPlayerById(playerData.playerId)) {
+                console.log(`Skipping player in initial state: ${playerData.playerId}`);
+                return;
+            }
             
             const player = new Player(playerData.playerId, playerData.username);
             player.position.set(
