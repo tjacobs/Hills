@@ -318,72 +318,61 @@ class Terrain {
         this.segments = 200;
         this.groundSize = CONFIG.WORLD.size;
         this.heightMap = [];
-        console.log(`Creating terrain: segments=${this.segments} groundSize=${this.groundSize}`);
         this.createHeightmap();
     }
 
     getHeightAtPosition(x, z) {
-        // Transform world coordinates to match client's coordinate system
+        // Convert world coordinates to heightmap indices
         const halfSize = this.groundSize / 2;
+        const normalizedX = (x + halfSize) / this.groundSize;
+        const normalizedZ = (z + halfSize) / this.groundSize;
         
-        // Convert from world space to segment space
-        const segX = ((x + halfSize) / this.groundSize) * this.segments;
-        const segZ = ((z + halfSize) / this.groundSize) * this.segments;
+        // Calculate grid indices
+        const gridX = Math.floor(normalizedX * this.segments);
+        const gridZ = Math.floor(normalizedZ * this.segments);
         
-        // Get the grid cell indices
-        const x1 = Math.floor(segX);
-        const z1 = Math.floor(segZ);
-        const x2 = Math.min(x1 + 1, this.segments);
-        const z2 = Math.min(z1 + 1, this.segments);
+        // Ensure indices are within bounds
+        if (gridX < 0 || gridX >= this.segments || 
+            gridZ < 0 || gridZ >= this.segments) {
+            return 0;
+        }
         
-        // Get heights at grid points
-        const h00 = this.heightMap[x1] ? this.heightMap[x1][z1] || 0 : 0;
-        const h10 = this.heightMap[x2] ? this.heightMap[x2][z1] || 0 : 0;
-        const h01 = this.heightMap[x1] ? this.heightMap[x1][z2] || 0 : 0;
-        const h11 = this.heightMap[x2] ? this.heightMap[x2][z2] || 0 : 0;
+        // Get heights at the four corners of the grid cell
+        const h00 = this.heightMap[gridX][gridZ];
+        const h10 = this.heightMap[Math.min(gridX + 1, this.segments)][gridZ];
+        const h01 = this.heightMap[gridX][Math.min(gridZ + 1, this.segments)];
+        const h11 = this.heightMap[Math.min(gridX + 1, this.segments)][Math.min(gridZ + 1, this.segments)];
         
-        console.log(`Height lookup: world(${x.toFixed(1)}, ${z.toFixed(1)}) -> seg(${segX.toFixed(1)}, ${segZ.toFixed(1)}) -> grid(${x1}, ${z1})`);
-        console.log(`Heights: h00=${h00.toFixed(1)} h10=${h10.toFixed(1)} h01=${h01.toFixed(1)} h11=${h11.toFixed(1)}`);
-        
-        // Calculate interpolation factors
-        const fx = segX - x1;
-        const fz = segZ - z1;
+        // Calculate fractional position within the grid cell
+        const fx = normalizedX * this.segments - gridX;
+        const fz = normalizedZ * this.segments - gridZ;
         
         // Bilinear interpolation
         const h0 = h00 * (1 - fx) + h10 * fx;
         const h1 = h01 * (1 - fx) + h11 * fx;
-        const height = h0 * (1 - fz) + h1 * fz;
         
-        console.log(`Interpolated height=${height.toFixed(1)} (fx=${fx.toFixed(2)} fz=${fz.toFixed(2)})`);
-        return height;
+        return h0 * (1 - fz) + h1 * fz;
     }
 
     createHeightmap() {
-        console.log(`Creating heightmap with params: maxHeight=${CONFIG.WORLD.maxTerrainHeight} xScale=${CONFIG.WORLD.terrainXScale} yScale=${CONFIG.WORLD.terrainYScale} shoreRadius=${CONFIG.WORLD.shoreRadius}`);
-        
         for (let i = 0; i <= this.segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= this.segments; j++) {
-                // Convert segment indices to normalized coordinates (-1 to 1)
-                const x = (i / this.segments) * 2 - 1;
-                const z = (j / this.segments) * 2 - 1;
+                // Calculate normalized coordinates (-1 to 1)
+                const nx = (i / this.segments) * 2 - 1;
+                const ny = (j / this.segments) * 2 - 1;
                 
-                // Calculate distance from center for edge falloff
-                const distFromCenter = Math.sqrt(x * x + z * z);
-                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter / CONFIG.WORLD.shoreRadius, 3));
+                // Calculate distance from center (0 to 1)
+                const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
+                
+                // Create sharper edge falloff factor (1 in center, 0 at edges)
+                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
                 // Calculate height using same formula as client
-                const height = Math.sin(i / CONFIG.WORLD.terrainXScale) * 
-                             Math.sin(j / CONFIG.WORLD.terrainYScale) * 
-                             CONFIG.WORLD.maxTerrainHeight * 
-                             edgeFalloff;
-                
-                this.heightMap[i][j] = height;
-                
-                // Log a few sample points
-                if (i % 50 === 0 && j % 50 === 0) {
-                    console.log(`Sample height at (${i}, ${j}): normalized(${x.toFixed(2)}, ${z.toFixed(2)}) dist=${distFromCenter.toFixed(2)} falloff=${edgeFalloff.toFixed(2)} height=${height.toFixed(1)}`);
-                }
+                this.heightMap[i][j] = Math.sin(i / CONFIG.WORLD.terrainXScale) * 
+                                     Math.sin(j / CONFIG.WORLD.terrainYScale) * 
+                                     CONFIG.WORLD.maxTerrainHeight * 
+                                     edgeFalloff;
             }
         }
     }
