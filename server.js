@@ -36,6 +36,7 @@ const STONE_SPAWN_CONFIG = {
 };
 
 // Spawn stones periodically
+if (false)
 setInterval(() => {
   if (gameState.stones.length < STONE_SPAWN_CONFIG.maxStones) {
     const stone = spawnStone();
