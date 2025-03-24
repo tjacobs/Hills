@@ -17,6 +17,10 @@ const Physics = {
 
     // Check for stone-to-tower transformations
     checkStoneTransformations() {
+
+        // Disable tower creation for now
+        return;
+
         // Get stones that are stationary and thrown
         const stationaryStones = Game.stones.filter(
             stone => stone.isStatic && !stone.isHeld
