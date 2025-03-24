@@ -154,12 +154,20 @@ const Network = {
         
         // Handle stones
         message.stones.forEach(stoneData => {
-            const stone = new Stone(stoneData.id);
-            stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
-            if (stoneData.velocity) {
-                stone.velocity.copy(stoneData.velocity);
+            // Check if stone already exists first
+            if (!Game.getStoneById(stoneData.id)) {
+                const stone = new Stone(stoneData.id);
+                stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
+                stone.mesh.position.copy(stone.position);  // Make sure mesh position is set too
+                if (stoneData.velocity) {
+                    stone.velocity.set(stoneData.velocity.x, stoneData.velocity.y, stoneData.velocity.z);
+                }
+                stone.isHeld = stoneData.isHeld;
+                stone.heldBy = stoneData.heldBy;
+                stone.isThrown = stoneData.isThrown;
+                stone.isStatic = stoneData.isStatic;
+                Game.addStone(stone);
             }
-            Game.addStone(stone);
         });
         
         // Handle towers
