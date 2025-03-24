@@ -378,14 +378,15 @@ class Terrain {
                 const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
                 
                 // Create sharper edge falloff factor (1 in center, 0 at edges)
-                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter / CONFIG.WORLD.shoreRadius, 3));
+                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
-                // Calculate height using transformed coordinates to match client
-                // Multiply by 2 to match client scale and use negative to match rotation
-                this.heightMap[i][j] = -2 * Math.sin((i / this.segments) * Math.PI * 2) * 
-                                      Math.sin((j / this.segments) * Math.PI * 2) * 
-                                      CONFIG.WORLD.maxTerrainHeight * 
-                                      edgeFalloff;
+                // Use EXACTLY the same formula as client
+                const xs = CONFIG.WORLD.terrainXScale;
+                const ys = CONFIG.WORLD.terrainYScale;
+                const maxHeight = CONFIG.WORLD.maxTerrainHeight;
+                
+                // Store height using exact client formula
+                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
             }
         }
     }
