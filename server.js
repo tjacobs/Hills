@@ -77,7 +77,7 @@ function spawnStone() {
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
-  console.log('Client connected');
+  //console.log('Client connected');
   let playerId = null;
 
   // Send welcome message with initial state
@@ -145,7 +145,7 @@ function handlePlayerJoin(ws, data) {
     const playerId = data.playerId;
     const { username, position, rotation } = data;
     
-    console.log(`Player ${username} (${playerId}) joined`);
+    console.log(`Player connected: ${playerId}`);
     
     // Store connection
     connections.set(playerId, ws);
