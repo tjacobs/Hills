@@ -34,9 +34,9 @@ const CONFIG = {
     WORLD: {
         gravity: -9.8,
         size: 200,
-        maxTerrainHeight: 10,
-        terrainXScale: 20,
-        terrainYScale: 20,
+        maxTerrainHeight: 5,
+        terrainXScale: 8,
+        terrainYScale: 8,
         shoreRadius: 0.8
     }
 };
