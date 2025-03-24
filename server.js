@@ -17,63 +17,8 @@ const server = http.createServer(app);
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Game state
-const gameState = {
-  players: {},
-  towers: [],
-  stones: [],
-  lastStoneSpawnTime: Date.now()
-};
-
 // Add at the top with other state
 const connections = new Map(); // Map playerId to WebSocket connection
-
-// Stone spawning configuration
-const STONE_SPAWN_CONFIG = {
-  interval: 5000,  // Spawn stones every 5 seconds
-  maxStones: 20,   // Maximum stones in the world
-  spawnRadius: 100 // Radius within which stones can spawn
-};
-
-// Spawn stones periodically
-if (false)
-setInterval(() => {
-  if (gameState.stones.length < STONE_SPAWN_CONFIG.maxStones) {
-    const stone = spawnStone();
-    broadcastToAll({
-      type: 'stone_spawned',
-      stone: stone
-    });
-  }
-}, STONE_SPAWN_CONFIG.interval);
-
-function generatePlayerId() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    let result = '';
-    for (let i = 0; i < 6; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
-
-function spawnStone() {
-  const angle = Math.random() * Math.PI * 2;
-  const radius = Math.random() * STONE_SPAWN_CONFIG.spawnRadius;
-  
-  const stone = {
-    id: generatePlayerId(), // Using same ID generator for stones
-    position: {
-      x: Math.cos(angle) * radius,
-      y: 0,
-      z: Math.sin(angle) * radius
-    },
-    velocity: { x: 0, y: 0, z: 0 },
-    isStatic: true
-  };
-  
-  gameState.stones.push(stone);
-  return stone;
-}
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
@@ -85,7 +30,7 @@ wss.on('connection', (ws) => {
     type: 'initial_state',
     players: Object.values(gameState.players),
     towers: gameState.towers,
-    stones: gameState.stones
+    stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
   }));
 
   // Handle messages from clients
@@ -140,7 +85,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Handle player join
+// Message handlers
 function handlePlayerJoin(ws, data) {
     const playerId = data.playerId;
     const { username, position, rotation } = data;
@@ -268,7 +213,7 @@ function handleRequestState(ws) {
         type: 'initial_state',
         players: Object.values(gameState.players),
         towers: gameState.towers,
-        stones: gameState.stones
+        stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
     }));
 }
 
@@ -286,6 +231,111 @@ function handleTowerCreated(ws, data) {
         createdBy: ws.playerId
     }, ws);
 }
+
+// Stone class definition
+class Stone {
+    constructor(id = null) {
+        this.id = id || Math.random().toString(36).substr(2, 9);
+        this.position = { x: 0, y: 0, z: 0 };
+        this.velocity = { x: 0, y: 0, z: 0 };
+        this.size = 1;
+        this.isHeld = false;
+        this.heldBy = null;
+    }
+
+    static generateSpawnPosition() {
+        const x = (Math.random() - 0.5) * 100;
+        const y = -10; // Ocean floor
+        const z = (Math.random() - 0.5) * 100;
+        return { x, y, z };
+    }
+
+    static createRandom() {
+        const stone = new Stone();
+        const spawnPos = Stone.generateSpawnPosition();
+        
+        stone.position = spawnPos;
+        stone.velocity = {
+            x: 0,
+            y: 15 + Math.random() * 5, // Initial upward velocity
+            z: 0
+        };
+        
+        return stone;
+    }
+
+    update(deltaTime) {
+        if (this.isHeld) return;
+
+        // Basic physics update
+        this.velocity.y -= 9.8 * deltaTime;
+        
+        this.position.x += this.velocity.x * deltaTime;
+        this.position.y += this.velocity.y * deltaTime;
+        this.position.z += this.velocity.z * deltaTime;
+
+        // Stop at ocean floor
+        if (this.position.y < -10) {
+            this.position.y = -10;
+            this.velocity.y = 0;
+        }
+    }
+
+    serialize() {
+        return {
+            id: this.id,
+            position: this.position,
+            velocity: this.velocity,
+            size: this.size,
+            isHeld: this.isHeld,
+            heldBy: this.heldBy
+        };
+    }
+}
+
+// Game state
+const gameState = {
+    players: {},
+    towers: [],
+    stones: new Map(),
+    lastStoneSpawnTime: Date.now(),
+    stoneSpawnInterval: 2000 // Spawn every 2 seconds
+};
+
+// Game update loop
+const TICK_RATE = 60;
+const TICK_TIME = 1000 / TICK_RATE;
+let lastUpdate = Date.now();
+
+setInterval(() => {
+    const now = Date.now();
+    const deltaTime = (now - lastUpdate) / 1000;
+    lastUpdate = now;
+
+    // Update all stones
+    for (const stone of gameState.stones.values()) {
+        stone.update(deltaTime);
+    }
+
+    // Check if we should spawn a new stone
+    if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval) {
+        const stone = Stone.createRandom();
+        gameState.stones.set(stone.id, stone);
+        gameState.lastStoneSpawnTime = now;
+
+        // Broadcast stone creation
+        broadcastToAll({
+            type: 'stone_spawned',
+            stone: stone.serialize()
+        });
+    }
+
+    // Broadcast stone positions
+    broadcastToAll({
+        type: 'stone_positions',
+        stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
+    });
+}, TICK_TIME);
 
 // Start server
 server.listen(port, () => {
