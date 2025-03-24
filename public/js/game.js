@@ -697,6 +697,11 @@ const Game = {
             // Remove from players object
             delete this.players[playerId];
         }
+    },
+
+    // Add this method to the Game object
+    getTowerById(id) {
+        return this.towers.find(tower => tower.id === id);
     }
 };
 
