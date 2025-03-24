@@ -352,13 +352,17 @@ const Network = {
     
     // Handle player left message
     handlePlayerLeft(message) {
-        log(`Player left: ${message.playerId}`);
+        const playerId = message.playerId;
+        console.log(`Handling player left: ${playerId}`);
         
-        // Remove from game
-        Game.removePlayer(message.playerId);
-        
-        // Update UI
-        updateUI();
+        // Get the player
+        const player = Game.getPlayerById(playerId);
+        if (player) {
+            // Remove player from game
+            Game.removePlayer(player);
+        } else {
+            console.warn(`Could not find player to remove: ${playerId}`);
+        }
     },
     
     // Handle player update message
