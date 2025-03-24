@@ -481,12 +481,12 @@ function createRandomStone() {
     const beachEdge = CONFIG.WORLD.size / 2; // Define the edge of the world
     const position = {
         x: Math.random() * beachEdge * 2 - beachEdge, // Random x within the beach area
-        y: CONFIG.STONE.height / 2, // Start above ground
+        y: 10,
         z: Math.random() * beachEdge * 2 - beachEdge // Random z within the beach area
     };
     const velocity = {
         x: 0,
-        y: 0,
+        y: 5,
         z: 0
     };
     return new Stone(null, position, velocity);
