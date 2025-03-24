@@ -228,6 +228,16 @@ class Player {
             stone.mesh.position.lerp(targetPos, 0.2);
         });
     }
+
+    remove() {
+        if (this.mesh) {
+            if (this.mesh.parent) {
+                this.mesh.parent.remove(this.mesh);
+            }
+            this.mesh.geometry.dispose();
+            this.mesh.material.dispose();
+        }
+    }
 }
 
 // Local player extends Player
