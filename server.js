@@ -139,10 +139,11 @@ function handlePlayerJoin(ws, data) {
     lastUpdate: Date.now()
   };
   
-  // Send welcome message
+  // Send welcome message with current players list
   ws.send(JSON.stringify({
     type: 'welcome',
-    playerId
+    playerId,
+    players: Object.values(gameState.players)  // Include current players
   }));
   
   // Notify other clients
