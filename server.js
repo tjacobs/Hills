@@ -20,6 +20,26 @@ const wss = new WebSocket.Server({ server });
 // Add at the top with other state
 const connections = new Map(); // Map playerId to WebSocket connection
 
+// Game configuration
+const CONFIG = {
+    STONE: {
+        maxCount: 20,  // Maximum number of stones in the world
+        gravity: -9.8,
+        bounce: 0.9,
+        friction: 0.35,
+        rollFactor: 0.25,
+        maxVelocity: 0.5,
+        stopThreshold: 0.05
+    },
+    WORLD: {
+        size: 200,
+        maxTerrainHeight: 10,
+        terrainXScale: 20,
+        terrainYScale: 20,
+        shoreRadius: 0.8
+    }
+};
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   //console.log('Client connected');
@@ -553,7 +573,8 @@ setInterval(() => {
     }
 
     // Check if we should spawn a new stone
-    if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval) {
+    if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
+        gameState.stones.size < CONFIG.STONE.maxCount) {
         const stone = Stone.createRandom();
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
