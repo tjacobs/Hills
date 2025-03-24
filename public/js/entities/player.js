@@ -168,7 +168,18 @@ class Player {
     update(deltaTime) {
         // If we have a target position, interpolate towards it
         if (this.targetPosition) {
-            this.position.lerp(this.targetPosition, 0.1);
+            // Increase lerp factor for more direct movement (0.1 -> 0.3)
+            // You can adjust this value: 
+            // 0.1 = very smooth but slow
+            // 0.3 = moderately responsive
+            // 0.5 = quick response
+            // 1.0 = instant (no interpolation)
+            this.position.lerp(this.targetPosition, 0.3);
+            
+            // Optional: If we're very close to target, snap to it
+            if (this.position.distanceTo(this.targetPosition) < 0.01) {
+                this.position.copy(this.targetPosition);
+            }
         }
         
         // Update mesh position if it exists
