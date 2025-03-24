@@ -510,7 +510,12 @@ setInterval(() => {
     // Check if we should spawn a new stone
     if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
         gameState.stones.size < CONFIG.STONE.maxCount) {
-        const stone = createRandomStone(); // Use the new function
+        const stone = createRandomStone();
+        console.log('Stone created:', {
+            id: stone.id,
+            position: stone.position
+        });
+        
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
