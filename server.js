@@ -438,7 +438,7 @@ class Stone {
 
 // Function to create a random stone at the beach
 function createRandomStone() {
-    const spawnRadius = 20;
+    const spawnRadius = 10;
     const spawnHeight = 10;  // Fixed height above ground
     
     const position = {
@@ -468,7 +468,7 @@ const gameState = {
     towers: [],
     stones: new Map(),
     lastStoneSpawnTime: Date.now(),
-    stoneSpawnInterval: 10000
+    stoneSpawnInterval: 1000
 };
 
 // Game update loop
@@ -507,10 +507,10 @@ setInterval(() => {
     });
 
     // Log positions of first 3 stones
-    const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
-    firstThreeStones.forEach(stone => {
-        console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
-    });
+    //const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
+    //firstThreeStones.forEach(stone => {
+    //    console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
+    //});
 }, TICK_TIME);
 
 // Start server
