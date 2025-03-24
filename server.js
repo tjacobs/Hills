@@ -23,7 +23,7 @@ const connections = new Map(); // Map playerId to WebSocket connection
 // Game configuration
 const CONFIG = {
     STONE: {
-        maxCount: 20,
+        maxCount: 200,
         gravity: -9.8,
         bounce: 0.9,
         friction: 0.35,
