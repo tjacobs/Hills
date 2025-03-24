@@ -401,13 +401,13 @@ class Stone {
     update(deltaTime) {
         if (this.isHeld) return;
         
-        // Apply gravity
-        this.velocity.y += CONFIG.WORLD.gravity * deltaTime;
+        // Apply gravity (increase gravity effect)
+        this.velocity.y += CONFIG.WORLD.gravity * deltaTime * 5;
         
-        // Update position
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z * deltaTime;
+        // Update position (increase velocity effect)
+        this.position.x += this.velocity.x * deltaTime * 5;
+        this.position.y += this.velocity.y * deltaTime * 5;
+        this.position.z += this.velocity.z * deltaTime * 5;
         
         // Calculate distance from center for water check
         const distanceFromCenter = Math.sqrt(
@@ -436,9 +436,9 @@ class Stone {
         
         // Get ground height and calculate slope
         const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-        const stoneHeight = 0.5; // Reduced from 1.0 to 0.5
+        const stoneHeight = 0.5;
         const stoneRadius = stoneHeight / 2;
-        const groundOffset = 0.01; // Reduced from 0.05 to 0.01
+        const groundOffset = 0.01;
         const collisionThreshold = groundHeight + stoneRadius + groundOffset;
         
         // Sample heights for slope calculation
@@ -453,27 +453,25 @@ class Stone {
         const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
         const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
         
-        console.log(`Stone ${this.id} collision check: pos.y=${this.position.y.toFixed(1)} ground=${groundHeight.toFixed(1)} threshold=${(groundHeight + stoneRadius + groundOffset).toFixed(1)} vel.y=${this.velocity.y.toFixed(2)}`);
-      
         // Ground collision
         if (this.position.y < collisionThreshold) {
             this.position.y = collisionThreshold;
             
-            // Bounce with damping
+            // Bounce with damping (increase bounce effect)
             if (this.velocity.y < -0.05) {
                 this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
             } else {
                 this.velocity.y = 0;
             }
             
-            // Apply friction based on slope
-            const frictionFactor = Math.max(0.75, 0.95 - slopeMagnitude * 5);
+            // Apply friction based on slope (increase friction effect)
+            const frictionFactor = Math.max(0.5, 0.8 - slopeMagnitude * 5);
             this.velocity.x *= frictionFactor;
             this.velocity.z *= frictionFactor;
             
-            // Apply slope forces
-            this.velocity.x += slopeX * CONFIG.STONE.rollFactor;
-            this.velocity.z += slopeZ * CONFIG.STONE.rollFactor;
+            // Apply slope forces (increase roll effect)
+            this.velocity.x += slopeX * CONFIG.STONE.rollFactor * 5;
+            this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * 5;
             
             // Extra downhill acceleration on steep slopes
             if (slopeMagnitude > 0.05) {
