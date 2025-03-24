@@ -367,10 +367,6 @@ class Terrain {
     }
 
     createHeightmap() {
-        console.log("Creating heightmap with params: maxHeight=", CONFIG.WORLD.maxTerrainHeight,
-                   "xScale=", CONFIG.WORLD.terrainXScale,
-                   "yScale=", CONFIG.WORLD.terrainYScale);
-        
         for (let i = 0; i <= this.segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= this.segments; j++) {
@@ -384,18 +380,12 @@ class Terrain {
                 // Create sharper edge falloff factor (1 in center, 0 at edges)
                 const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
-                // Calculate height using same formula as client
-                this.heightMap[i][j] = Math.sin(i / CONFIG.WORLD.terrainXScale) * 
-                                     Math.sin(j / CONFIG.WORLD.terrainYScale) * 
-                                     CONFIG.WORLD.maxTerrainHeight * 
-                                     edgeFalloff;
-                
-                // Log a few sample points
-                if (i % 50 === 0 && j % 50 === 0) {
-                    console.log("Sample height at (", i, ",", j, "): normalized(",
-                              nx.toFixed(2), ",", ny.toFixed(2), ") height=",
-                              this.heightMap[i][j].toFixed(1));
-                }
+                // Calculate height using transformed coordinates to match client
+                // Note the negative sign to match client's rotated plane
+                this.heightMap[i][j] = -Math.sin((i / this.segments) * Math.PI * 2) * 
+                                      Math.sin((j / this.segments) * Math.PI * 2) * 
+                                      CONFIG.WORLD.maxTerrainHeight * 
+                                      edgeFalloff;
             }
         }
     }
