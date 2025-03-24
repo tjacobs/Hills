@@ -4,7 +4,7 @@ const Network = {
     socket: null,
     isConnected: false,
     reconnectAttempts: 0,
-    enabled: false, // Flag to enable/disable network
+    enabled: true, // Flag to enable/disable network
     
     // Initialize network
     init() {        
@@ -200,10 +200,16 @@ const Network = {
     // Helper to send messages
     sendMessage(message) {
         if (!this.isConnected) return;
+        
         try {
-            this.socket.send(JSON.stringify(message));
-        } catch (error) {
-            console.error('Failed to send message:', error);
+            // Log outgoing message type for debugging
+            console.log(`Sending message type: ${message.type}`);
+            
+            // Convert message to JSON and send
+            const json = JSON.stringify(message);
+            this.socket.send(json);
+        } catch (e) {
+            console.error('Error sending message:', e);
         }
     },
     
@@ -458,7 +464,7 @@ const Network = {
     // Send join message
     sendJoin() {
         this.sendMessage({
-            type: 'join',
+            type: 'player_join',
             playerId: Game.localPlayer.id,
             username: Game.localPlayer.username,
             position: {
@@ -549,6 +555,37 @@ const Network = {
         } else {
             console.warn(`Received update for unknown player: ${playerId}`);
         }
+    },
+    
+    // Handle stone spawned message
+    handleStoneSpawned(message) {
+        // Create new stone from server data
+        const stoneData = message.stone;
+        const stone = new Stone(stoneData.id);
+        
+        // Set stone position
+        stone.mesh.position.set(
+            stoneData.position.x,
+            stoneData.position.y,
+            stoneData.position.z
+        );
+        
+        // Set velocity if available
+        if (stoneData.velocity) {
+            stone.velocity.set(
+                stoneData.velocity.x, 
+                stoneData.velocity.y, 
+                stoneData.velocity.z
+            );
+        }
+        
+        // Set other properties
+        stone.isStatic = stoneData.isStatic !== undefined ? stoneData.isStatic : true;
+        
+        // Add to game
+        Game.addStone(stone);
+        
+        console.log(`Stone spawned: ${stone.id}`);
     },
     
     disconnect() {
