@@ -351,17 +351,37 @@ const Network = {
     
     // Handle player joined message
     handlePlayerJoined(message) {
-        log(`Player joined: ${message.username} (${message.playerId})`);
+        const playerId = message.playerId;
         
-        // Create new remote player
-        const player = new Player(message.playerId, message.username);
-        player.updateFromData(message);
+        // Skip if this is our own join message
+        if (playerId === Game.localPlayer.id) {
+            console.log('This is our own join, skipping');
+            return;
+        }
         
-        // Add to game
+        // Skip if player already exists
+        if (Game.getPlayerById(playerId)) {
+            console.log(`Player ${playerId} already exists, skipping`);
+            return;
+        }
+        
+        // Create new player
+        console.log(`Adding player from join: ${playerId}`);
+        const player = new Player(playerId, message.username);
+        player.position.set(
+            message.position.x,
+            message.position.y,
+            message.position.z
+        );
+        player.rotation.set(
+            message.rotation.x,
+            message.rotation.y,
+            message.rotation.z,
+            'YXZ'
+        );
+        
+        // Add player to game
         Game.addPlayer(player);
-        
-        // Update UI
-        updateUI();
     },
     
     // Handle player left message
