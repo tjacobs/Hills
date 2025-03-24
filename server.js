@@ -351,10 +351,13 @@ class Terrain {
         const h0 = h00 * (1 - fx) + h10 * fx;
         const h1 = h01 * (1 - fx) + h11 * fx;
         
+        console.log(`Interpolated height=${height.toFixed(1)} (fx=${fx.toFixed(2)} fz=${fz.toFixed(2)})`);
         return h0 * (1 - fz) + h1 * fz;
     }
 
     createHeightmap() {
+      console.log(`Creating heightmap with params: maxHeight=${CONFIG.WORLD.maxTerrainHeight} xScale=${CONFIG.WORLD.terrainXScale} yScale=${CONFIG.WORLD.terrainYScale} shoreRadius=${CONFIG.WORLD.shoreRadius}`);
+  
         for (let i = 0; i <= this.segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= this.segments; j++) {
@@ -367,8 +370,13 @@ class Terrain {
                 
                 // Create sharper edge falloff factor (1 in center, 0 at edges)
                 const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
-                
-                // Calculate height using same formula as client
+
+                // Log a few sample points
+                if (i % 50 === 0 && j % 50 === 0) {
+                  console.log(`Sample height at (${i}, ${j}): normalized(${x.toFixed(2)}, ${z.toFixed(2)}) dist=${distFromCenter.toFixed(2)} falloff=${edgeFalloff.toFixed(2)} height=${height.toFixed(1)}`);
+                }
+
+              // Calculate height using same formula as client
                 this.heightMap[i][j] = Math.sin(i / CONFIG.WORLD.terrainXScale) * 
                                      Math.sin(j / CONFIG.WORLD.terrainYScale) * 
                                      CONFIG.WORLD.maxTerrainHeight * 
