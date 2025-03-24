@@ -116,7 +116,6 @@ const Network = {
         message.players.forEach(playerData => {
             // Skip if this is our local player or if player already exists
             if (playerData.playerId === Game.localPlayer.id || Game.getPlayerById(playerData.playerId)) {
-                console.log(`Skipping player in initial state: ${playerData.playerId}`);
                 return;
             }
             
@@ -223,34 +222,18 @@ const Network = {
     
     // Handle welcome message
     handleWelcome(message) {
-        console.log('Received welcome message:', message);
         // Update local player's ID with server-assigned ID
         Game.localPlayer.id = message.playerId;
-        console.log('Set local player ID to:', Game.localPlayer.id);
 
         // Add existing players if provided
         if (message.players) {
-            console.log('All players in welcome message:', message.players);
             message.players.forEach(playerData => {
-                console.log('Checking player:', playerData);
-                const playerId = playerData.id || playerData.playerId;
-                
-                // Log the comparison
-                console.log('Comparing:', {
-                    messagePlayerId: message.playerId,
-                    playerDataId: playerData.id,
-                    playerDataPlayerId: playerData.playerId,
-                    localPlayerId: Game.localPlayer.id
-                });
-                
                 // Skip if this is our local player or if player already exists
-                if (playerId === message.playerId || Game.getPlayerById(playerId)) {
-                    console.log(`Skipping player data: ${playerId}`);
+                if (playerData.playerId === message.playerId || Game.getPlayerById(playerData.playerId)) {
                     return;
                 }
                 
-                console.log(`Adding existing player from welcome: ${playerId}`);
-                const player = new Player(playerId, playerData.username);
+                const player = new Player(playerData.playerId, playerData.username);
                 player.position.copy(playerData.position);
                 player.rotation.copy(playerData.rotation);
                 Game.addPlayer(player);
@@ -388,9 +371,6 @@ const Network = {
     // Handle player left message
     handlePlayerLeft(message) {
         const playerId = message.playerId;
-        console.log(`Handling player left: ${playerId}`);
-        
-        // Remove player from game
         Game.removePlayer(playerId);
     },
     
