@@ -94,10 +94,11 @@ wss.on('connection', (ws) => {
       
       // Route message to appropriate handler
       switch(data.type) {
-        case 'join':  // Client sends 'join', make sure server handles it
+        case 'join':
           handlePlayerJoin(ws, data);
           break;
         case 'update':
+        case 'player_update':
           handlePlayerUpdate(ws, data);
           break;
         case 'stone_update':
