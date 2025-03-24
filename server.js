@@ -450,7 +450,7 @@ class Stone {
 
 // Function to create a random stone at the beach
 function createRandomStone() {
-    const spawnRadius = 50;
+    const spawnRadius = 100;
     const spawnHeight = 10;  // Fixed height above ground
     
     const position = {
