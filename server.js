@@ -4,7 +4,7 @@ const http = require('http');
 const express = require('express');
 const path = require('path');
 
-// Create Express app
+// Create app
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -23,7 +23,7 @@ const connections = new Map(); // Map playerId to WebSocket connection
 // Game configuration
 const CONFIG = {
     STONE: {
-        maxCount: 20,  // Maximum number of stones in the world
+        maxCount: 20,
         gravity: -9.8,
         bounce: 0.9,
         friction: 0.35,
@@ -42,7 +42,6 @@ const CONFIG = {
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
-  //console.log('Client connected');
   let playerId = null;
 
   // Send welcome message with initial state
@@ -72,17 +71,17 @@ wss.on('connection', (ws) => {
         case 'stone_update':
           handleStoneUpdate(ws, { ...data, playerId });
           break;
-        case 'tower_update':
-          handleTowerUpdate(ws, { ...data, playerId });
-          break;
-        case 'tower_created':
-          handleTowerCreated(ws, data);
-          break;
         case 'stone_pickup':
           handleStonePickup(data);
           break;
         case 'stone_throw':
           handleStoneThrow(data);
+          break;
+        case 'tower_update':
+          handleTowerUpdate(ws, { ...data, playerId });
+          break;
+        case 'tower_created':
+          handleTowerCreated(ws, data);
           break;
         case 'tower_destroyed':
           handleTowerDestroyed(data);
@@ -116,9 +115,9 @@ wss.on('connection', (ws) => {
 
 // Message handlers
 function handlePlayerJoin(ws, data) {
+    // Get player data
     const playerId = data.playerId;
     const { username, position, rotation } = data;
-    
     console.log(`Player connected: ${playerId}`);
     
     // Store connection
@@ -134,7 +133,6 @@ function handlePlayerJoin(ws, data) {
         heldStones: [],
         lastUpdate: Date.now()
     };
-    
     gameState.players[playerId] = playerData;
     
     // Send welcome message
@@ -299,7 +297,7 @@ function handleStoneThrow(data) {
     }
 }
 
-// Add this with the other handler functions
+// Handle tower destruction
 function handleTowerDestroyed(data) {
     const towerId = data.towerId;
     const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
