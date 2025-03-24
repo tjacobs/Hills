@@ -100,6 +100,9 @@ wss.on('connection', (ws) => {
         case 'player_update':
           handlePlayerUpdate(ws, data);
           break;
+        case 'request_state':
+          handleRequestState(ws);
+          break;
         case 'stone_update':
           handleStoneUpdate(ws, { ...data, playerId });
           break;
@@ -253,6 +256,17 @@ function broadcastToAll(message, excludeWs = null) {
       client.send(messageStr);
     }
   });
+}
+
+// Add the handler function
+function handleRequestState(ws) {
+    // Send current game state to requesting client
+    ws.send(JSON.stringify({
+        type: 'initial_state',
+        players: Object.values(gameState.players),
+        towers: gameState.towers,
+        stones: gameState.stones
+    }));
 }
 
 // Start server
