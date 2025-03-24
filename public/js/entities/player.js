@@ -1,6 +1,6 @@
 class Player {
     constructor(id = null, username = 'Player') {
-        this.id = id || generateId('player_');
+        this.id = id || generateColorId();
         this.username = username;
         this.position = new THREE.Vector3(0, 0, 0);
         this.rotation = new THREE.Euler(0, 0, 0, 'YXZ');
@@ -23,10 +23,14 @@ class Player {
         // Create a group to hold all player parts
         this.mesh = new THREE.Group();
         
-        // Create body
+        // Parse the color from the ID
+        const colorInfo = parseColorId(this.id);
+        const bodyColor = colorInfo ? COLOR_HEX[colorInfo.color] : 0x808080;
+        
+        // Create body with the player's color
         const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 0.8, 8);
         const bodyMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x8B4513,
+            color: bodyColor,
             roughness: 0.8,
             metalness: 0.1
         });
@@ -47,7 +51,7 @@ class Player {
         
         // Create head
         const headGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-        const headMaterial = new THREE.MeshStandardMaterial({
+        const headMaterial = new THREE.MeshStandardMaterial({ 
             color: 0xE0AC69,
             roughness: 0.7,
             metalness: 0.1
@@ -77,10 +81,10 @@ class Player {
         mouth.position.set(0, 0.75, -0.28);
         this.mesh.add(mouth);
         
-        // Create arms
+        // Create arms using body color
         const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.7, 6);
         const armMaterial = new THREE.MeshStandardMaterial({
-            color: 0x8B4513,
+            color: bodyColor,
             roughness: 0.8,
             metalness: 0.1
         });
@@ -97,10 +101,10 @@ class Player {
         rightArm.rotation.z = -Math.PI / 4;
         this.mesh.add(rightArm);
         
-        // Create legs
+        // Create legs using body color
         const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.2, 6);
         const legMaterial = new THREE.MeshStandardMaterial({
-            color: 0x654321,
+            color: bodyColor,
             roughness: 0.8,
             metalness: 0.1
         });
@@ -145,9 +149,8 @@ class Player {
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         
-        // Draw username and ID
-        const displayText = `${this.username} (${this.id})`;
-        context.fillText(displayText, canvas.width/2, canvas.height/2);
+        // Draw just the ID
+        context.fillText(this.id, canvas.width/2, canvas.height/2);
         
         // Create sprite
         const texture = new THREE.CanvasTexture(canvas);

@@ -47,11 +47,16 @@ function log(message, type = 'debug') {
 
 // Update UI elements
 function updateUI() {
-    // Update player count
+    // Update player count and local player info
     const playerInfo = document.getElementById('player-info');
     if (playerInfo) {
-        const playerCount = Object.keys(Game.players).length;
-        playerInfo.textContent = `Players: ${playerCount}`;
+        if (Game.localPlayer && Game.localPlayer.id) {
+            const colorInfo = parseColorId(Game.localPlayer.id);
+            if (colorInfo) {
+                const colorHex = COLOR_HEX[colorInfo.color].toString(16).padStart(6, '0');
+                playerInfo.innerHTML = `You are: <span style="color: #${colorHex}">${colorInfo.color} ${colorInfo.number}</span>`;
+            }
+        }
     }
     
     // Update tower count
@@ -77,4 +82,45 @@ function loadTexture(url) {
 function seededRandom(seed) {
     const x = Math.sin(seed) * 10000;
     return x - Math.floor(x);
+}
+
+// Player colors and their hex values
+const PLAYER_COLORS = [
+    'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 
+    'Pink', 'Mint', 'Crimson', 'Gold', 'Violet', 'Copper',
+    'Amber', 'Teal'
+];
+
+const COLOR_HEX = {
+    'Red': 0xcc4455,      // Deep rose
+    'Blue': 0x446688,     // Navy blue
+    'Green': 0x558866,    // Forest green
+    'Yellow': 0xccaa44,   // Golden brown
+    'Purple': 0x774466,   // Deep plum
+    'Orange': 0xcc7744,   // Burnt orange
+    'Pink': 0xaa5577,     // Berry pink
+    'Mint': 0x55aa77,     // Deep mint
+    'Crimson': 0x993344,  // Dark red
+    'Gold': 0xaa8833,     // Rich gold
+    'Violet': 0x665588,   // Deep violet
+    'Copper': 0xaa6633,   // Rich copper
+    'Amber': 0x996633,    // Rich amber
+    'Teal': 0x447777      // Deep teal
+};
+
+function generateColorId() {
+    const color = PLAYER_COLORS[Math.floor(Math.random() * PLAYER_COLORS.length)];
+    const number = Math.floor(Math.random() * 100) + 1;
+    return `${color} ${number}`;
+}
+
+function parseColorId(id) {
+    const [color, numberStr] = id.split(' ');
+    if (color && numberStr) {
+        return {
+            color: color,
+            number: parseInt(numberStr)
+        };
+    }
+    return null;
 } 

@@ -80,6 +80,9 @@ const Game = {
         this.isRunning = true;
         this.update(this.lastTime);
         log(`Started game`, 'info');
+        
+        // Update UI after player is created
+        updateUI();
     },
     
     // Handle window resize
