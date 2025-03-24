@@ -238,47 +238,140 @@ class Stone {
         this.id = id || Math.random().toString(36).substr(2, 9);
         this.position = { x: 0, y: 0, z: 0 };
         this.velocity = { x: 0, y: 0, z: 0 };
-        this.size = 1;
         this.isHeld = false;
         this.heldBy = null;
+        this.isThrown = false;
+        this.throwTime = 0;
+        this.isStatic = false;
     }
 
     static generateSpawnPosition() {
         const x = (Math.random() - 0.5) * 100;
-        const y = -10; // Ocean floor
+        const y = -10;
         const z = (Math.random() - 0.5) * 100;
         return { x, y, z };
-    }
-
-    static createRandom() {
-        const stone = new Stone();
-        const spawnPos = Stone.generateSpawnPosition();
-        
-        stone.position = spawnPos;
-        stone.velocity = {
-            x: 0,
-            y: 15 + Math.random() * 5, // Initial upward velocity
-            z: 0
-        };
-        
-        return stone;
     }
 
     update(deltaTime) {
         if (this.isHeld) return;
 
-        // Basic physics update
+        // Apply gravity
         this.velocity.y -= 9.8 * deltaTime;
-        
+
+        // Update position
         this.position.x += this.velocity.x * deltaTime;
         this.position.y += this.velocity.y * deltaTime;
         this.position.z += this.velocity.z * deltaTime;
 
-        // Stop at ocean floor
-        if (this.position.y < -10) {
-            this.position.y = -10;
-            this.velocity.y = 0;
+        // Get ground height at current position
+        const groundHeight = this.getHeightAtPosition(this.position.x, this.position.z);
+        const stoneRadius = 0.5; // Half height of stone
+        const groundOffset = 0.05;
+
+        // Ground collision check
+        if (this.position.y < groundHeight + stoneRadius + groundOffset) {
+            // Calculate slope for rolling physics
+            const sampleDistance = 2.0;
+            const heightNorth = this.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
+            const heightSouth = this.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
+            const heightEast = this.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
+            const heightWest = this.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
+
+            // Calculate slope vector
+            const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+            const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+            const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+
+            // Place stone on ground
+            this.position.y = groundHeight + stoneRadius + groundOffset;
+
+            // Bounce with damping
+            if (this.velocity.y < -0.05) {
+                this.velocity.y = -this.velocity.y * 0.3;
+            } else {
+                this.velocity.y = 0;
+            }
+
+            // Apply friction based on slope
+            const frictionFactor = Math.max(0.75, 0.95 - slopeMagnitude * 5);
+            this.velocity.x *= frictionFactor;
+            this.velocity.z *= frictionFactor;
+
+            // Apply slope force for rolling
+            const rollFactor = 2; // Adjust this value to control rolling speed
+            this.velocity.x += slopeX * rollFactor;
+            this.velocity.z += slopeZ * rollFactor;
+
+            // Extra downhill acceleration on steep slopes
+            if (slopeMagnitude > 0.05) {
+                const downhillDirection = {
+                    x: slopeX / slopeMagnitude,
+                    z: slopeZ / slopeMagnitude
+                };
+                const downhillFactor = slopeMagnitude * 0.1;
+                
+                this.velocity.x += downhillDirection.x * downhillFactor;
+                this.velocity.z += downhillDirection.z * downhillFactor;
+            }
         }
+
+        // Check for water (beyond beach boundary)
+        const distanceFromCenter = Math.sqrt(
+            this.position.x * this.position.x + 
+            this.position.z * this.position.z
+        );
+        const worldHalfSize = 100; // Adjust based on your world size
+        const beachDistance = worldHalfSize * 0.95;
+        
+        if (distanceFromCenter > beachDistance) {
+            // Calculate direction toward island center
+            const dirToCenter = {
+                x: -this.position.x / distanceFromCenter,
+                z: -this.position.z / distanceFromCenter
+            };
+            
+            // Apply wave force
+            this.velocity.x += dirToCenter.x * 0.01;
+            this.velocity.z += dirToCenter.z * 0.01;
+            this.velocity.y += 0.008; // Gentle upward bobbing
+        }
+
+        // Air resistance
+        const speed = Math.sqrt(
+            this.velocity.x * this.velocity.x +
+            this.velocity.y * this.velocity.y +
+            this.velocity.z * this.velocity.z
+        );
+        const airResistanceFactor = Math.max(0.95, 0.99 - speed * 0.1);
+        this.velocity.x *= airResistanceFactor;
+        this.velocity.y *= airResistanceFactor;
+        this.velocity.z *= airResistanceFactor;
+
+        // Check if stone has stopped
+        const stopThreshold = 0.01;
+        if (Math.abs(this.velocity.x) < stopThreshold && 
+            Math.abs(this.velocity.y) < stopThreshold && 
+            Math.abs(this.velocity.z) < stopThreshold) {
+            this.velocity.x = 0;
+            this.velocity.y = 0;
+            this.velocity.z = 0;
+            this.isStatic = true;
+        } else {
+            this.isStatic = false;
+        }
+    }
+
+    // Helper function to get height at position - this needs to match your terrain generation
+    getHeightAtPosition(x, z) {
+        // Simple example - replace with your actual terrain height calculation
+        const distance = Math.sqrt(x * x + z * z);
+        const maxHeight = 10;
+        const radius = 100;
+        
+        if (distance > radius) return -10; // Water level
+        
+        // Basic island shape
+        return maxHeight * (1 - (distance / radius) * (distance / radius));
     }
 
     serialize() {
@@ -286,9 +379,11 @@ class Stone {
             id: this.id,
             position: this.position,
             velocity: this.velocity,
-            size: this.size,
             isHeld: this.isHeld,
-            heldBy: this.heldBy
+            heldBy: this.heldBy,
+            isThrown: this.isThrown,
+            throwTime: this.throwTime,
+            isStatic: this.isStatic
         };
     }
 }

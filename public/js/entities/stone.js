@@ -1,14 +1,23 @@
 // Stone entity with exact original appearance from main.js
 class Stone {
-    constructor(id = null) {
-        this.id = id || Math.random().toString(36).substr(2, 9);
+    constructor(data) {
+        this.id = data.id;
         this.mesh = null;
-        this.velocity = new THREE.Vector3();
-        this.isHeld = false;
-        this.heldBy = null;
-        this.isThrown = false;
-        this.throwTime = 0;
-        this.isStatic = false;
+        this.position = new THREE.Vector3(
+            data.position?.x || 0,
+            data.position?.y || 0,
+            data.position?.z || 0
+        );
+        this.velocity = new THREE.Vector3(
+            data.velocity?.x || 0,
+            data.velocity?.y || 0,
+            data.velocity?.z || 0
+        );
+        this.isHeld = data.isHeld || false;
+        this.heldBy = data.heldBy || null;
+        this.isThrown = data.isThrown || false;
+        this.throwTime = data.throwTime || 0;
+        this.isStatic = data.isStatic || false;
         
         this.createMesh();
     }
@@ -32,6 +41,7 @@ class Stone {
         
         // Create mesh
         this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.position.copy(this.position);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         
@@ -55,144 +65,30 @@ class Stone {
         return this.mesh;
     }
     
+    // Update stone position based on server data
+    updateFromData(data) {
+        if (!this.isHeld) {
+            this.position.set(data.position.x, data.position.y, data.position.z);
+            this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
+            this.mesh.position.copy(this.position);
+        }
+        this.isHeld = data.isHeld;
+        this.heldBy = data.heldBy;
+        this.isThrown = data.isThrown || false;
+        this.isStatic = data.isStatic || false;
+    }
+    
     update(deltaTime) {
         if (!this.mesh || this.isHeld) return;
         
-        // Apply gravity
-        this.velocity.y -= 0.01;
+        // Only update mesh position from server data
+        this.mesh.position.copy(this.position);
         
-        // Apply velocity
-        this.mesh.position.x += this.velocity.x;
-        this.mesh.position.y += this.velocity.y;
-        this.mesh.position.z += this.velocity.z;
-        
-        // Calculate distance from center
-        const distanceFromCenter = Math.sqrt(
-            this.mesh.position.x * this.mesh.position.x + 
-            this.mesh.position.z * this.mesh.position.z
-        );
-        
-        // Calculate world radius and beach position
-        const worldHalfSize = CONFIG.WORLD.size / 2;
-        const beachDistance = worldHalfSize * 0.95; // Beach edge is at 95% of world radius
-        
-        // Check if in water (beyond beach boundary)
-        const isInWater = distanceFromCenter > beachDistance;
-        
-        // Apply gentle wave force if in water
-        if (isInWater) {
-            // Calculate direction toward island center
-            const directionToCenter = new THREE.Vector3(
-                -this.mesh.position.x,
-                0,
-                -this.mesh.position.z
-            ).normalize();
-            
-            // Apply wave force
-            this.velocity.x += directionToCenter.x * 0.01;
-            this.velocity.z += directionToCenter.z * 0.01;
-            
-            // Add random bobbing in water with gentle upward bias
-            this.velocity.y += 0.008;
-        }
-        
-        // Check ground collision and calculate slope
-        const groundHeight = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z);
-        
-        // Sample heights around the stone to determine slope
-        const sampleDistance = 2.0;
-        const heightNorth = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z - sampleDistance);
-        const heightSouth = Game.getHeightAtPosition(this.mesh.position.x, this.mesh.position.z + sampleDistance);
-        const heightEast = Game.getHeightAtPosition(this.mesh.position.x + sampleDistance, this.mesh.position.z);
-        const heightWest = Game.getHeightAtPosition(this.mesh.position.x - sampleDistance, this.mesh.position.z);
-        
-        // Calculate slope vector
-        const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
-        const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
-        
-        // Calculate slope magnitude (steepness)
-        const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
-        
-        // Place stone directly on ground with a slight offset
-        const stoneRadius = CONFIG.STONE.height / 2;
-        const groundOffset = 0.05; // Add a small offset to raise stones slightly
-        
-        if (this.mesh.position.y < groundHeight + stoneRadius + groundOffset) {
-            // Place slightly above ground
-            this.mesh.position.y = groundHeight + stoneRadius + groundOffset;
-            
-            // Bounce with damping
-            if (this.velocity.y < -0.05) {
-                this.velocity.y = -this.velocity.y * 0.3;
-            } else {
-                this.velocity.y = 0;
-            }
-            
-            // Apply friction - variable based on slope
-            const frictionFactor = Math.max(0.75, 0.95 - slopeMagnitude * 5);
-            this.velocity.x *= frictionFactor;
-            this.velocity.z *= frictionFactor;
-            
-            // Apply slope force for valley rolling
-            const rollFactor = CONFIG.STONE.rollFactor * 2;
-            this.velocity.x += slopeX * rollFactor;
-            this.velocity.z += slopeZ * rollFactor;
-            
-            // Add extra downhill acceleration on steeper slopes
-            if (slopeMagnitude > 0.05) {
-                const downhillDirection = new THREE.Vector3(slopeX, 0, slopeZ).normalize();
-                const downhillFactor = slopeMagnitude * 0.1;
-                
-                this.velocity.x += downhillDirection.x * downhillFactor;
-                this.velocity.z += downhillDirection.z * downhillFactor;
-            }
-        }
-        
-        // Apply air resistance
-        const speed = this.velocity.length();
-        const airResistanceFactor = Math.max(0.95, 0.99 - speed * 0.1);
-        //this.velocity.multiplyScalar(airResistanceFactor);
-        
-        // Cap maximum velocity
-        if (speed > CONFIG.STONE.maxVelocity) {
-            this.velocity.normalize().multiplyScalar(CONFIG.STONE.maxVelocity);
-        }
-        
-        // Check if stone has stopped
-        if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
-            Math.abs(this.velocity.y) < CONFIG.STONE.stopThreshold && 
-            Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
-            
-            this.velocity.set(0, 0, 0);
-            
-            // Only start settling animation if not already static
-            if (!this.isStatic) {
-                this.isStatic = true;
-                
-                // Make sure the stone stays visible
-                if (this.mesh) {
-                    this.mesh.visible = true;
-                    
-                    // Start the settling animation
-                    this.startSettlingAnimation();
-                }
-            }
-        } else {
-            this.isStatic = false;
-            
-            // Reset settling animation if stone starts moving again
-            if (this.settlingAnimation) {
-                this.settlingAnimation = null;
-            }
-        }
-        
-        // Update rotation based on movement
+        // Keep rotation logic for visual smoothness
         if (!this.isStatic) {
             const movementDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize();
             if (movementDir.length() > 0.01) {
-                // Rotation axis for correct rolling direction
                 const rotationAxis = new THREE.Vector3(movementDir.z, 0, -movementDir.x);
-                
                 const speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.z * this.velocity.z);
                 const rotationSpeed = speed * 2 / CONFIG.STONE.width;
                 
@@ -200,9 +96,12 @@ class Stone {
                 quaternion.setFromAxisAngle(rotationAxis, rotationSpeed);
                 this.mesh.quaternion.premultiply(quaternion);
             }
-        } else if (this.settlingAnimation) {
-            // Continue settling animation if active
-            this.updateSettlingAnimation(deltaTime);
+        }
+    }
+    
+    remove() {
+        if (this.mesh && this.mesh.parent) {
+            this.mesh.parent.remove(this.mesh);
         }
     }
     
@@ -238,14 +137,15 @@ class Stone {
         this.isStatic = false;
         
         // Position stone
+        this.position.copy(position);
         this.mesh.position.copy(position);
         
         // Set velocity
         this.velocity.copy(direction).multiplyScalar(CONFIG.STONE.throwForce);
         this.velocity.y = upwardForce;
         
-        // Add to scene
-        Game.scene.add(this.mesh);
+        // Notify server
+        Network.sendStoneThrown(this);
         
         return this;
     }
@@ -277,7 +177,7 @@ class Stone {
     }
     
     static fromJSON(data) {
-        const stone = new Stone(data.id);
+        const stone = new Stone(data);
         
         stone.mesh.position.set(
             data.position.x,

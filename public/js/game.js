@@ -416,7 +416,7 @@ const Game = {
     // Add stone to game
     addStone(stone) {
         this.stones.push(stone);
-        return stone;
+        this.scene.add(stone.mesh);
     },
     
     // Remove stone from game

@@ -86,6 +86,9 @@ const Network = {
                     case 'player_updated':
                         this.handlePlayerUpdated(data);
                         break;
+                    case 'stone_positions':
+                        this.handleStonePositions(data);
+                        break;
                     default:
                         console.log('Unknown message type:', data.type);
                 }
@@ -591,34 +594,23 @@ const Network = {
     },
     
     // Handle stone spawned message
-    handleStoneSpawned(message) {
-        // Create new stone from server data
-        const stoneData = message.stone;
-        const stone = new Stone(stoneData.id);
-        
-        // Set stone position
-        stone.mesh.position.set(
-            stoneData.position.x,
-            stoneData.position.y,
-            stoneData.position.z
-        );
-        
-        // Set velocity if available
-        if (stoneData.velocity) {
-            stone.velocity.set(
-                stoneData.velocity.x, 
-                stoneData.velocity.y, 
-                stoneData.velocity.z
-            );
-        }
-        
-        // Set other properties
-        stone.isStatic = stoneData.isStatic !== undefined ? stoneData.isStatic : true;
-        
-        // Add to game
+    handleStoneSpawned(data) {
+        const stone = new Stone(data.stone);
         Game.addStone(stone);
-        
-        console.log(`Stone spawned: ${stone.id}`);
+    },
+    
+    // Handle stone positions message
+    handleStonePositions(data) {
+        data.stones.forEach(stoneData => {
+            let stone = Game.getStoneById(stoneData.id);
+            if (stone) {
+                stone.updateFromData(stoneData);
+            } else {
+                // Create new stone if we don't have it
+                stone = new Stone(stoneData);
+                Game.addStone(stone);
+            }
+        });
     },
     
     // Add tower update handler
