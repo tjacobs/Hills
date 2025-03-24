@@ -318,6 +318,7 @@ class Terrain {
         this.segments = 200;
         this.groundSize = CONFIG.WORLD.size;
         this.heightMap = [];
+        console.log(`Creating terrain: segments=${this.segments} groundSize=${this.groundSize}`);
         this.createHeightmap();
     }
 
@@ -335,24 +336,31 @@ class Terrain {
         const x2 = Math.min(x1 + 1, this.segments);
         const z2 = Math.min(z1 + 1, this.segments);
         
-        // Calculate interpolation factors
-        const fx = segX - x1;
-        const fz = segZ - z1;
-        
         // Get heights at grid points
         const h00 = this.heightMap[x1] ? this.heightMap[x1][z1] || 0 : 0;
         const h10 = this.heightMap[x2] ? this.heightMap[x2][z1] || 0 : 0;
         const h01 = this.heightMap[x1] ? this.heightMap[x1][z2] || 0 : 0;
         const h11 = this.heightMap[x2] ? this.heightMap[x2][z2] || 0 : 0;
         
+        console.log(`Height lookup: world(${x.toFixed(1)}, ${z.toFixed(1)}) -> seg(${segX.toFixed(1)}, ${segZ.toFixed(1)}) -> grid(${x1}, ${z1})`);
+        console.log(`Heights: h00=${h00.toFixed(1)} h10=${h10.toFixed(1)} h01=${h01.toFixed(1)} h11=${h11.toFixed(1)}`);
+        
+        // Calculate interpolation factors
+        const fx = segX - x1;
+        const fz = segZ - z1;
+        
         // Bilinear interpolation
         const h0 = h00 * (1 - fx) + h10 * fx;
         const h1 = h01 * (1 - fx) + h11 * fx;
+        const height = h0 * (1 - fz) + h1 * fz;
         
-        return h0 * (1 - fz) + h1 * fz;
+        console.log(`Interpolated height=${height.toFixed(1)} (fx=${fx.toFixed(2)} fz=${fz.toFixed(2)})`);
+        return height;
     }
 
     createHeightmap() {
+        console.log(`Creating heightmap with params: maxHeight=${CONFIG.WORLD.maxTerrainHeight} xScale=${CONFIG.WORLD.terrainXScale} yScale=${CONFIG.WORLD.terrainYScale} shoreRadius=${CONFIG.WORLD.shoreRadius}`);
+        
         for (let i = 0; i <= this.segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= this.segments; j++) {
@@ -371,6 +379,11 @@ class Terrain {
                              edgeFalloff;
                 
                 this.heightMap[i][j] = height;
+                
+                // Log a few sample points
+                if (i % 50 === 0 && j % 50 === 0) {
+                    console.log(`Sample height at (${i}, ${j}): normalized(${x.toFixed(2)}, ${z.toFixed(2)}) dist=${distFromCenter.toFixed(2)} falloff=${edgeFalloff.toFixed(2)} height=${height.toFixed(1)}`);
+                }
             }
         }
     }
