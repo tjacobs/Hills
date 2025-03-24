@@ -203,6 +203,31 @@ class Player {
             this.heldStones = data.heldStones;
         }
     }
+
+    updateHeldStones(deltaTime) {
+        // Skip if no stones or no mesh
+        if (this.heldStones.length === 0 || !this.mesh) return;
+        
+        // Update position of held stones (for visual purposes)
+        // For each stone in heldStones array, find the actual stone object
+        this.heldStones.forEach((stoneId, index) => {
+            const stone = Game.getStoneById(stoneId);
+            if (!stone || !stone.mesh) return;
+            
+            // Calculate stone position relative to player
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyEuler(this.rotation);
+            
+            // Position stone in front of player, adjusting for multiple stones
+            const offset = new THREE.Vector3(0, -0.8 - (index * 0.2), 0);
+            const targetPos = this.position.clone()
+                .add(forward.multiplyScalar(1.5))
+                .add(offset);
+            
+            // Update stone position
+            stone.mesh.position.lerp(targetPos, 0.2);
+        });
+    }
 }
 
 // Local player extends Player
