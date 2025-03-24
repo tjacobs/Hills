@@ -222,11 +222,21 @@ const Network = {
         console.log('Received welcome message:', message);
         // Update local player's ID with server-assigned ID
         Game.localPlayer.id = message.playerId;
+        console.log('Set local player ID to:', Game.localPlayer.id);
 
-        // Add existing players if provided
+        // Debug log all players in the message
         if (message.players) {
+            console.log('All players in welcome message:', message.players);
             message.players.forEach(playerData => {
-                // Check both id and playerId fields to be safe
+                console.log('Checking player:', playerData);
+                // Log the comparison
+                console.log('Comparing:', {
+                    messagePlayerId: message.playerId,
+                    playerDataId: playerData.id,
+                    playerDataPlayerId: playerData.playerId,
+                    localPlayerId: Game.localPlayer.id
+                });
+                
                 if (playerData.id === message.playerId || playerData.playerId === message.playerId) {
                     console.log(`Skipping local player data: ${playerData.id || playerData.playerId}`);
                     return;
