@@ -16,23 +16,22 @@ class Player {
         if (!this.isLocal) {
             this.createMesh();
         }
-    }
-    
-    static MESH_HEIGHT_OFFSET = -2.0;  // Added constant here
+    }    
+    static MESH_HEIGHT_OFFSET = -2.0;
     
     createMesh() {
         // Create a group to hold all player parts
         this.mesh = new THREE.Group();
         
-        // Create body (made shorter)
-        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 0.8, 8); // Height reduced from 1.2 to 0.8
+        // Create body
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 0.8, 8);
         const bodyMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x8B4513,
             roughness: 0.8,
             metalness: 0.1
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0.2; // Adjusted to account for shorter body
+        body.position.y = 0.2;
         this.mesh.add(body);
         
         // Add neck to connect head and body
@@ -46,7 +45,7 @@ class Player {
         neck.position.y = 0.65;
         this.mesh.add(neck);
         
-        // Create head (sphere)
+        // Create head
         const headGeometry = new THREE.SphereGeometry(0.3, 8, 8);
         const headMaterial = new THREE.MeshStandardMaterial({
             color: 0xE0AC69,
@@ -98,8 +97,8 @@ class Player {
         rightArm.rotation.z = -Math.PI / 4;
         this.mesh.add(rightArm);
         
-        // Create legs (made longer)
-        const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.2, 6); // Height increased from 0.8 to 1.2
+        // Create legs
+        const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 1.2, 6);
         const legMaterial = new THREE.MeshStandardMaterial({
             color: 0x654321,
             roughness: 0.8,
@@ -121,9 +120,8 @@ class Player {
         
         // Store reference to this player in the mesh
         this.mesh.userData.player = this;
-        
-        this.mesh.position.y = -0.6;
-        
+
+        // Return the mesh
         return this.mesh;
     }
     
@@ -134,7 +132,7 @@ class Player {
         canvas.width = 256;
         canvas.height = 64;
         
-        // Draw background (optional)
+        // Draw background
         context.fillStyle = 'rgba(0, 0, 0, 0.3)';
         context.fillRect(0, 0, canvas.width, canvas.height);
         
@@ -171,13 +169,13 @@ class Player {
         this.position.z += this.velocity.z * deltaTime;
         
         // Update mesh position
-        if (this.mesh) {
-            this.mesh.position.copy(this.position);
-            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
-            this.mesh.rotation.copy(this.rotation);
-        }
+        //if (this.mesh) {
+        //    this.mesh.position.copy(this.position);
+        //    this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
+        //    this.mesh.rotation.copy(this.rotation);
+        //}
     }
-    
+
     updateFromData(data) {
         // Update position
         this.position.set(
@@ -204,66 +202,6 @@ class Player {
             this.mesh.rotation.copy(this.rotation);
         }
     }
-    
-    dropStone() {
-        if (this.heldStones.length === 0) {
-            return null;
-        }
-        
-        const stoneId = this.heldStones.pop();
-        const stone = Game.getStoneById(stoneId);
-        
-        if (!stone) {
-            return null;
-        }
-        
-        // Position in front of player
-        const direction = new THREE.Vector3(0, 0, -1).applyEuler(this.rotation);
-        const position = this.position.clone().add(direction.multiplyScalar(1.5));
-        position.y = this.position.y - 0.5; // Slightly below eye level
-        
-        // Drop stone
-        stone.drop(position, this.rotation, new THREE.Vector3());
-        
-        return stone;
-    }
-    
-    toJSON() {
-        return {
-            id: this.id,
-            username: this.username,
-            position: {
-                x: this.position.x,
-                y: this.position.y,
-                z: this.position.z
-            },
-            rotation: {
-                x: this.rotation.x,
-                y: this.rotation.y,
-                z: this.rotation.z
-            },
-            heldStones: this.heldStones
-        };
-    }
-    
-    static fromJSON(data) {
-        const player = new Player(data.id, data.username);
-        player.updateFromData(data);
-        return player;
-    }
-
-    remove() {
-        if (this.mesh) {
-            // Remove nametag and other meshes
-            while(this.mesh.children.length > 0) { 
-                this.mesh.remove(this.mesh.children[0]); 
-            }
-            // Remove the mesh itself if it's in the scene
-            if (this.mesh.parent) {
-                this.mesh.parent.remove(this.mesh);
-            }
-        }
-    }
 }
 
 // Local player extends Player
@@ -273,8 +211,8 @@ class LocalPlayer extends Player {
         this.isLocal = true;
         this.camera = null;
         this.cameraPitch = 0;
-        
-        // Set up controls including strafe
+
+        // Set up controls
         this.controls = {
             forward: false,
             backward: false,
@@ -488,11 +426,13 @@ class LocalPlayer extends Player {
     }
     
     checkNearbyStones() {
+        // If player is holding max stones, do nothing
         if (this.heldStones.length >= this.maxStones) return;
         
         // Check if enough time has passed since last throw
         if (Date.now() - this.lastThrowTime < this.pickupDelay) return;
 
+        // Check for nearby stones
         for (let i = Game.stones.length - 1; i >= 0; i--) {
             const stone = Game.stones[i];
             if (!stone || !stone.mesh) continue;
@@ -502,7 +442,6 @@ class LocalPlayer extends Player {
             const dx = this.position.x - stone.mesh.position.x;
             const dz = this.position.z - stone.mesh.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
-            
             if (distance < CONFIG.PLAYER.radius * 4) {
                 // Remove from stones array
                 Game.stones.splice(i, 1);
@@ -527,6 +466,7 @@ class LocalPlayer extends Player {
     }
     
     updateHeldStones(deltaTime) {
+        // If player is not holding any stones, do nothing
         if (this.heldStones.length === 0) return;
 
         // Get the last stone
@@ -559,6 +499,36 @@ class LocalPlayer extends Player {
         }
     }
 
+    throwStone() {
+        // If player is not holding any stones, do nothing
+        if (this.heldStones.length === 0) return null;
+        
+        // Get the last stone
+        const stone = this.heldStones.pop();
+        if (!stone || !stone.mesh) return null;
+        
+        // Calculate throw direction from player's rotation
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyEuler(this.rotation);
+        
+        // Position stone in front of player
+        const throwPosition = this.position.clone()
+            .add(forward.multiplyScalar(1.5))
+            .add(new THREE.Vector3(0, -0.3, 0));
+        
+        // Throw the stone
+        stone.throw(throwPosition, forward);
+        
+        // Add stone back to game
+        Game.stones.push(stone);
+        
+        // Set last throw time
+        this.lastThrowTime = Date.now();
+        
+        // Return the stone
+        return stone;
+    }
+    
     checkTowerClimbing() {
         // Check distance to all towers
         for (const tower of Game.towers) {
@@ -566,7 +536,7 @@ class LocalPlayer extends Player {
             const dx = this.position.x - tower.position.x;
             const dz = this.position.z - tower.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
-            
+
             // If player is inside tower radius
             if (distance < CONFIG.TOWER.baseRadius * 1.3) {
                 // Start climbing if not already
@@ -574,22 +544,21 @@ class LocalPlayer extends Player {
                     this.climbStartTime = Date.now();
                     this.isClimbing = true;
                 }
-                
+
                 // Calculate target height at top of tower
                 const topHeight = tower.position.y + 
                     ((tower.level) * 4 * CONFIG.STONE.depth) + 
                     CONFIG.PLAYER.baseHeight - 1.5;
-                
+
                 // Calculate climb progress
                 const timeElapsed = (Date.now() - this.climbStartTime) / 1000; // seconds
                 const climbHeight = timeElapsed * this.climbSpeed;
-                
+
                 // Calculate new height
                 const newHeight = tower.position.y + climbHeight + CONFIG.PLAYER.baseHeight;
-                
+
                 // Don't exceed top height
                 this.position.y = Math.min(newHeight, topHeight);
-                
                 return true;
             }
         }
