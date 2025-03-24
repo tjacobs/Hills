@@ -605,6 +605,18 @@ const Network = {
         console.log(`Stone spawned: ${stone.id}`);
     },
     
+    // Add tower update handler
+    handleTowerUpdate(message) {
+        const tower = Game.getTowerById(message.towerId);
+        if (tower) {
+            tower.updateFromData(message);
+        } else {
+            // Create new tower if it doesn't exist
+            const newTower = Tower.fromJSON(message);
+            Game.addTower(newTower);
+        }
+    },
+    
     disconnect() {
         if (this.socket && this.isConnected) {
             this.socket.close();
