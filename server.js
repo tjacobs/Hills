@@ -267,7 +267,78 @@ function handleTowerCreated(ws, data) {
     }, ws);
 }
 
-// Stone class definition
+class Terrain {
+    constructor() {
+        this.segments = 200;
+        this.groundSize = CONFIG.WORLD.size;
+        this.heightMap = [];
+        this.createHeightmap();
+    }
+
+    createHeightmap() {
+        const maxHeight = CONFIG.WORLD.maxTerrainHeight;
+        const xs = CONFIG.WORLD.terrainXScale;
+        const ys = CONFIG.WORLD.terrainYScale;
+
+        // Initialize heightmap array
+        for (let i = 0; i <= this.segments; i++) {
+            this.heightMap[i] = [];
+            for (let j = 0; j <= this.segments; j++) {
+                // Calculate normalized coordinates (-1 to 1)
+                const nx = (i / this.segments) * 2 - 1;
+                const ny = (j / this.segments) * 2 - 1;
+                
+                // Calculate distance from center (0 to 1)
+                const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
+                
+                // Create sharper edge falloff factor (1 in center, 0 at edges)
+                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
+                
+                // Apply height with edge falloff
+                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
+            }
+        }
+    }
+
+    getHeightAtPosition(x, z) {
+        // Convert world coordinates to heightmap indices
+        const halfSize = this.groundSize / 2;
+        const normalizedX = (x + halfSize) / this.groundSize;
+        const normalizedZ = (z + halfSize) / this.groundSize;
+        
+        // Calculate grid indices
+        const gridX = Math.floor(normalizedX * this.segments);
+        const gridZ = Math.floor(normalizedZ * this.segments);
+        
+        // Ensure indices are within bounds
+        if (gridX < 0 || gridX >= this.segments || 
+            gridZ < 0 || gridZ >= this.segments) {
+            return -10; // Water level for out of bounds
+        }
+        
+        // Get heights at the four corners of the grid cell
+        const h00 = this.heightMap[gridX][gridZ];
+        const h10 = this.heightMap[Math.min(gridX + 1, this.segments)][gridZ];
+        const h01 = this.heightMap[gridX][Math.min(gridZ + 1, this.segments)];
+        const h11 = this.heightMap[Math.min(gridX + 1, this.segments)][Math.min(gridZ + 1, this.segments)];
+        
+        // Calculate fractional position within the grid cell
+        const fx = normalizedX * this.segments - gridX;
+        const fz = normalizedZ * this.segments - gridZ;
+        
+        // Bilinear interpolation
+        const h0 = h00 * (1 - fx) + h10 * fx;
+        const h1 = h01 * (1 - fx) + h11 * fx;
+        const height = h0 * (1 - fz) + h1 * fz;
+        
+        return height;
+    }
+}
+
+// Create terrain instance and use it in Stone class
+const terrain = new Terrain();
+
+// Update Stone class to use terrain
 class Stone {
     constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
@@ -439,17 +510,8 @@ class Stone {
         }
     }
 
-    // Helper function to get height at position - this needs to match your terrain generation
     getHeightAtPosition(x, z) {
-        // Simple example - replace with your actual terrain height calculation
-        const distance = Math.sqrt(x * x + z * z);
-        const maxHeight = 10;
-        const radius = 100;
-        
-        if (distance > radius) return -10; // Water level
-        
-        // Basic island shape
-        return maxHeight * (1 - (distance / radius) * (distance / radius));
+        return terrain.getHeightAtPosition(x, z);
     }
 
     serialize() {
