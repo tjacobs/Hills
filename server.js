@@ -333,9 +333,9 @@ class Terrain {
         const gridZ = Math.floor(normalizedZ * this.segments);
         
         // Debug log coordinates
-        console.log("Server height lookup: world(", x.toFixed(1), ",", z.toFixed(1), 
-                   ") -> normalized(", normalizedX.toFixed(2), ",", normalizedZ.toFixed(2), 
-                   ") -> grid(", gridX, ",", gridZ, ")");
+        //console.log("Server height lookup: world(", x.toFixed(1), ",", z.toFixed(1), 
+        //           ") -> normalized(", normalizedX.toFixed(2), ",", normalizedZ.toFixed(2), 
+        //           ") -> grid(", gridX, ",", gridZ, ")");
         
         // Ensure indices are within bounds
         if (gridX < 0 || gridX >= this.segments || 
