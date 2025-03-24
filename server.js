@@ -469,7 +469,7 @@ function createRandomStone() {
     const stone = new Stone(null, position, velocity);
     
     // Log initial position
-    console.log(`New stone created: id=${stone.id} pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+    //console.log(`New stone created: id=${stone.id} pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
     
     return stone;
 }

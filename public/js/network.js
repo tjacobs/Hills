@@ -172,11 +172,11 @@ const Network = {
                 stone.isStatic = stoneData.isStatic;
                 Game.addStone(stone);
                 
-                console.log('Added stone to game:', {
-                    id: stone.id,
-                    position: stone.position.toArray(),
-                    meshPosition: stone.mesh.position.toArray()
-                });
+                //console.log('Added stone to game:', {
+                //    id: stone.id,
+                //    position: stone.position.toArray(),
+                //    meshPosition: stone.mesh.position.toArray()
+                //});
             }
         });
         
@@ -631,21 +631,21 @@ const Network = {
     
     // Handle stone spawned message
     handleStoneSpawned(data) {
-        console.log('Stone spawned message:', {
-            id: data.stone.id,
-            position: data.stone.position
-        });
+        //console.log('Stone spawned message:', {
+        //    id: data.stone.id,
+        //    position: data.stone.position
+        //});
         
         const stone = new Stone(data.stone.id);
         stone.position.set(data.stone.position.x, data.stone.position.y, data.stone.position.z);
         stone.mesh.position.copy(stone.position);
         Game.addStone(stone);
         
-        console.log('Added spawned stone to game:', {
-            id: stone.id,
-            position: stone.position.toArray(),
-            meshPosition: stone.mesh.position.toArray()
-        });
+        //console.log('Added spawned stone to game:', {
+        //    id: stone.id,
+        //    position: stone.position.toArray(),
+        //    meshPosition: stone.mesh.position.toArray()
+        //});
     },
     
     // Handle stone positions message
