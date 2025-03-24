@@ -154,11 +154,15 @@ const Network = {
         
         // Handle stones
         message.stones.forEach(stoneData => {
-            // Check if stone already exists first
+            console.log('Initial state stone:', {
+                id: stoneData.id,
+                position: stoneData.position
+            });
+            
             if (!Game.getStoneById(stoneData.id)) {
                 const stone = new Stone(stoneData.id);
                 stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
-                stone.mesh.position.copy(stone.position);  // Make sure mesh position is set too
+                stone.mesh.position.copy(stone.position);
                 if (stoneData.velocity) {
                     stone.velocity.set(stoneData.velocity.x, stoneData.velocity.y, stoneData.velocity.z);
                 }
@@ -167,6 +171,12 @@ const Network = {
                 stone.isThrown = stoneData.isThrown;
                 stone.isStatic = stoneData.isStatic;
                 Game.addStone(stone);
+                
+                console.log('Added stone to game:', {
+                    id: stone.id,
+                    position: stone.position.toArray(),
+                    meshPosition: stone.mesh.position.toArray()
+                });
             }
         });
         
@@ -621,8 +631,21 @@ const Network = {
     
     // Handle stone spawned message
     handleStoneSpawned(data) {
-        const stone = new Stone(data.stone);
+        console.log('Stone spawned message:', {
+            id: data.stone.id,
+            position: data.stone.position
+        });
+        
+        const stone = new Stone(data.stone.id);
+        stone.position.set(data.stone.position.x, data.stone.position.y, data.stone.position.z);
+        stone.mesh.position.copy(stone.position);
         Game.addStone(stone);
+        
+        console.log('Added spawned stone to game:', {
+            id: stone.id,
+            position: stone.position.toArray(),
+            meshPosition: stone.mesh.position.toArray()
+        });
     },
     
     // Handle stone positions message
