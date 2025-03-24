@@ -387,8 +387,8 @@ class Terrain {
                 const ys = CONFIG.WORLD.terrainYScale;
                 const maxHeight = CONFIG.WORLD.maxTerrainHeight;
                 
-                // Store height using exact client formula
-                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
+                // Use exactly the same formula - only using i (not j)
+                this.heightMap[i][j] = Math.sin(i / xs) * maxHeight;
             }
         }
     }
