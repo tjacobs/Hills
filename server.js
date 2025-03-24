@@ -423,7 +423,7 @@ class Stone {
             this.position.y = collisionThreshold;
             this.velocity.y = 0;
             this.isStatic = true;
-            console.log(`Stone ${this.id} settled at height ${this.position.y.toFixed(1)} (ground=${groundHeight.toFixed(1)})`);
+//            console.log(`Stone ${this.id} settled at height ${this.position.y.toFixed(1)} (ground=${groundHeight.toFixed(1)})`);
         }
     }
 
