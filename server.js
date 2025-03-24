@@ -124,6 +124,7 @@ wss.on('connection', (ws) => {
   // Handle client disconnection
   ws.on('close', () => {
     const playerId = ws.playerId;
+    console.log(`Player disconnected: ${playerId}`);
     
     // Remove from connections
     connections.delete(playerId);
@@ -143,6 +144,8 @@ wss.on('connection', (ws) => {
 function handlePlayerJoin(ws, data) {
     const playerId = data.playerId;
     const { username, position, rotation } = data;
+    
+    console.log(`Player ${username} (${playerId}) joined`);
     
     // Store connection
     connections.set(playerId, ws);
