@@ -59,10 +59,12 @@ function updateUI() {
         }
     }
     
-    // Update tower count
-    const towerInfo = document.getElementById('tower-info');
-    if (towerInfo) {
-        towerInfo.textContent = `Towers: ${Game.towers.length}`;
+    // Update game stats
+    const gameStats = document.getElementById('game-stats');
+    if (gameStats) {
+        gameStats.innerHTML = `Players: ${Object.keys(Game.players).length}<br>
+Stones: ${Game.stones.length}<br>
+Towers: ${Game.towers.length}`;
     }
 }
 

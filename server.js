@@ -245,11 +245,53 @@ class Stone {
         this.isStatic = false;
     }
 
-    static generateSpawnPosition() {
-        const x = (Math.random() - 0.5) * 100;
-        const y = -10;
-        const z = (Math.random() - 0.5) * 100;
-        return { x, y, z };
+    static createRandom() {
+        const stone = new Stone();
+        
+        // Choose a random side of the island
+        const side = Math.floor(Math.random() * 4);
+        const worldHalfSize = 100; // Match your world size
+        const spawnDistance = worldHalfSize * 1.2;
+
+        // Calculate spawn position
+        switch (side) {
+            case 0: // North
+                stone.position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                stone.position.z = -spawnDistance;
+                break;
+            case 1: // East
+                stone.position.x = spawnDistance;
+                stone.position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                break;
+            case 2: // South
+                stone.position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                stone.position.z = spawnDistance;
+                break;
+            case 3: // West
+                stone.position.x = -spawnDistance;
+                stone.position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                break;
+        }
+
+        stone.position.y = 0;
+
+        // Calculate direction toward island center
+        const dirToCenter = {
+            x: -stone.position.x,
+            z: -stone.position.z
+        };
+        const distance = Math.sqrt(dirToCenter.x * dirToCenter.x + dirToCenter.z * dirToCenter.z);
+        dirToCenter.x /= distance;
+        dirToCenter.z /= distance;
+
+        // Set initial velocity
+        const horizontalSpeed = 0.5;
+        const verticalSpeed = 0.6;
+        stone.velocity.x = dirToCenter.x * horizontalSpeed;
+        stone.velocity.z = dirToCenter.z * horizontalSpeed;
+        stone.velocity.y = verticalSpeed;
+
+        return stone;
     }
 
     update(deltaTime) {
