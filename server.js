@@ -58,6 +58,27 @@ wss.on('connection', (ws) => {
         case 'tower_created':
           handleTowerCreated(ws, data);
           break;
+        case 'stone_thrown': {
+          const stone = gameState.stones.get(data.stoneId);
+          if (stone) {
+            stone.position = data.position;
+            stone.velocity = data.velocity;
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
+            
+            // Broadcast the throw to all clients
+            broadcastToAll({
+              type: 'stone_thrown',
+              stoneId: stone.id,
+              position: stone.position,
+              velocity: stone.velocity
+            });
+          }
+          break;
+        }
         default:
           console.log(`Unknown message type: ${data.type}`);
       }
@@ -251,7 +272,7 @@ class Stone {
         // Choose a random side of the island
         const side = Math.floor(Math.random() * 4);
         const worldHalfSize = 100; // Match your world size
-        const spawnDistance = worldHalfSize * 1.2;
+        const spawnDistance = worldHalfSize * 1.2; // Spawn from further out
 
         // Calculate spawn position
         switch (side) {
@@ -284,9 +305,9 @@ class Stone {
         dirToCenter.x /= distance;
         dirToCenter.z /= distance;
 
-        // Set initial velocity
-        const horizontalSpeed = 0.5;
-        const verticalSpeed = 0.6;
+        // Increase velocity for more dramatic arcs
+        const horizontalSpeed = 2.0;  // Increased from 0.5
+        const verticalSpeed = 3.0;    // Increased from 0.6
         stone.velocity.x = dirToCenter.x * horizontalSpeed;
         stone.velocity.z = dirToCenter.z * horizontalSpeed;
         stone.velocity.y = verticalSpeed;

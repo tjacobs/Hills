@@ -563,8 +563,17 @@ const Network = {
     sendStoneThrown(stone) {
         this.sendMessage({
             type: 'stone_thrown',
-            playerId: Game.localPlayer.id,
-            stone: stone.toJSON()
+            stoneId: stone.id,
+            position: {
+                x: stone.position.x,
+                y: stone.position.y,
+                z: stone.position.z
+            },
+            velocity: {
+                x: stone.velocity.x,
+                y: stone.velocity.y,
+                z: stone.velocity.z
+            }
         });
     },
     
