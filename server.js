@@ -141,40 +141,50 @@ wss.on('connection', (ws) => {
 
 // Handle player join
 function handlePlayerJoin(ws, data) {
-  const playerId = data.playerId;  // Use client-provided ID
-  const { username, position, rotation } = data;
-  
-  // Store connection
-  connections.set(playerId, ws);
-  ws.playerId = playerId;
-  
-  console.log(`Player ${username} (${playerId}) joined`);
-  
-  // Add player to game state
-  gameState.players[playerId] = {
-    playerId,
-    username,
-    position,
-    rotation,
-    heldStones: [],
-    lastUpdate: Date.now()
-  };
-  
-  // Send welcome message with current players list
-  ws.send(JSON.stringify({
-    type: 'welcome',
-    playerId,
-    players: Object.values(gameState.players)  // Include current players
-  }));
-  
-  // Notify other clients
-  broadcastToAll({
-    type: 'player_joined',
-    playerId,
-    username,
-    position,
-    rotation
-  }, ws);
+    const playerId = data.playerId;
+    const { username, position, rotation } = data;
+    
+    console.log('Handling player join:', {
+        receivedPlayerId: playerId,
+        receivedData: data,
+        existingPlayers: Object.keys(gameState.players)
+    });
+    
+    // Store connection
+    connections.set(playerId, ws);
+    ws.playerId = playerId;
+    
+    // Add player to game state
+    const playerData = {
+        id: playerId,      // Use same ID for both fields
+        playerId: playerId,
+        username,
+        position,
+        rotation,
+        heldStones: [],
+        lastUpdate: Date.now()
+    };
+    
+    console.log('Adding player to game state:', playerData);
+    gameState.players[playerId] = playerData;
+    
+    // Send welcome message
+    const welcomeMessage = {
+        type: 'welcome',
+        playerId,
+        players: Object.values(gameState.players)
+    };
+    console.log('Sending welcome message:', welcomeMessage);
+    ws.send(JSON.stringify(welcomeMessage));
+    
+    // Notify other clients
+    broadcastToAll({
+        type: 'player_joined',
+        playerId,
+        username,
+        position,
+        rotation
+    }, ws);
 }
 
 // Handle player update
