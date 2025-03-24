@@ -449,7 +449,7 @@ class LocalPlayer extends Player {
             this.camera.position.y = this.position.y;
             
             // Ensure camera rotation matches player rotation
-            this.camera.rotation.y = this.rotation.y;
+            this.camera.rotation.setFromEuler(new THREE.Euler(this.camera.rotation.x, this.camera.rotation.y, this.camera.rotation.z, 'YXZ'));
         }
         
         // Check for tower collisions

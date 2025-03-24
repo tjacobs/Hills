@@ -16,7 +16,8 @@ const Input = {
     mouse: {
         x: 0,
         y: 0,
-        locked: false
+        leftButton: false,
+        rightButton: false
     },
     
     // Touch state
@@ -298,5 +299,9 @@ const Input = {
         
         document.body.appendChild(button);
     },
+    
+    isKeyPressed(key) {
+        return this.keys[key.toLowerCase()] === true;
+    }
     
 }; 

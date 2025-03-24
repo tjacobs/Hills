@@ -105,7 +105,7 @@ const Network = {
                         this.handleStoneThrow(data);
                         break;
                     default:
-                        console.log('Unknown message type:', data.type);
+                        console.warn(`Unknown message type: ${data.type}`);
                 }
             } catch (e) {
                 console.error('Error handling message:', e);
@@ -155,7 +155,7 @@ const Network = {
         // Handle stones
         message.stones.forEach(stoneData => {
             const stone = new Stone(stoneData.id);
-            stone.mesh.position.copy(stoneData.position);
+            stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
             if (stoneData.velocity) {
                 stone.velocity.copy(stoneData.velocity);
             }
@@ -625,7 +625,13 @@ const Network = {
                 stone.updateFromData(stoneData);
             } else {
                 // Create new stone if we don't have it
-                stone = new Stone(stoneData);
+                stone = new Stone(stoneData.id);
+                stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
+                stone.velocity.set(stoneData.velocity.x, stoneData.velocity.y, stoneData.velocity.z);
+                stone.isHeld = stoneData.isHeld;
+                stone.heldBy = stoneData.heldBy;
+                stone.isThrown = stoneData.isThrown;
+                stone.isStatic = stoneData.isStatic;
                 Game.addStone(stone);
             }
         });

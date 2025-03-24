@@ -1,13 +1,15 @@
 // Stone entity with exact original appearance from main.js
 class Stone {
-    constructor(id = null) {
+    constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
-        this.position = new THREE.Vector3();
-        this.velocity = new THREE.Vector3();
+        this.position = position || new THREE.Vector3(0, 0, 0);
+        this.velocity = velocity || new THREE.Vector3(0, 0, 0);
         this.isHeld = false;
         this.heldBy = null;
         this.isThrown = false;
+        this.throwTime = 0;
         this.isStatic = false;
+        this.lastUpdateTime = Date.now();
 
         // Create mesh
         const geometry = new THREE.BoxGeometry(
@@ -244,5 +246,15 @@ class Stone {
         }
         
         return quaternion;
+    }
+
+    // Method to update stone properties from server data
+    updateFromData(data) {
+        this.position.set(data.position.x, data.position.y, data.position.z);
+        this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
+        this.isHeld = data.isHeld;
+        this.heldBy = data.heldBy;
+        this.isThrown = data.isThrown;
+        this.isStatic = data.isStatic;
     }
 } 
