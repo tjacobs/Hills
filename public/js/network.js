@@ -560,18 +560,21 @@ const Network = {
         if (playerId === Game.localPlayer.id) return;
         
         // Get player from Game
-        const player = Game.getPlayerById(playerId);
+        let player = Game.getPlayerById(playerId);
         
-        if (player) {
-            // Update player position and rotation with interpolation
-            player.updateFromData({
-                position: message.position,
-                rotation: message.rotation,
-                heldStones: message.heldStones
-            });
-        } else {
-            console.warn(`Received update for unknown player: ${playerId}`);
+        if (!player) {
+            // Create new player if we don't have them yet
+            console.log(`Creating player from update: ${playerId}`);
+            player = new Player(playerId, 'Player');  // Default username until we get a proper join
+            Game.addPlayer(player);
         }
+        
+        // Update player position and rotation with interpolation
+        player.updateFromData({
+            position: message.position,
+            rotation: message.rotation,
+            heldStones: message.heldStones
+        });
     },
     
     // Handle stone spawned message
