@@ -390,14 +390,8 @@ const Network = {
         const playerId = message.playerId;
         console.log(`Handling player left: ${playerId}`);
         
-        // Get the player
-        const player = Game.getPlayerById(playerId);
-        if (player) {
-            // Remove player from game
-            Game.removePlayer(player);
-        } else {
-            console.warn(`Could not find player to remove: ${playerId}`);
-        }
+        // Remove player from game
+        Game.removePlayer(playerId);
     },
     
     // Handle player update message

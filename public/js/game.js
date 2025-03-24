@@ -685,18 +685,23 @@ const Game = {
     },
 
     removePlayer(playerId) {
-        const player = this.players[playerId];
-        if (player) {
-            console.log('Removing player:', playerId);
-            // Remove mesh from scene
-            if (player.mesh && player.mesh.parent) {
-                player.mesh.parent.remove(player.mesh);
-            }
-            // Clean up player resources
-            player.remove();
-            // Remove from players object
-            delete this.players[playerId];
+        // Get player object
+        const player = this.getPlayerById(playerId);
+        if (!player) {
+            console.warn(`Could not find player to remove: ${playerId}`);
+            return;
         }
+
+        // Remove player mesh from scene
+        if (player.mesh) {
+            this.scene.remove(player.mesh);
+            player.remove(); // This will handle mesh disposal
+        }
+
+        // Remove from players object
+        delete this.players[playerId];
+        
+        console.log(`Removed player: ${playerId}`);
     },
 
     // Add this method to the Game object
