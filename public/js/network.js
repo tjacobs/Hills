@@ -98,6 +98,12 @@ const Network = {
                     case 'tower_created':
                         this.handleTowerCreated(data);
                         break;
+                    case 'stone_pickup':
+                        this.handleStonePickup(data);
+                        break;
+                    case 'stone_throw':
+                        this.handleStoneThrow(data);
+                        break;
                     default:
                         console.log('Unknown message type:', data.type);
                 }
@@ -431,22 +437,19 @@ const Network = {
     },
     
     // Handle stone picked up message
-    handleStonePickedUp(message) {
-        // Skip if this is our own action
-        if (message.playerId === Game.localPlayer.id) return;
-        
-        log(`Player ${message.playerId} picked up stone ${message.stoneId}`);
-        
-        // Get stone
-        const stone = Game.getStoneById(message.stoneId);
-        
+    handleStonePickup(data) {
+        const stone = Game.getStoneById(data.stoneId);
         if (stone) {
-            // Get remote player
-            const player = Game.getPlayerById(message.playerId);
+            stone.isHeld = true;
+            stone.heldBy = data.playerId;
+            stone.isStatic = false;
             
-            if (player) {
-                // Update player's held stones
-                player.pickupStone(stone);
+            // If another player picked up the stone
+            if (data.playerId !== Game.localPlayer.id) {
+                const player = Game.getPlayerById(data.playerId);
+                if (player) {
+                    player.addHeldStone(stone);
+                }
             }
         }
     },
@@ -478,16 +481,24 @@ const Network = {
     },
     
     // Handle stone thrown message
-    handleStoneThrown(message) {
-        const stone = Game.getStoneById(message.stoneId);
+    handleStoneThrown(data) {
+        const stone = Game.getStoneById(data.stoneId);
         if (stone) {
-            stone.position.copy(message.position);
-            stone.velocity.copy(message.velocity);
+            stone.position.copy(data.position);
+            stone.velocity.copy(data.velocity);
             stone.isHeld = false;
             stone.heldBy = null;
             stone.isThrown = true;
             stone.throwTime = Date.now();
             stone.isStatic = false;
+            
+            // If another player threw the stone
+            if (data.playerId !== Game.localPlayer.id) {
+                const player = Game.getPlayerById(data.playerId);
+                if (player) {
+                    player.removeHeldStone(stone);
+                }
+            }
         }
     },
     
@@ -539,11 +550,11 @@ const Network = {
     },
     
     // Send stone picked up
-    sendStonePickedUp(stoneId) {
+    sendStonePickup(stoneId) {
         this.sendMessage({
-            type: 'stone_picked_up',
-            playerId: Game.localPlayer.id,
-            stoneId: stoneId
+            type: 'stone_pickup',
+            stoneId: stoneId,
+            playerId: Game.localPlayer.id
         });
     },
     
@@ -557,10 +568,11 @@ const Network = {
     },
     
     // Send stone thrown
-    sendStoneThrown(stone) {
+    sendStoneThrow(stone) {
         this.sendMessage({
-            type: 'stone_thrown',
+            type: 'stone_throw',
             stoneId: stone.id,
+            playerId: Game.localPlayer.id,
             position: {
                 x: stone.position.x,
                 y: stone.position.y,
@@ -636,6 +648,27 @@ const Network = {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
             Game.removeTower(tower);
+        }
+    },
+    
+    handleStoneThrow(data) {
+        const stone = Game.getStoneById(data.stoneId);
+        if (stone) {
+            stone.position.copy(data.position);
+            stone.velocity.copy(data.velocity);
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
+            
+            // If another player threw the stone
+            if (data.playerId !== Game.localPlayer.id) {
+                const player = Game.getPlayerById(data.playerId);
+                if (player) {
+                    player.removeHeldStone(stone);
+                }
+            }
         }
     },
     

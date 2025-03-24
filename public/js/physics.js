@@ -2,7 +2,6 @@
 const Physics = {
     // Initialize physics
     init() {
-        // Nothing to initialize yet
     },
     
     // Update physics

@@ -194,13 +194,13 @@ const Input = {
         let nearestDistance = Infinity;
         
         for (const stone of Game.stones) {
-            // Skip stones that are held or not static
-            if (stone.isHeld || !stone.isStatic) continue;
+            // Skip stones that are already held or in motion
+            if (stone.isHeld || stone.isThrown || !stone.isStatic) continue;
             
             // Calculate distance to stone
             const distance = Game.localPlayer.position.distanceTo(stone.mesh.position);
             
-            // If stone is closer than current nearest
+            // Update nearest stone if this one is closer
             if (distance < nearestDistance) {
                 nearestDistance = distance;
                 nearestStone = stone;
@@ -209,11 +209,7 @@ const Input = {
         
         // If a stone is found and is close enough
         if (nearestStone && nearestDistance < 2) {
-            // Try to pick up stone
-            if (Game.localPlayer.pickupStone(nearestStone)) {
-                // Notify network
-                Network.sendStonePickedUp(nearestStone.id);
-            }
+            Game.localPlayer.pickupStone(nearestStone);
         }
     },
     
@@ -222,16 +218,8 @@ const Input = {
         if (!Game.localPlayer) return;
         
         // Check if player has stones to throw
-        if (Game.localPlayer.heldStones.length === 0) {
-            return;
-        }
-        
-        // Throw stone
-        const stone = Game.localPlayer.throwStone();
-        
-        if (stone) {
-            // Notify network
-            Network.sendStoneThrown(stone);
+        if (Game.localPlayer.heldStones.length > 0) {
+            Game.localPlayer.throwStone();
         }
     },
     
@@ -309,5 +297,6 @@ const Input = {
         }, { passive: false });
         
         document.body.appendChild(button);
-    }
+    },
+    
 }; 

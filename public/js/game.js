@@ -15,7 +15,6 @@ const Game = {
     // Game state
     isRunning: false,
     lastTime: 0,
-    lastStoneSpawnTime: null,
     
     // Initialize game
     init() {
@@ -377,20 +376,6 @@ const Game = {
     
     // Update game state
     updateGameState(deltaTime) {
-/*        // Spawn stones from ocean - one per second
-        if (!this.lastStoneSpawnTime) {
-            this.lastStoneSpawnTime = performance.now();
-        }
-        
-        const now = performance.now();
-        const timeSinceLastSpawn = now - this.lastStoneSpawnTime;
-        
-        // Spawn stones from ocean - one per second
-        if (timeSinceLastSpawn > 1000 && this.stones.length < 100) {
-            this.spawnStoneFromOcean();
-            this.lastStoneSpawnTime = now;
-        }  
-            */      
     },
     
     // Update entities
@@ -543,133 +528,6 @@ const Game = {
         return height;
     },
 
-    // Update stone spawning with even slower movement
-    spawnStoneFromOcean() {
-        // Choose a random side of the island
-        const side = Math.floor(Math.random() * 4);
-
-        // Calculate spawn position on the edge of the water
-        const worldHalfSize = CONFIG.WORLD.size / 2;
-        const spawnDistance = worldHalfSize * 1.2; // Spawn further out
-        let spawnX, spawnZ;
-        switch (side) {
-            case 0: // North
-                spawnX = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                spawnZ = -spawnDistance;
-                break;
-            case 1: // East
-                spawnX = spawnDistance;
-                spawnZ = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                break;
-            case 2: // South
-                spawnX = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                spawnZ = spawnDistance;
-                break;
-            case 3: // West
-                spawnX = -spawnDistance;
-                spawnZ = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                break;
-        }
-
-        // Create stone
-        const stone = new Stone();
-        stone.mesh.position.set(spawnX, 0, spawnZ);
-
-        // Calculate direction toward island center
-        const directionToCenter = new THREE.Vector3(-spawnX, 0, -spawnZ).normalize();
-
-        // Incoming!
-        const horizontalSpeed = 0.5;
-        const verticalSpeed = 0.6;
-
-        // Set velocity components
-        stone.velocity.x = directionToCenter.x * horizontalSpeed;
-        stone.velocity.z = directionToCenter.z * horizontalSpeed;
-        stone.velocity.y = verticalSpeed;
-
-        // Add to game
-        this.addStone(stone);
-
-        // Create splash effect
-        this.createSplashEffect(stone.mesh.position.clone());
-        return stone;
-    },
-    
-    // Add splash effect
-    createSplashEffect(position) {
-        // Create particle system for splash
-        const particleCount = 30;
-        const particleGeometry = new THREE.BufferGeometry();
-        const particleMaterial = new THREE.PointsMaterial({
-            color: 0x5588ff,
-            size: 0.8,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
-        
-        // Create particle positions
-        const positions = new Float32Array(particleCount * 3);
-        const velocities = [];
-        for (let i = 0; i < particleCount; i++) {
-            // Random position around the splash center
-            positions[i * 3] = position.x + (Math.random() * 2 - 1) * 0.5;
-            positions[i * 3 + 1] = position.y;
-            positions[i * 3 + 2] = position.z + (Math.random() * 2 - 1) * 0.5;
-            
-            // Random velocity upward and outward
-            velocities.push(new THREE.Vector3(
-                (Math.random() * 2 - 1) * 0.1,
-                0.1 + Math.random() * 0.2,
-                (Math.random() * 2 - 1) * 0.1
-            ));
-        }
-        
-        // Set geometry attributes
-        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
-        // Create particle system
-        const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
-        
-        // Add to scene
-        this.scene.add(particleSystem);
-
-        // Animate splash
-        const startTime = performance.now();
-        const duration = 1000; // 1 second
-        const animateSplash = (time) => {
-            const elapsed = time - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-
-            // Update particle positions
-            for (let i = 0; i < particleCount; i++) {
-                positions[i * 3] += velocities[i].x;
-                positions[i * 3 + 1] += velocities[i].y;
-                positions[i * 3 + 2] += velocities[i].z;
-
-                // Add gravity
-                velocities[i].y -= 0.01;
-            }
-
-            // Update opacity
-            particleMaterial.opacity = 0.8 * (1 - progress);
-
-            // Update particle positions
-            particleGeometry.attributes.position.needsUpdate = true;
-
-            // Continue animation if not complete
-            if (progress < 1) {
-                requestAnimationFrame(animateSplash);
-            } else {
-                // Remove from scene
-                this.scene.remove(particleSystem);
-            }
-        };
-
-        // Start animation
-        requestAnimationFrame(animateSplash);
-    },
-    
     // Player management
     addPlayer(player) {
         console.log('Adding player:', player.id);

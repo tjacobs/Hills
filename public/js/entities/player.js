@@ -460,6 +460,11 @@ class LocalPlayer extends Player {
         
         // Update held stones
         this.updateHeldStones(deltaTime);
+
+        // Handle stone throwing
+        if (Input.isKeyPressed('throw') && this.heldStones.length > 0) {
+            this.throwStone();
+        }
     }
     
     checkTowerCollisions() {
@@ -484,40 +489,17 @@ class LocalPlayer extends Player {
     }
     
     checkNearbyStones() {
-        // If player is holding max stones, do nothing
         if (this.heldStones.length >= this.maxStones) return;
-        
-        // Check if enough time has passed since last throw
         if (Date.now() - this.lastThrowTime < this.pickupDelay) return;
 
-        // Check for nearby stones
-        for (let i = Game.stones.length - 1; i >= 0; i--) {
-            const stone = Game.stones[i];
+        for (const stone of Game.stones) {
             if (!stone || !stone.mesh) continue;
             if (stone.isHeld) continue;
             
-            // Calculate distance
-            const dx = this.position.x - stone.mesh.position.x;
-            const dz = this.position.z - stone.mesh.position.z;
-            const distance = Math.sqrt(dx * dx + dz * dz);
+            const distance = this.position.distanceTo(stone.mesh.position);
             if (distance < CONFIG.PLAYER.radius * 4) {
-                // Remove from stones array
-                Game.stones.splice(i, 1);
-                
-                // Add to held stones
-                this.heldStones.push(stone);
-                
-                // Scale down the stone
-                stone.mesh.scale.set(0.7, 0.7, 0.7);
-                
-                // Update stone state
-                stone.isHeld = true;
-                stone.heldBy = this.id;
-                
-                // Add to scene if needed
-                if (!stone.mesh.parent) {
-                    Game.scene.add(stone.mesh);
-                }
+                // Request pickup from server
+                Network.sendStonePickup(stone.id);
                 break;
             }
         }
@@ -558,33 +540,29 @@ class LocalPlayer extends Player {
     }
 
     throwStone() {
-        // If player is not holding any stones, do nothing
-        if (this.heldStones.length === 0) return null;
+        if (this.heldStones.length === 0) return;
         
-        // Get the last stone
-        const stone = this.heldStones.pop();
-        if (!stone || !stone.mesh) return null;
+        const stone = this.heldStones[this.heldStones.length - 1];
         
-        // Calculate throw direction from player's rotation
-        const forward = new THREE.Vector3(0, 0, -1);
-        forward.applyEuler(this.rotation);
+        // Calculate throw direction from camera
+        const throwDirection = new THREE.Vector3(0, 0, -1);
+        throwDirection.applyEuler(this.camera.rotation);
         
-        // Position stone in front of player
-        const throwPosition = this.position.clone()
-            .add(forward.multiplyScalar(1.5))
-            .add(new THREE.Vector3(0, -0.3, 0));
+        // Calculate throw velocity
+        const velocity = throwDirection.multiplyScalar(CONFIG.STONE.throwForce);
+        velocity.y = CONFIG.STONE.throwUpward;
         
-        // Throw the stone
-        stone.throw(throwPosition, forward);
+        // Send throw to server first
+        Network.sendStoneThrow({
+            id: stone.id,
+            position: this.position.clone()
+                .add(throwDirection.normalize().multiplyScalar(2))
+                .add(new THREE.Vector3(0, 1.5, 0)),
+            velocity: velocity
+        });
         
-        // Add stone back to game
-        Game.stones.push(stone);
-        
-        // Set last throw time
-        this.lastThrowTime = Date.now();
-        
-        // Return the stone
-        return stone;
+        // Remove from held stones (server will confirm)
+        this.removeHeldStone(stone);
     }
     
     checkTowerClimbing() {
@@ -624,5 +602,47 @@ class LocalPlayer extends Player {
         // Reset climbing state when not in tower
         this.isClimbing = false;
         return false;
+    }
+
+    pickupStone(stone) {
+        if (this.heldStones.length >= CONFIG.STONE.maxHeld) return false;
+        if (stone.isHeld) return false;
+        
+        // Request pickup from server
+        Network.sendStonePickup(stone.id);
+        
+        // Add to held stones (server will confirm)
+        this.addHeldStone(stone);
+        return true;
+    }
+
+    removeHeldStone(stone) {
+        const index = this.heldStones.indexOf(stone);
+        if (index !== -1) {
+            this.heldStones.splice(index, 1);
+            this.updateHeldStonesPositions();
+        }
+    }
+
+    updateHeldStonesPositions() {
+        // Position stones in front of player
+        const holdDistance = 2;
+        const holdHeight = 1;
+        
+        this.heldStones.forEach((stone, index) => {
+            // Calculate position in front of player
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyEuler(this.rotation);
+            
+            const stonePosition = this.position.clone()
+                .add(direction.multiplyScalar(holdDistance))
+                .add(new THREE.Vector3(0, holdHeight, 0));
+            
+            stone.position.copy(stonePosition);
+            stone.mesh.position.copy(stonePosition);
+            
+            // Match player's rotation
+            stone.mesh.rotation.copy(this.rotation);
+        });
     }
 }

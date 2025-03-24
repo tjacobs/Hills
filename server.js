@@ -78,27 +78,12 @@ wss.on('connection', (ws) => {
         case 'tower_created':
           handleTowerCreated(ws, data);
           break;
-        case 'stone_thrown': {
-          const stone = gameState.stones.get(data.stoneId);
-          if (stone) {
-            stone.position = data.position;
-            stone.velocity = data.velocity;
-            stone.isHeld = false;
-            stone.heldBy = null;
-            stone.isThrown = true;
-            stone.throwTime = Date.now();
-            stone.isStatic = false;
-            
-            // Broadcast the throw to all clients
-            broadcastToAll({
-              type: 'stone_thrown',
-              stoneId: stone.id,
-              position: stone.position,
-              velocity: stone.velocity
-            });
-          }
+        case 'stone_pickup':
+          handleStonePickup(data);
           break;
-        }
+        case 'stone_throw':
+          handleStoneThrow(data);
+          break;
         case 'tower_destroyed': {
           const towerId = data.towerId;
           const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
@@ -285,6 +270,43 @@ function handleTowerCreated(ws, data) {
         tower: tower,
         createdBy: ws.playerId
     }, ws);
+}
+
+// Add these functions to handle stone messages
+function handleStonePickup(data) {
+    const stone = gameState.stones.get(data.stoneId);
+    if (stone && !stone.isHeld) {
+        stone.isHeld = true;
+        stone.heldBy = data.playerId;
+        stone.isStatic = false;
+        stone.velocity = { x: 0, y: 0, z: 0 };
+        
+        broadcastToAll({
+            type: 'stone_pickup',
+            stoneId: stone.id,
+            playerId: data.playerId
+        });
+    }
+}
+
+function handleStoneThrow(data) {
+    const stone = gameState.stones.get(data.stoneId);
+    if (stone && stone.isHeld && stone.heldBy === data.playerId) {
+        stone.position = data.position;
+        stone.velocity = data.velocity;
+        stone.isHeld = false;
+        stone.heldBy = null;
+        stone.isThrown = true;
+        stone.throwTime = Date.now();
+        stone.isStatic = false;
+        
+        broadcastToAll({
+            type: 'stone_throw',
+            stoneId: stone.id,
+            position: stone.position,
+            velocity: stone.velocity
+        });
+    }
 }
 
 class Terrain {
