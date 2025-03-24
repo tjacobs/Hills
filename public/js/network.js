@@ -26,10 +26,22 @@ const Network = {
             // Use protocol and host from current window location, fallback to localhost if not available
             const host = window.location.host || 'ramparty.fly.dev';
             const wsUrl = `wss://${host}`;
-            
             console.log('Connecting to:', wsUrl);
             this.socket = new WebSocket(wsUrl);
             this.setupSocketHandlers();
+            
+            // Set up event handlers
+            this.socket.onopen = () => {
+                console.log('Connected to server');
+                this.isConnected = true;
+                this.reconnectAttempts = 0;
+                
+                // Send join message with player ID right after connection
+                this.sendJoin();
+                
+                // Call onConnect callback if exists
+                if (this.onConnect) this.onConnect();
+            };
         } catch (error) {
             console.error('WebSocket connection failed:', error);
             this.handleDisconnect();
@@ -37,28 +49,6 @@ const Network = {
     },
     
     setupSocketHandlers() {
-        this.socket.onopen = () => {
-            console.log('WebSocket connected');
-            this.isConnected = true;
-            this.reconnectAttempts = 0;
-            
-            // Send initial player data
-            this.sendMessage({
-                type: 'player_join',
-                username: Game.localPlayer.username,
-                position: {
-                    x: Game.localPlayer.position.x,
-                    y: Game.localPlayer.position.y,
-                    z: Game.localPlayer.position.z
-                },
-                rotation: {
-                    x: Game.localPlayer.rotation.x,
-                    y: Game.localPlayer.rotation.y,
-                    z: Game.localPlayer.rotation.z
-                }
-            });
-        };
-        
         this.socket.onclose = () => this.handleDisconnect();
         this.socket.onerror = (error) => console.error('WebSocket error:', error);
         
@@ -87,6 +77,12 @@ const Network = {
                     break;
                 case 'tower_update':
                     this.handleTowerUpdate(message);
+                    break;
+                case 'stone_spawned':
+                    this.handleStoneSpawned(message);
+                    break;
+                case 'player_updated':
+                    this.handlePlayerUpdated(message);
                     break;
                 default:
                     console.log('Unknown message type:', message.type);
@@ -531,6 +527,28 @@ const Network = {
             playerId: Game.localPlayer.id,
             stone: stone.toJSON()
         });
+    },
+    
+    // Handle player updated message
+    handlePlayerUpdated(message) {
+        const playerId = message.playerId;
+        
+        // Skip if this is our own update
+        if (playerId === Game.localPlayer.id) return;
+        
+        // Get player from Game
+        const player = Game.getPlayerById(playerId);
+        
+        if (player) {
+            // Update player position and rotation with interpolation
+            player.updateFromData({
+                position: message.position,
+                rotation: message.rotation,
+                heldStones: message.heldStones
+            });
+        } else {
+            console.warn(`Received update for unknown player: ${playerId}`);
+        }
     },
     
     disconnect() {

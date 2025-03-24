@@ -374,7 +374,7 @@ const Game = {
     
     // Update game state
     updateGameState(deltaTime) {
-        // Spawn stones from ocean - one per second
+/*        // Spawn stones from ocean - one per second
         if (!this.lastStoneSpawnTime) {
             this.lastStoneSpawnTime = performance.now();
         }
@@ -386,7 +386,8 @@ const Game = {
         if (timeSinceLastSpawn > 1000 && this.stones.length < 100) {
             this.spawnStoneFromOcean();
             this.lastStoneSpawnTime = now;
-        }        
+        }  
+            */      
     },
     
     // Update entities

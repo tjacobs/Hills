@@ -163,43 +163,44 @@ class Player {
     }
     
     update(deltaTime) {
-        // Update position based on velocity
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z * deltaTime;
+        // If we have a target position, interpolate towards it
+        if (this.targetPosition) {
+            this.position.lerp(this.targetPosition, 0.1);
+        }
         
-        // Update mesh position
-        //if (this.mesh) {
-        //    this.mesh.position.copy(this.position);
-        //    this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
-        //    this.mesh.rotation.copy(this.rotation);
-        //}
+        // Update mesh position if it exists
+        if (this.mesh) {
+            this.mesh.position.copy(this.position);
+            this.mesh.rotation.copy(this.rotation);
+        }
+        
+        // Update held stones
+        this.updateHeldStones(deltaTime);
     }
 
     updateFromData(data) {
-        // Update position
-        this.position.set(
-            data.position.x,
-            data.position.y,
-            data.position.z
-        );
+        // Target position for smooth interpolation
+        if (data.position) {
+            this.targetPosition = new THREE.Vector3(
+                data.position.x,
+                data.position.y,
+                data.position.z
+            );
+        }
         
-        // Update rotation
-        this.rotation.set(
-            data.rotation.x,
-            data.rotation.y,
-            data.rotation.z,
-            'YXZ'
-        );
+        // Update rotation immediately
+        if (data.rotation) {
+            this.rotation.set(
+                data.rotation.x,
+                data.rotation.y,
+                data.rotation.z,
+                'YXZ' // Specify rotation order
+            );
+        }
         
-        // Update held stones
-        this.heldStones = data.heldStones || [];
-        
-        // Update mesh
-        if (this.mesh) {
-            this.mesh.position.copy(this.position);
-            this.mesh.position.y += Player.MESH_HEIGHT_OFFSET;
-            this.mesh.rotation.copy(this.rotation);
+        // Update held stones if needed
+        if (data.heldStones) {
+            this.heldStones = data.heldStones;
         }
     }
 }

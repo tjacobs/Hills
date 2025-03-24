@@ -88,33 +88,29 @@ wss.on('connection', (ws) => {
   }));
 
   // Handle messages from clients
-  ws.on('message', (message) => {
+  ws.on('message', function(message) {
     try {
       const data = JSON.parse(message);
       
-      // Process message based on type
-      switch (data.type) {
-        case 'player_join':
-          handlePlayerJoin(ws, { ...data, playerId });
+      // Route message to appropriate handler
+      switch(data.type) {
+        case 'join':  // Client sends 'join', make sure server handles it
+          handlePlayerJoin(ws, data);
           break;
-          
-        case 'player_update':
-          handlePlayerUpdate(ws, { ...data, playerId });
+        case 'update':
+          handlePlayerUpdate(ws, data);
           break;
-          
         case 'stone_update':
           handleStoneUpdate(ws, { ...data, playerId });
           break;
-          
         case 'tower_update':
           handleTowerUpdate(ws, { ...data, playerId });
           break;
-          
         default:
-          console.log('Unknown message type:', data.type);
+          console.log(`Unknown message type: ${data.type}`);
       }
-    } catch (error) {
-      console.error('Error processing message:', error);
+    } catch (e) {
+      console.error('Error processing message:', e);
     }
   });
 
@@ -161,27 +157,27 @@ function handlePlayerJoin(ws, data) {
 
 // Handle player update
 function handlePlayerUpdate(ws, data) {
-  const { playerId, position, rotation, heldStones } = data;
+  const playerId = data.playerId;
   
-  // Update player in game state
-  if (gameState.players[playerId]) {
-    gameState.players[playerId].position = position;
-    gameState.players[playerId].rotation = rotation;
-    gameState.players[playerId].heldStones = heldStones || [];
-    gameState.players[playerId].lastUpdate = Date.now();
-    
-    // Debug log
-    console.log('Broadcasting player update:', playerId, position);
-    
-    // Broadcast update to other clients
-    broadcastToAll({
-      type: 'player_update',
-      playerId,
-      position,
-      rotation,
-      heldStones
-    }, ws);
+  // Ensure player exists in game state
+  if (!gameState.players[playerId]) {
+    console.warn(`Update received for unknown player: ${playerId}`);
+    return;
   }
+  
+  // Update player data
+  gameState.players[playerId].position = data.position;
+  gameState.players[playerId].rotation = data.rotation;
+  gameState.players[playerId].lastUpdate = Date.now();
+  
+  // Broadcast update to all other clients
+  broadcastToAll({
+    type: 'player_updated',
+    playerId: playerId,
+    position: data.position,
+    rotation: data.rotation,
+    heldStones: data.heldStones || []
+  }, ws); // Send to all except sender
 }
 
 function handleStoneUpdate(ws, data) {
