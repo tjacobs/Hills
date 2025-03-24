@@ -269,10 +269,10 @@ function handleTowerCreated(ws, data) {
 
 // Stone class definition
 class Stone {
-    constructor(id = null) {
+    constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
-        this.position = { x: 0, y: 0, z: 0 };
-        this.velocity = { x: 0, y: 0, z: 0 };
+        this.position = position || { x: 0, y: 0, z: 0 };
+        this.velocity = velocity || { x: 0, y: 0, z: 0 };
         this.isHeld = false;
         this.heldBy = null;
         this.isThrown = false;
@@ -281,52 +281,53 @@ class Stone {
     }
 
     static createRandom() {
-        const stone = new Stone();
-        
         // Choose a random side of the island
         const side = Math.floor(Math.random() * 4);
         const worldHalfSize = 100; // Match your world size
         const spawnDistance = worldHalfSize * 0.9; // Spawn from further out
 
+        let position = { x: 0, y: -5, z: 0 };
+
         // Calculate spawn position
         switch (side) {
             case 0: // North
-                stone.position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                stone.position.z = -spawnDistance;
+                position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                position.z = -spawnDistance;
                 break;
             case 1: // East
-                stone.position.x = spawnDistance;
-                stone.position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                position.x = spawnDistance;
+                position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
                 break;
             case 2: // South
-                stone.position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
-                stone.position.z = spawnDistance;
+                position.x = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                position.z = spawnDistance;
                 break;
             case 3: // West
-                stone.position.x = -spawnDistance;
-                stone.position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
+                position.x = -spawnDistance;
+                position.z = (Math.random() * 2 - 1) * worldHalfSize * 0.8;
                 break;
         }
 
-        stone.position.y = 0;
-
         // Calculate direction toward island center
         const dirToCenter = {
-            x: -stone.position.x,
-            z: -stone.position.z
+            x: -position.x,
+            z: -position.z
         };
         const distance = Math.sqrt(dirToCenter.x * dirToCenter.x + dirToCenter.z * dirToCenter.z);
         dirToCenter.x /= distance;
         dirToCenter.z /= distance;
 
-        // Increase velocity for more dramatic arcs
-        const horizontalSpeed = 2.0;  // Increased from 0.5
-        const verticalSpeed = 3.0;    // Increased from 0.6
-        stone.velocity.x = dirToCenter.x * horizontalSpeed;
-        stone.velocity.z = dirToCenter.z * horizontalSpeed;
-        stone.velocity.y = verticalSpeed;
+        // Set initial velocity
+        const horizontalSpeed = 2.0;
+        const verticalSpeed = 3.0;
+        const velocity = {
+            x: dirToCenter.x * horizontalSpeed,
+            y: verticalSpeed,
+            z: dirToCenter.z * horizontalSpeed
+        };
 
-        return stone;
+        // Create stone with calculated position and velocity
+        return new Stone(null, position, velocity);
     }
 
     update(deltaTime) {
