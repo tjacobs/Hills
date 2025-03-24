@@ -224,11 +224,13 @@ const Network = {
         Game.localPlayer.id = message.playerId;
         console.log('Set local player ID to:', Game.localPlayer.id);
 
-        // Debug log all players in the message
+        // Add existing players if provided
         if (message.players) {
             console.log('All players in welcome message:', message.players);
             message.players.forEach(playerData => {
                 console.log('Checking player:', playerData);
+                const playerId = playerData.id || playerData.playerId;
+                
                 // Log the comparison
                 console.log('Comparing:', {
                     messagePlayerId: message.playerId,
@@ -237,13 +239,14 @@ const Network = {
                     localPlayerId: Game.localPlayer.id
                 });
                 
-                if (playerData.id === message.playerId || playerData.playerId === message.playerId) {
-                    console.log(`Skipping local player data: ${playerData.id || playerData.playerId}`);
+                // Skip if this is our local player or if player already exists
+                if (playerId === message.playerId || Game.getPlayerById(playerId)) {
+                    console.log(`Skipping player data: ${playerId}`);
                     return;
                 }
                 
-                console.log(`Adding existing player from welcome: ${playerData.id || playerData.playerId}`);
-                const player = new Player(playerData.id || playerData.playerId, playerData.username);
+                console.log(`Adding existing player from welcome: ${playerId}`);
+                const player = new Player(playerId, playerData.username);
                 player.position.copy(playerData.position);
                 player.rotation.copy(playerData.rotation);
                 Game.addPlayer(player);
@@ -353,15 +356,9 @@ const Network = {
     handlePlayerJoined(message) {
         const playerId = message.playerId;
         
-        // Skip if this is our own join message
-        if (playerId === Game.localPlayer.id) {
-            console.log('This is our own join, skipping');
-            return;
-        }
-        
-        // Skip if player already exists
-        if (Game.getPlayerById(playerId)) {
-            console.log(`Player ${playerId} already exists, skipping`);
+        // Skip if this is our own join message or if player already exists
+        if (playerId === Game.localPlayer.id || Game.getPlayerById(playerId)) {
+            console.log(`Skipping player join: ${playerId}`);
             return;
         }
         
