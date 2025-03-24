@@ -17,14 +17,13 @@ const server = http.createServer(app);
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Add at the top with other state
-const connections = new Map(); // Map playerId to WebSocket connection
+// Connections, map playerId to WebSocket connection
+const connections = new Map();
 
 // Game configuration
 const CONFIG = {
     STONE: {
         maxCount: 200,
-        gravity: -9.8,
         bounce: 0.9,
         friction: 0.35,
         rollFactor: 0.25,
@@ -32,6 +31,7 @@ const CONFIG = {
         stopThreshold: 0.05
     },
     WORLD: {
+        gravity: -9.8,
         size: 200,
         maxTerrainHeight: 10,
         terrainXScale: 20,
@@ -388,7 +388,7 @@ const terrain = new Terrain();
 class Stone {
     constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
-        this.position = position || { x: 0, y: 0, z: 0 };
+        this.position = position || { x: 0, y: 10, z: 0 };
         this.velocity = velocity || { x: 0, y: 0, z: 0 };
         this.isHeld = false;
         this.heldBy = null;
@@ -399,66 +399,37 @@ class Stone {
     }
 
     update(deltaTime) {
-        if (this.isHeld) return;
+        if (this.isHeld || this.isStatic) return;
 
         // Apply gravity
-        this.velocity.y += CONFIG.STONE.gravity * deltaTime;
+        this.velocity.y += CONFIG.WORLD.gravity * deltaTime;
 
         // Update position
         this.position.x += this.velocity.x * deltaTime;
         this.position.y += this.velocity.y * deltaTime;
         this.position.z += this.velocity.z * deltaTime;
 
-        // Get ground height at current position
-        const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-        const stoneRadius = CONFIG.STONE.height / 2;
-
-        // Ground collision check
-        if (this.position.y < groundHeight + stoneRadius) {
-            this.position.y = groundHeight + stoneRadius;
-
-            // Calculate slope for rolling
-            const sampleDistance = 1.0;
-            const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
-            const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
-            const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
-            const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
-
-            // Calculate slope vector
-            const slopeX = (heightEast - heightWest) / (2 * sampleDistance);
-            const slopeZ = (heightSouth - heightNorth) / (2 * sampleDistance);
-
-            // Bounce with friction
-            if (this.velocity.y < -0.1) {
-                this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
-                this.velocity.x *= CONFIG.STONE.bounce;
-                this.velocity.z *= CONFIG.STONE.bounce;
-            } else {
-                this.velocity.y = 0;
-                
-                // Apply slope force
-                this.velocity.x += slopeX * CONFIG.STONE.gravity * deltaTime;
-                this.velocity.z += slopeZ * CONFIG.STONE.gravity * deltaTime;
-                
-                // Apply friction
-                const friction = this.isStatic ? CONFIG.STONE.friction * 2 : CONFIG.STONE.friction;
-                this.velocity.x *= (1 - friction * deltaTime);
-                this.velocity.z *= (1 - friction * deltaTime);
-            }
-
-            // Check if stone has come to rest
-            const speed = Math.sqrt(
-                this.velocity.x * this.velocity.x + 
-                this.velocity.y * this.velocity.y + 
-                this.velocity.z * this.velocity.z
-            );
+        // Ground collision (y=0)
+        if (this.position.y <= 0) {
+            this.position.y = 0;
             
-            if (speed < CONFIG.STONE.stopThreshold) {
-                this.velocity.x = 0;
+            // Only bounce if velocity is significant
+            if (Math.abs(this.velocity.y) > CONFIG.STONE.stopThreshold) {
+                this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
+                this.velocity.x *= (1 - CONFIG.STONE.friction);
+                this.velocity.z *= (1 - CONFIG.STONE.friction);
+            } else {
+                // Stop the stone
                 this.velocity.y = 0;
-                this.velocity.z = 0;
-                this.isStatic = true;
-                this.isThrown = false;
+                this.velocity.x *= (1 - CONFIG.STONE.friction);
+                this.velocity.z *= (1 - CONFIG.STONE.friction);
+                
+                // Check if stone should become static
+                if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
+                    Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
+                    this.isStatic = true;
+                    this.velocity = { x: 0, y: 0, z: 0 };
+                }
             }
         }
     }
@@ -493,6 +464,7 @@ function createRandomStone() {
         z: 0
     };
     
+    // Create stone
     const stone = new Stone(null, position, velocity);
     
     // Log initial position
