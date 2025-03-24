@@ -183,7 +183,7 @@ class Player {
         if (data.position) {
             this.targetPosition = new THREE.Vector3(
                 data.position.x,
-                data.position.y,
+                data.position.y - 2,  // Lower the mesh by 2 units
                 data.position.z
             );
         }
