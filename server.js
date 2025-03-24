@@ -472,6 +472,22 @@ class Stone {
     }
 }
 
+// Function to create a random stone at the beach
+function createRandomStone() {
+    const beachEdge = CONFIG.WORLD.size / 2; // Define the edge of the world
+    const position = {
+        x: Math.random() * beachEdge * 2 - beachEdge, // Random x within the beach area
+        y: CONFIG.STONE.height / 2, // Start above ground
+        z: Math.random() * beachEdge * 2 - beachEdge // Random z within the beach area
+    };
+    const velocity = {
+        x: 0,
+        y: 0,
+        z: 0
+    };
+    return new Stone(null, position, velocity);
+}
+
 // Game state
 const gameState = {
     players: {},
@@ -491,15 +507,10 @@ setInterval(() => {
     const deltaTime = (now - lastUpdate) / 1000;
     lastUpdate = now;
 
-    // Update all stones
-    for (const stone of gameState.stones.values()) {
-        stone.update(deltaTime);
-    }
-
     // Check if we should spawn a new stone
     if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
         gameState.stones.size < CONFIG.STONE.maxCount) {
-        const stone = Stone.createRandom();
+        const stone = createRandomStone(); // Use the new function
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
@@ -508,6 +519,11 @@ setInterval(() => {
             type: 'stone_spawned',
             stone: stone.serialize()
         });
+    }
+
+    // Update all stones
+    for (const stone of gameState.stones.values()) {
+        stone.update(deltaTime);
     }
 
     // Broadcast stone positions
