@@ -226,14 +226,14 @@ const Network = {
         // Add existing players if provided
         if (message.players) {
             message.players.forEach(playerData => {
-                // Skip if this is our own data
-                if (playerData.playerId === message.playerId) {
-                    console.log(`Skipping local player data: ${playerData.playerId}`);
+                // Check both id and playerId fields to be safe
+                if (playerData.id === message.playerId || playerData.playerId === message.playerId) {
+                    console.log(`Skipping local player data: ${playerData.id || playerData.playerId}`);
                     return;
                 }
                 
-                console.log(`Adding existing player from welcome: ${playerData.playerId}`);
-                const player = new Player(playerData.playerId, playerData.username);
+                console.log(`Adding existing player from welcome: ${playerData.id || playerData.playerId}`);
+                const player = new Player(playerData.id || playerData.playerId, playerData.username);
                 player.position.copy(playerData.position);
                 player.rotation.copy(playerData.rotation);
                 Game.addPlayer(player);
