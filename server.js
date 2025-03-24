@@ -124,12 +124,12 @@ wss.on('connection', (ws) => {
 
 // Handle player join
 function handlePlayerJoin(ws, data) {
-  const playerId = generatePlayerId();
+  const playerId = data.playerId;  // Use client-provided ID
   const { username, position, rotation } = data;
   
   // Store connection
   connections.set(playerId, ws);
-  ws.playerId = playerId; // Store playerId on socket for disconnect
+  ws.playerId = playerId;
   
   console.log(`Player ${username} (${playerId}) joined`);
   
@@ -143,8 +143,7 @@ function handlePlayerJoin(ws, data) {
     lastUpdate: Date.now()
   };
   
-  // Send welcome message to new player
-  console.log('Sending welcome message:', { type: 'welcome', playerId });
+  // Send welcome message
   ws.send(JSON.stringify({
     type: 'welcome',
     playerId
