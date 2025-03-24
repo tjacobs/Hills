@@ -219,7 +219,20 @@ const Network = {
         // Update local player's ID with server-assigned ID
         Game.localPlayer.id = message.playerId;
 
-        // Request initial game state
+        // Add existing players if provided
+        if (message.players) {
+            message.players.forEach(playerData => {
+                if (playerData.playerId === Game.localPlayer.id) return;
+                
+                console.log(`Adding existing player from welcome: ${playerData.playerId}`);
+                const player = new Player(playerData.playerId, playerData.username);
+                player.position.copy(playerData.position);
+                player.rotation.copy(playerData.rotation);
+                Game.addPlayer(player);
+            });
+        }
+
+        // Request initial state for other game objects
         this.sendMessage({
             type: 'request_state'
         });
