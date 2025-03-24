@@ -518,10 +518,10 @@ setInterval(() => {
     });
 
     // Log positions of first 3 stones
-    const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
-    firstThreeStones.forEach(stone => {
-        console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
-    });
+    //const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
+    //firstThreeStones.forEach(stone => {
+    //    console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
+    //});
 }, TICK_TIME);
 
 // Start server
