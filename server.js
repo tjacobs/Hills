@@ -28,7 +28,8 @@ const CONFIG = {
         friction: 0.35,
         rollFactor: 0.25,
         maxVelocity: 0.5,
-        stopThreshold: 0.05
+        stopThreshold: 0.05,
+        waveStrength: 0.05
     },
     WORLD: {
         gravity: -9.8,
@@ -395,42 +396,115 @@ class Stone {
         this.isThrown = false;
         this.throwTime = 0;
         this.isStatic = false;
-        this.lastUpdateTime = Date.now();
     }
 
     update(deltaTime) {
-        if (this.isHeld || this.isStatic) return;
-
+        if (this.isHeld) return;
+        
         // Apply gravity
         this.velocity.y += CONFIG.WORLD.gravity * deltaTime;
-
+        
         // Update position
         this.position.x += this.velocity.x * deltaTime;
         this.position.y += this.velocity.y * deltaTime;
         this.position.z += this.velocity.z * deltaTime;
-
-        // Ground collision (y=0)
-        if (this.position.y <= 0) {
-            this.position.y = 0;
+        
+        // Calculate distance from center for water check
+        const distanceFromCenter = Math.sqrt(
+            this.position.x * this.position.x + 
+            this.position.z * this.position.z
+        );
+        
+        const worldHalfSize = CONFIG.WORLD.size / 2;
+        const beachDistance = worldHalfSize * CONFIG.WORLD.shoreRadius;
+        
+        // Check if in water
+        const isInWater = distanceFromCenter > beachDistance;
+        
+        // Apply water forces
+        if (isInWater) {
+            // Calculate direction toward center
+            const magnitude = Math.sqrt(this.position.x * this.position.x + this.position.z * this.position.z);
+            const dirX = -this.position.x / magnitude;
+            const dirZ = -this.position.z / magnitude;
             
-            // Only bounce if velocity is significant
-            if (Math.abs(this.velocity.y) > CONFIG.STONE.stopThreshold) {
+            // Apply wave force
+            this.velocity.x += dirX * CONFIG.STONE.waveStrength;
+            this.velocity.z += dirZ * CONFIG.STONE.waveStrength;
+            this.velocity.y += CONFIG.STONE.waveStrength * 0.8; // Upward bias
+        }
+        
+        // Get ground height and calculate slope
+        const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
+        const stoneRadius = CONFIG.STONE.height / 2;
+        const groundOffset = 0.05;
+        
+        // Sample heights for slope calculation
+        const sampleDistance = 2.0;
+        const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
+        const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
+        const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
+        const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
+        
+        // Calculate slope
+        const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+        const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+        const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+        
+        // Ground collision
+        if (this.position.y < groundHeight + stoneRadius + groundOffset) {
+            this.position.y = groundHeight + stoneRadius + groundOffset;
+            
+            // Bounce with damping
+            if (this.velocity.y < -0.05) {
                 this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
-                this.velocity.x *= (1 - CONFIG.STONE.friction);
-                this.velocity.z *= (1 - CONFIG.STONE.friction);
             } else {
-                // Stop the stone
                 this.velocity.y = 0;
-                this.velocity.x *= (1 - CONFIG.STONE.friction);
-                this.velocity.z *= (1 - CONFIG.STONE.friction);
-                
-                // Check if stone should become static
-                if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
-                    Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
-                    this.isStatic = true;
-                    this.velocity = { x: 0, y: 0, z: 0 };
-                }
             }
+            
+            // Apply friction based on slope
+            const frictionFactor = Math.max(0.75, 0.95 - slopeMagnitude * 5);
+            this.velocity.x *= frictionFactor;
+            this.velocity.z *= frictionFactor;
+            
+            // Apply slope forces
+            this.velocity.x += slopeX * CONFIG.STONE.rollFactor;
+            this.velocity.z += slopeZ * CONFIG.STONE.rollFactor;
+            
+            // Extra downhill acceleration on steep slopes
+            if (slopeMagnitude > 0.05) {
+                const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+                const downhillX = slopeX / magnitude;
+                const downhillZ = slopeZ / magnitude;
+                const downhillFactor = slopeMagnitude * 0.1;
+                
+                this.velocity.x += downhillX * downhillFactor;
+                this.velocity.z += downhillZ * downhillFactor;
+            }
+        }
+        
+        // Cap maximum velocity
+        const speed = Math.sqrt(
+            this.velocity.x * this.velocity.x +
+            this.velocity.y * this.velocity.y +
+            this.velocity.z * this.velocity.z
+        );
+        
+        if (speed > CONFIG.STONE.maxVelocity) {
+            const scale = CONFIG.STONE.maxVelocity / speed;
+            this.velocity.x *= scale;
+            this.velocity.y *= scale;
+            this.velocity.z *= scale;
+        }
+        
+        // Check if stone has stopped
+        if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.y) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
+            this.velocity = { x: 0, y: 0, z: 0 };
+            this.isStatic = true;
+        } else {
+            this.isStatic = false;
         }
     }
 
