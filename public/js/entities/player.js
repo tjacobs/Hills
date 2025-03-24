@@ -3,7 +3,7 @@ class Player {
         this.id = id || generateId('player_');
         this.username = username;
         this.position = new THREE.Vector3(0, 0, 0);
-        this.rotation = new THREE.Euler();
+        this.rotation = new THREE.Euler(0, 0, 0, 'YXZ');
         this.velocity = new THREE.Vector3();
         this.isGrounded = false;
         this.isJumping = false;
@@ -121,6 +121,9 @@ class Player {
         // Store reference to this player in the mesh
         this.mesh.userData.player = this;
 
+        // Set rotation order for the group
+        this.mesh.rotation.order = 'YXZ';
+
         // Return the mesh
         return this.mesh;
     }
@@ -172,6 +175,7 @@ class Player {
         if (this.mesh) {
             this.mesh.position.copy(this.position);
             this.mesh.rotation.copy(this.rotation);
+            this.mesh.rotation.order = 'YXZ';
         }
         
         // Update held stones
@@ -183,7 +187,7 @@ class Player {
         if (data.position) {
             this.targetPosition = new THREE.Vector3(
                 data.position.x,
-                data.position.y - 2,  // Lower the mesh by 2 units
+                data.position.y + Player.MESH_HEIGHT_OFFSET,  // Use the static constant
                 data.position.z
             );
         }
@@ -194,7 +198,7 @@ class Player {
                 data.rotation.x,
                 data.rotation.y,
                 data.rotation.z,
-                'YXZ' // Specify rotation order
+                'YXZ'
             );
         }
         
@@ -234,8 +238,12 @@ class Player {
             if (this.mesh.parent) {
                 this.mesh.parent.remove(this.mesh);
             }
-            this.mesh.geometry.dispose();
-            this.mesh.material.dispose();
+            if (this.mesh.geometry) {
+                this.mesh.geometry.dispose();
+            }
+            if (this.mesh.material) {
+                this.mesh.material.dispose();
+            }
         }
     }
 }
