@@ -324,9 +324,10 @@ class Terrain {
 
     getHeightAtPosition(x, z) {
         // Convert world coordinates to heightmap indices
+        // IMPORTANT: Swap the Z and X coordinates to account for the plane rotation
         const halfSize = this.groundSize / 2;
-        const normalizedX = (x + halfSize) / this.groundSize;
-        const normalizedZ = (z + halfSize) / this.groundSize;
+        const normalizedX = (z + halfSize) / this.groundSize; // Swap z instead of x
+        const normalizedZ = (x + halfSize) / this.groundSize; // Swap x instead of z
         
         // Calculate grid indices
         const gridX = Math.floor(normalizedX * this.segments);
@@ -364,8 +365,7 @@ class Terrain {
         //console.log("Server interpolated height=", height.toFixed(1), 
         //           "(fx=", fx.toFixed(2), "fz=", fz.toFixed(2), ")");
         
-        // Always return 0 for flat terrain, regardless of calculated height
-        return 0;
+        return height;
     }
 
     createHeightmap() {
