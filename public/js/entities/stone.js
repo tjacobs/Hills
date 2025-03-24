@@ -1,91 +1,35 @@
 // Stone entity with exact original appearance from main.js
 class Stone {
-    constructor(data) {
-        this.id = data.id;
-        this.mesh = null;
-        this.position = new THREE.Vector3(
-            data.position?.x || 0,
-            data.position?.y || 0,
-            data.position?.z || 0
-        );
-        this.velocity = new THREE.Vector3(
-            data.velocity?.x || 0,
-            data.velocity?.y || 0,
-            data.velocity?.z || 0
-        );
-        this.isHeld = data.isHeld || false;
-        this.heldBy = data.heldBy || null;
-        this.isThrown = data.isThrown || false;
-        this.throwTime = data.throwTime || 0;
-        this.isStatic = data.isStatic || false;
-        
-        this.createMesh();
-    }
-    
-    createMesh() {
-        // Create stone geometry - use BoxGeometry as in original
+    constructor(id = null) {
+        this.id = id || Math.random().toString(36).substr(2, 9);
+        this.position = new THREE.Vector3();
+        this.velocity = new THREE.Vector3();
+        this.isHeld = false;
+        this.heldBy = null;
+        this.isThrown = false;
+        this.isStatic = false;
+
+        // Create mesh
         const geometry = new THREE.BoxGeometry(
-            CONFIG.STONE.width, 
-            CONFIG.STONE.height, 
+            CONFIG.STONE.width,
+            CONFIG.STONE.height,
             CONFIG.STONE.depth
         );
-        
-        // Create stone material - gray color with no texture map, only bump map
         const material = new THREE.MeshStandardMaterial({
-            color: 0x777777,  // Medium-dark gray
-            roughness: 0.9,   // Very rough surface
-            metalness: 0.1,   // Low metalness
-            bumpMap: null,    // No bump map initially
-            bumpScale: 0.05   // Bump scale for when map is loaded
+            color: 0x777777,
+            roughness: 0.9,
+            metalness: 0.1
         });
-        
-        // Create mesh
         this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.position.copy(this.position);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
-        
-        // Store reference to this stone in the mesh
-        this.mesh.userData.stone = this;
-        
-        // Add to scene
-        Game.scene.add(this.mesh);
-        
-        // Load bump map texture asynchronously
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(
-            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg',
-            (texture) => {
-                // Apply as bump map only, not color map
-                material.bumpMap = texture;
-                material.needsUpdate = true;
-            }
-        );
-        
-        return this.mesh;
     }
-    
-    // Update stone position based on server data
-    updateFromData(data) {
-        if (!this.isHeld) {
-            this.position.set(data.position.x, data.position.y, data.position.z);
-            this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
-            this.mesh.position.copy(this.position);
-        }
-        this.isHeld = data.isHeld;
-        this.heldBy = data.heldBy;
-        this.isThrown = data.isThrown || false;
-        this.isStatic = data.isStatic || false;
-    }
-    
+
     update(deltaTime) {
-        if (!this.mesh || this.isHeld) return;
-        
-        // Only update mesh position from server data
-        this.mesh.position.copy(this.position);
-        
-        // Keep rotation logic for visual smoothness
-        if (!this.isStatic) {
+        if (!this.mesh) return;
+
+        // Only update visual rotation for rolling stones
+        if (!this.isStatic && !this.isHeld) {
             const movementDir = new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize();
             if (movementDir.length() > 0.01) {
                 const rotationAxis = new THREE.Vector3(movementDir.z, 0, -movementDir.x);
@@ -97,8 +41,21 @@ class Stone {
                 this.mesh.quaternion.premultiply(quaternion);
             }
         }
+
+        // Update mesh position
+        this.mesh.position.copy(this.position);
     }
-    
+
+    // Used when receiving server updates
+    updateFromServer(data) {
+        this.position.set(data.position.x, data.position.y, data.position.z);
+        this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
+        this.isHeld = data.isHeld;
+        this.heldBy = data.heldBy;
+        this.isThrown = data.isThrown;
+        this.isStatic = data.isStatic;
+    }
+
     remove() {
         if (this.mesh && this.mesh.parent) {
             this.mesh.parent.remove(this.mesh);
