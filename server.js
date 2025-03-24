@@ -382,13 +382,13 @@ class Terrain {
                 // Create sharper edge falloff factor (1 in center, 0 at edges)
                 const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
-                // Use EXACTLY the same formula as client
+                // Use the same formula as we want in game.js
                 const xs = CONFIG.WORLD.terrainXScale;
                 const ys = CONFIG.WORLD.terrainYScale;
                 const maxHeight = CONFIG.WORLD.maxTerrainHeight;
                 
-                // Use exactly the same formula - only using i (not j)
-                this.heightMap[i][j] = Math.sin(i / xs) * maxHeight;
+                // Two-dimensional hills with both sine functions
+                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
             }
         }
     }
