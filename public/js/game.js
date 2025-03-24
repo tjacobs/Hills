@@ -79,7 +79,7 @@ const Game = {
         this.lastTime = performance.now();
         this.isRunning = true;
         this.update(this.lastTime);
-        log(`Started game`, 'info');
+        //log(`Started game`, 'info');
         
         // Update UI after player is created
         updateUI();
