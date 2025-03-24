@@ -114,9 +114,9 @@ const Network = {
     handleInitialState(message) {
         // Handle players
         message.players.forEach(playerData => {
-            if (playerData.id === Game.localPlayer.id) return;
+            if (playerData.playerId === Game.localPlayer.id) return;
             
-            const player = new Player(playerData.id, playerData.username);
+            const player = new Player(playerData.playerId, playerData.username);
             player.position.set(
                 playerData.position.x,
                 playerData.position.y,
@@ -126,7 +126,7 @@ const Network = {
                 playerData.rotation.x,
                 playerData.rotation.y,
                 playerData.rotation.z,
-                'YXZ' // Specify rotation order
+                'YXZ'
             );
             Game.addPlayer(player);
         });
