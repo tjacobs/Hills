@@ -157,7 +157,6 @@ function handlePlayerJoin(ws, data) {
     
     // Add player to game state
     const playerData = {
-        id: playerId,      // Use same ID for both fields
         playerId: playerId,
         username,
         position,
