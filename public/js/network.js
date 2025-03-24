@@ -53,39 +53,44 @@ const Network = {
         this.socket.onerror = (error) => console.error('WebSocket error:', error);
         
         this.socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            console.log('Received message:', message);
-            
-            switch (message.type) {
-                case 'welcome':
-                    this.handleWelcome(message);
-                    break;
-                case 'player_joined':
-                    this.handlePlayerJoined(message);
-                    break;
-                case 'player_left':
-                    this.handlePlayerLeft(message);
-                    break;
-                case 'player_update':
-                    this.handlePlayerUpdate(message);
-                    break;
-                case 'initial_state':
-                    this.handleInitialState(message);
-                    break;
-                case 'stone_update':
-                    this.handleStoneUpdate(message);
-                    break;
-                case 'tower_update':
-                    this.handleTowerUpdate(message);
-                    break;
-                case 'stone_spawned':
-                    this.handleStoneSpawned(message);
-                    break;
-                case 'player_updated':
-                    this.handlePlayerUpdated(message);
-                    break;
-                default:
-                    console.log('Unknown message type:', message.type);
+            try {
+                const data = JSON.parse(event.data);
+                // Comment out the log
+                // console.log('Received message:', data);
+                
+                switch (data.type) {
+                    case 'welcome':
+                        this.handleWelcome(data);
+                        break;
+                    case 'player_joined':
+                        this.handlePlayerJoined(data);
+                        break;
+                    case 'player_left':
+                        this.handlePlayerLeft(data);
+                        break;
+                    case 'player_update':
+                        this.handlePlayerUpdate(data);
+                        break;
+                    case 'initial_state':
+                        this.handleInitialState(data);
+                        break;
+                    case 'stone_update':
+                        this.handleStoneUpdate(data);
+                        break;
+                    case 'tower_update':
+                        this.handleTowerUpdate(data);
+                        break;
+                    case 'stone_spawned':
+                        this.handleStoneSpawned(data);
+                        break;
+                    case 'player_updated':
+                        this.handlePlayerUpdated(data);
+                        break;
+                    default:
+                        console.log('Unknown message type:', data.type);
+                }
+            } catch (e) {
+                console.error('Error handling message:', e);
             }
         };
     },
@@ -202,10 +207,9 @@ const Network = {
         if (!this.isConnected) return;
         
         try {
-            // Log outgoing message type for debugging
-            console.log(`Sending message type: ${message.type}`);
+            // Comment out the log
+            // console.log(`Sending message type: ${message.type}`);
             
-            // Convert message to JSON and send
             const json = JSON.stringify(message);
             this.socket.send(json);
         } catch (e) {
