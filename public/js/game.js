@@ -78,7 +78,6 @@ const Game = {
         this.lastTime = performance.now();
         this.isRunning = true;
         this.update(this.lastTime);
-        //log(`Started game`, 'info');
         
         // Update UI after player is created
         updateUI();
@@ -209,7 +208,9 @@ const Game = {
                 // Apply height with edge falloff
 
                 // Just flat ground for now
-                vertices[index + 2] = 0; //Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
+                vertices[index + 2] = Math.sin(i / xs) * 5
+                //; // * Math.sin(j / ys) * 20; // * edgeFalloff;
+                //vertices[index + 2] = i / 10 - 10;
             }
         }
         
@@ -326,7 +327,9 @@ const Game = {
         for (let i = 0; i <= segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= segments; j++) {
+                // Get height directly from the vertex array
                 const index = (i * (segments + 1) + j) * 3;
+                // The height is stored in the Z component (index + 2)
                 this.heightMap[i][j] = vertices[index + 2];
             }
         }
@@ -499,8 +502,8 @@ const Game = {
         
         // Convert world coordinates to heightmap indices
         const halfSize = this.groundSize / 2;
-        const normalizedX = (x + halfSize) / this.groundSize;
-        const normalizedZ = (z + halfSize) / this.groundSize;
+        const normalizedX = (z + halfSize) / this.groundSize;
+        const normalizedZ = (x + halfSize) / this.groundSize;
         
         // Calculate grid indices
         const gridX = Math.floor(normalizedX * this.segments);
@@ -533,8 +536,7 @@ const Game = {
         
         //console.log(`Client interpolated height=${height.toFixed(1)} (fx=${fx.toFixed(2)} fz=${fz.toFixed(2)})`);
 
-        // Always return 0 for flat terrain, regardless of calculated height
-        return 0;
+        return height;
     },
 
     // Player management
