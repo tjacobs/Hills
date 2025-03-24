@@ -478,18 +478,27 @@ class Stone {
 
 // Function to create a random stone at the beach
 function createRandomStone() {
-    const beachEdge = CONFIG.WORLD.size / 2; // Define the edge of the world
+    const spawnRadius = 20;
+    const spawnHeight = 10;  // Fixed height above ground
+    
     const position = {
-        x: Math.random() * beachEdge * 2 - beachEdge, // Random x within the beach area
-        y: 10,
-        z: Math.random() * beachEdge * 2 - beachEdge // Random z within the beach area
+        x: Math.random() * spawnRadius * 2 - spawnRadius,
+        y: spawnHeight,
+        z: Math.random() * spawnRadius * 2 - spawnRadius
     };
+    
     const velocity = {
         x: 0,
-        y: 5,
+        y: 0,
         z: 0
     };
-    return new Stone(null, position, velocity);
+    
+    const stone = new Stone(null, position, velocity);
+    
+    // Log initial position
+    console.log(`New stone created: id=${stone.id} pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+    
+    return stone;
 }
 
 // Game state
@@ -534,6 +543,12 @@ setInterval(() => {
     broadcastToAll({
         type: 'stone_positions',
         stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
+    });
+
+    // Log positions of first 3 stones
+    const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
+    firstThreeStones.forEach(stone => {
+        console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
     });
 }, TICK_TIME);
 
