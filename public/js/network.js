@@ -89,6 +89,9 @@ const Network = {
                     case 'stone_positions':
                         this.handleStonePositions(data);
                         break;
+                    case 'tower_removed':
+                        this.handleTowerRemoved(data);
+                        break;
                     default:
                         console.log('Unknown message type:', data.type);
                 }
@@ -631,6 +634,14 @@ const Network = {
             // Create new tower if it doesn't exist
             const newTower = Tower.fromJSON(message);
             Game.addTower(newTower);
+        }
+    },
+    
+    // Add tower removal handler
+    handleTowerRemoved(message) {
+        const tower = Game.getTowerById(message.towerId);
+        if (tower) {
+            Game.removeTower(tower);
         }
     },
     

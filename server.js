@@ -79,6 +79,20 @@ wss.on('connection', (ws) => {
           }
           break;
         }
+        case 'tower_destroyed': {
+          const towerId = data.towerId;
+          const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
+          if (towerIndex > -1) {
+            gameState.towers.splice(towerIndex, 1);
+            
+            // Broadcast tower removal to all clients
+            broadcastToAll({
+              type: 'tower_removed',
+              towerId: towerId
+            });
+          }
+          break;
+        }
         default:
           console.log(`Unknown message type: ${data.type}`);
       }
@@ -272,7 +286,7 @@ class Stone {
         // Choose a random side of the island
         const side = Math.floor(Math.random() * 4);
         const worldHalfSize = 100; // Match your world size
-        const spawnDistance = worldHalfSize * 1.2; // Spawn from further out
+        const spawnDistance = worldHalfSize * 0.9; // Spawn from further out
 
         // Calculate spawn position
         switch (side) {

@@ -415,31 +415,22 @@ const Game = {
     
     // Add stone to game
     addStone(stone) {
-        this.stones.push(stone);
-        this.scene.add(stone.mesh);
+        if (!this.stones.includes(stone)) {
+            this.stones.push(stone);
+            this.scene.add(stone.mesh);
+            updateUI(); // Update counts immediately
+        }
     },
     
     // Remove stone from game
     removeStone(stone) {
         const index = this.stones.indexOf(stone);
-        if (index !== -1) {
+        if (index > -1) {
             this.stones.splice(index, 1);
-            
-            // Remove from scene if it has a mesh
-            if (stone.mesh) {
-                if (stone.mesh.parent) {
-                    stone.mesh.parent.remove(stone.mesh);
-                }
-                // Dispose of geometry and material to prevent memory leaks
-                if (stone.mesh.geometry) stone.mesh.geometry.dispose();
-                if (stone.mesh.material) {
-                    if (Array.isArray(stone.mesh.material)) {
-                        stone.mesh.material.forEach(material => material.dispose());
-                    } else {
-                        stone.mesh.material.dispose();
-                    }
-                }
+            if (stone.mesh && stone.mesh.parent) {
+                stone.mesh.parent.remove(stone.mesh);
             }
+            updateUI(); // Update counts immediately
         }
     },
 
@@ -450,22 +441,25 @@ const Game = {
     
     // Add tower to game
     addTower(tower, notifyNetwork = true) {
-        this.towers.push(tower);
-        updateUI();  // Update UI when tower is added
-        
-        // Log tower addition
-        if (tower.createdBy) {
-            const creatorName = tower.createdBy === this.localPlayer.id ? 
-                'You' : 
-                (this.players[tower.createdBy]?.username || 'Another player');
-            log(`${creatorName} created a level ${tower.level} tower!`, 'info');
-        } else {
-            log(`A level ${tower.level} tower was created!`, 'info');
-        }
-        
-        // Notify network if needed
-        if (notifyNetwork) {
-            Network.sendTowerCreated(tower);
+        if (!this.towers.includes(tower)) {
+            this.towers.push(tower);
+            this.scene.add(tower.mesh);
+            updateUI(); // Update counts immediately
+            
+            // Log tower addition
+            if (tower.createdBy) {
+                const creatorName = tower.createdBy === this.localPlayer.id ? 
+                    'You' : 
+                    (this.players[tower.createdBy]?.username || 'Another player');
+                log(`${creatorName} created a level ${tower.level} tower!`, 'info');
+            } else {
+                log(`A level ${tower.level} tower was created!`, 'info');
+            }
+            
+            // Notify network if needed
+            if (notifyNetwork) {
+                Network.sendTowerCreated(tower);
+            }
         }
         return tower;
     },
@@ -706,6 +700,17 @@ const Game = {
     // Add this method to the Game object
     getTowerById(id) {
         return this.towers.find(tower => tower.id === id);
+    },
+
+    removeTower(tower) {
+        const index = this.towers.indexOf(tower);
+        if (index > -1) {
+            this.towers.splice(index, 1);
+            if (tower.mesh && tower.mesh.parent) {
+                tower.mesh.parent.remove(tower.mesh);
+            }
+            updateUI(); // Update counts immediately
+        }
     }
 };
 
