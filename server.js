@@ -118,7 +118,22 @@ wss.on('connection', (ws) => {
   });
 
   // Handle client disconnection
-  ws.on('close', () => handlePlayerDisconnect(ws));
+  ws.on('close', () => {
+    const playerId = ws.playerId;
+    console.log(`Player disconnected: ${playerId}`);
+    
+    // Remove from connections
+    connections.delete(playerId);
+    
+    // Remove from game state
+    delete gameState.players[playerId];
+    
+    // Notify other clients
+    broadcastToAll({
+        type: 'player_left',
+        playerId: playerId
+    });
+  });
 });
 
 // Handle player join
@@ -227,25 +242,6 @@ function handleTowerUpdate(ws, data) {
     type: 'tower_update',
     tower
   }, ws);
-}
-
-function handlePlayerDisconnect(ws) {
-  const playerId = ws.playerId;
-  if (playerId) {
-    console.log(`Player ${playerId} disconnected`);
-    
-    // Remove from connections map
-    connections.delete(playerId);
-    
-    // Remove player from game state
-    delete gameState.players[playerId];
-    
-    // Notify other clients
-    broadcastToAll({
-      type: 'player_left',
-      playerId
-    });
-  }
 }
 
 // Broadcast message to all clients except sender
