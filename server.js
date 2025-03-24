@@ -451,8 +451,11 @@ class Stone {
         const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
         const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
         
+        console.log(`Stone ${this.id} collision check: pos.y=${this.position.y.toFixed(1)} ground=${groundHeight.toFixed(1)} threshold=${(groundHeight + stoneRadius + groundOffset).toFixed(1)} vel.y=${this.velocity.y.toFixed(2)}`);
+      
         // Ground collision
         if (this.position.y < groundHeight + stoneRadius + groundOffset) {
+            console.log(`Stone ${this.id} hit ground: bouncing from ${this.velocity.y.toFixed(2)} to ${(-this.velocity.y * CONFIG.STONE.bounce).toFixed(2)}`);
             this.position.y = groundHeight + stoneRadius + groundOffset;
             
             // Bounce with damping
@@ -592,10 +595,10 @@ setInterval(() => {
     });
 
     // Log positions of first 3 stones
-    //const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
-    //firstThreeStones.forEach(stone => {
-    //    console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
-    //});
+    const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
+    firstThreeStones.forEach(stone => {
+        console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
+    });
 }, TICK_TIME);
 
 // Start server
