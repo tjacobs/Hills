@@ -4,7 +4,7 @@ const http = require('http');
 const express = require('express');
 const path = require('path');
 
-// Create Express app
+// Create app
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -17,108 +17,58 @@ const server = http.createServer(app);
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
 
-// Add at the top with other state
+// Connections
 const connections = new Map(); // Map playerId to WebSocket connection
 
 // Game configuration
 const CONFIG = {
-    STONE: {
-        maxCount: 20,  // Maximum number of stones in the world
-        gravity: -9.8,
-        bounce: 0.9,
-        friction: 0.35,
-        rollFactor: 0.25,
-        maxVelocity: 0.5,
-        stopThreshold: 0.05
-    },
+    // World settings
     WORLD: {
         size: 200,
         maxTerrainHeight: 10,
         terrainXScale: 20,
         terrainYScale: 20,
-        shoreRadius: 0.8
+        shoreRadius: 0.8,
+        gravity: -9.8  // Moved from STONE to WORLD
+    },
+    
+    // Stone settings
+    STONE: {
+        maxCount: 20,  // Maximum number of stones in the world
+        bounce: 0.9,
+        friction: 0.35,
+        rollFactor: 0.25,
+        maxVelocity: 0.5,
+        stopThreshold: 0.05
     }
 };
 
-// Handle WebSocket connections
-wss.on('connection', (ws) => {
-  //console.log('Client connected');
-  let playerId = null;
+// Game state
+const gameState = {
+    players: {},
+    towers: [],
+    stones: new Map(),
+    lastStoneSpawnTime: Date.now(),
+    stoneSpawnInterval: 10000
+};
 
-  // Send welcome message with initial state
-  ws.send(JSON.stringify({
-    type: 'initial_state',
-    players: Object.values(gameState.players),
-    towers: gameState.towers,
-    stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
-  }));
-
-  // Handle messages from clients
-  ws.on('message', function(message) {
-    try {
-      const data = JSON.parse(message);
-      
-      // Route message to appropriate handler
-      switch(data.type) {
-        case 'player_join':
-          handlePlayerJoin(ws, data);
-          break;
-        case 'player_update':
-          handlePlayerUpdate(ws, data);
-          break;
-        case 'request_state':
-          handleRequestState(ws);
-          break;
-        case 'stone_update':
-          handleStoneUpdate(ws, { ...data, playerId });
-          break;
-        case 'tower_update':
-          handleTowerUpdate(ws, { ...data, playerId });
-          break;
-        case 'tower_created':
-          handleTowerCreated(ws, data);
-          break;
-        case 'stone_pickup':
-          handleStonePickup(data);
-          break;
-        case 'stone_throw':
-          handleStoneThrow(data);
-          break;
-        case 'tower_destroyed':
-          handleTowerDestroyed(data);
-          break;
-        default:
-          console.log(`Unknown message type: ${data.type}`);
-      }
-    } catch (e) {
-      console.error('Error processing message:', e);
-    }
-  });
-
-  // Handle client disconnection
-  ws.on('close', () => {
-    const playerId = ws.playerId;
-    console.log(`Player disconnected: ${playerId}`);
-    
-    // Remove from connections
-    connections.delete(playerId);
-    
-    // Remove from game state
-    delete gameState.players[playerId];
-    
-    // Notify other clients
-    broadcastToAll({
-        type: 'player_left',
-        playerId: playerId
+// Broadcast message to all clients except sender
+function broadcastToAll(message, excludeWs = null) {
+    const messageStr = JSON.stringify(message);
+    wss.clients.forEach(client => {
+        if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
+            client.send(messageStr);
+        }
     });
-  });
-});
+}
+
+// PLAYER-RELATED FUNCTIONS
 
 // Message handlers
 function handlePlayerJoin(ws, data) {
+    // Get player data
     const playerId = data.playerId;
     const { username, position, rotation } = data;
-    
     console.log(`Player connected: ${playerId}`);
     
     // Store connection
@@ -134,7 +84,6 @@ function handlePlayerJoin(ws, data) {
         heldStones: [],
         lastUpdate: Date.now()
     };
-    
     gameState.players[playerId] = playerData;
     
     // Send welcome message
@@ -157,112 +106,52 @@ function handlePlayerJoin(ws, data) {
 
 // Handle player update
 function handlePlayerUpdate(ws, data) {
-  const playerId = data.playerId;
-  
-  // Ensure player exists in game state
-  if (!gameState.players[playerId]) {
-    console.warn(`Update received for unknown player: ${playerId}`);
-    return;
-  }
-  
-  // Update player data
-  gameState.players[playerId].position = data.position;
-  gameState.players[playerId].rotation = data.rotation;
-  gameState.players[playerId].lastUpdate = Date.now();
-  
-  // Broadcast update to all other clients
-  broadcastToAll({
-    type: 'player_updated',
-    playerId: playerId,
-    position: data.position,
-    rotation: data.rotation,
-    heldStones: data.heldStones || []
-  }, ws); // Send to all except sender
+    const playerId = data.playerId;
+    
+    // Ensure player exists in game state
+    if (!gameState.players[playerId]) {
+        console.warn(`Update received for unknown player: ${playerId}`);
+        return;
+    }
+    
+    // Update player data
+    gameState.players[playerId].position = data.position;
+    gameState.players[playerId].rotation = data.rotation;
+    gameState.players[playerId].lastUpdate = Date.now();
+    
+    // Broadcast update to all other clients
+    broadcastToAll({
+        type: 'player_updated',
+        playerId: playerId,
+        position: data.position,
+        rotation: data.rotation,
+        heldStones: data.heldStones || []
+    }, ws);
 }
+
+// STONE-RELATED FUNCTIONS
 
 function handleStoneUpdate(ws, data) {
-  const { id, position, velocity, isStatic } = data;
-  
-  // Find and update stone in game state
-  const stoneIndex = gameState.stones.findIndex(s => s.id === id);
-  if (stoneIndex !== -1) {
-    gameState.stones[stoneIndex] = {
-      ...gameState.stones[stoneIndex],
-      position,
-      velocity,
-      isStatic
-    };
+    const { id, position, velocity, isStatic } = data;
     
-    // Broadcast update to all clients
-    broadcastToAll({
-      type: 'stone_update',
-      stone: gameState.stones[stoneIndex]
-    }, ws);
-  }
-}
-
-function handleTowerUpdate(ws, data) {
-  const { id, position, level } = data;
-  
-  // Find or create tower
-  let tower = gameState.towers.find(t => t.id === id);
-  if (!tower) {
-    tower = {
-      id,
-      position,
-      level,
-      createdAt: Date.now()
-    };
-    gameState.towers.push(tower);
-  } else {
-    tower.position = position;
-    tower.level = level;
-  }
-
-  // Broadcast tower update to all clients
-  broadcastToAll({
-    type: 'tower_update',
-    tower
-  }, ws);
-}
-
-// Broadcast message to all clients except sender
-function broadcastToAll(message, excludeWs = null) {
-  const messageStr = JSON.stringify(message);
-  wss.clients.forEach(client => {
-    if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-      client.send(messageStr);
+    // Find and update stone in game state
+    const stoneIndex = gameState.stones.findIndex(s => s.id === id);
+    if (stoneIndex !== -1) {
+        gameState.stones[stoneIndex] = {
+            ...gameState.stones[stoneIndex],
+            position,
+            velocity,
+            isStatic
+        };
+        
+        // Broadcast update to all clients
+        broadcastToAll({
+            type: 'stone_update',
+            stone: gameState.stones[stoneIndex]
+        }, ws);
     }
-  });
 }
 
-// Handler function
-function handleRequestState(ws) {
-    // Send current game state to requesting client
-    ws.send(JSON.stringify({
-        type: 'initial_state',
-        players: Object.values(gameState.players),
-        towers: gameState.towers,
-        stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
-    }));
-}
-
-// Handle tower creation
-function handleTowerCreated(ws, data) {
-    const tower = data.tower;
-    
-    // Add tower to game state
-    gameState.towers.push(tower);
-    
-    // Broadcast to all clients except sender
-    broadcastToAll({
-        type: 'tower_created',
-        tower: tower,
-        createdBy: ws.playerId
-    }, ws);
-}
-
-// Handle stone messages
 function handleStonePickup(data) {
     const stone = gameState.stones.get(data.stoneId);
     if (stone && !stone.isHeld) {
@@ -299,185 +188,6 @@ function handleStoneThrow(data) {
     }
 }
 
-// Add this with the other handler functions
-function handleTowerDestroyed(data) {
-    const towerId = data.towerId;
-    const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
-    if (towerIndex > -1) {
-        gameState.towers.splice(towerIndex, 1);
-        
-        // Broadcast tower removal to all clients
-        broadcastToAll({
-            type: 'tower_removed',
-            towerId: towerId
-        });
-    }
-}
-
-class Terrain {
-    constructor() {
-        this.segments = 200;
-        this.groundSize = CONFIG.WORLD.size;
-        this.heightMap = [];
-        this.createHeightmap();
-    }
-
-    createHeightmap() {
-        const maxHeight = CONFIG.WORLD.maxTerrainHeight;
-        const xs = CONFIG.WORLD.terrainXScale;
-        const ys = CONFIG.WORLD.terrainYScale;
-
-        // Initialize heightmap array
-        for (let i = 0; i <= this.segments; i++) {
-            this.heightMap[i] = [];
-            for (let j = 0; j <= this.segments; j++) {
-                // Calculate normalized coordinates (-1 to 1)
-                const nx = (i / this.segments) * 2 - 1;
-                const ny = (j / this.segments) * 2 - 1;
-                
-                // Calculate distance from center (0 to 1)
-                const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
-                
-                // Create sharper edge falloff factor (1 in center, 0 at edges)
-                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
-                
-                // Apply height with edge falloff
-                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
-            }
-        }
-    }
-
-    getHeightAtPosition(x, z) {
-        // Convert world coordinates to heightmap indices
-        const halfSize = this.groundSize / 2;
-        const normalizedX = (x + halfSize) / this.groundSize;
-        const normalizedZ = (z + halfSize) / this.groundSize;
-        
-        // Calculate grid indices
-        const gridX = Math.floor(normalizedX * this.segments);
-        const gridZ = Math.floor(normalizedZ * this.segments);
-        
-        // Ensure indices are within bounds
-        if (gridX < 0 || gridX >= this.segments || 
-            gridZ < 0 || gridZ >= this.segments) {
-            return -10; // Water level for out of bounds
-        }
-        
-        // Get heights at the four corners of the grid cell
-        const h00 = this.heightMap[gridX][gridZ];
-        const h10 = this.heightMap[Math.min(gridX + 1, this.segments)][gridZ];
-        const h01 = this.heightMap[gridX][Math.min(gridZ + 1, this.segments)];
-        const h11 = this.heightMap[Math.min(gridX + 1, this.segments)][Math.min(gridZ + 1, this.segments)];
-        
-        // Calculate fractional position within the grid cell
-        const fx = normalizedX * this.segments - gridX;
-        const fz = normalizedZ * this.segments - gridZ;
-        
-        // Bilinear interpolation
-        const h0 = h00 * (1 - fx) + h10 * fx;
-        const h1 = h01 * (1 - fx) + h11 * fx;
-        const height = h0 * (1 - fz) + h1 * fz;
-        
-        // Return height
-        return height;
-    }
-}
-
-// Create terrain instance and use it in Stone class
-const terrain = new Terrain();
-
-// Stone
-class Stone {
-    constructor(id = null, position = null, velocity = null) {
-        this.id = id || Math.random().toString(36).substr(2, 9);
-        this.position = position || { x: 0, y: 0, z: 0 };
-        this.velocity = velocity || { x: 0, y: 0, z: 0 };
-        this.isHeld = false;
-        this.heldBy = null;
-        this.isThrown = false;
-        this.throwTime = 0;
-        this.isStatic = false;
-        this.lastUpdateTime = Date.now();
-    }
-
-    update(deltaTime) {
-        if (this.isHeld) return;
-
-        // Apply gravity
-        this.velocity.y += CONFIG.STONE.gravity * deltaTime;
-
-        // Update position
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z * deltaTime;
-
-        // Get ground height at current position
-        const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-        const stoneRadius = CONFIG.STONE.height / 2;
-
-        // Ground collision check
-        if (this.position.y < groundHeight + stoneRadius) {
-            this.position.y = groundHeight + stoneRadius;
-
-            // Calculate slope for rolling
-            const sampleDistance = 1.0;
-            const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
-            const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
-            const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
-            const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
-
-            // Calculate slope vector
-            const slopeX = (heightEast - heightWest) / (2 * sampleDistance);
-            const slopeZ = (heightSouth - heightNorth) / (2 * sampleDistance);
-
-            // Bounce with friction
-            if (this.velocity.y < -0.1) {
-                this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
-                this.velocity.x *= CONFIG.STONE.bounce;
-                this.velocity.z *= CONFIG.STONE.bounce;
-            } else {
-                this.velocity.y = 0;
-                
-                // Apply slope force
-                this.velocity.x += slopeX * CONFIG.STONE.gravity * deltaTime;
-                this.velocity.z += slopeZ * CONFIG.STONE.gravity * deltaTime;
-                
-                // Apply friction
-                const friction = this.isStatic ? CONFIG.STONE.friction * 2 : CONFIG.STONE.friction;
-                this.velocity.x *= (1 - friction * deltaTime);
-                this.velocity.z *= (1 - friction * deltaTime);
-            }
-
-            // Check if stone has come to rest
-            const speed = Math.sqrt(
-                this.velocity.x * this.velocity.x + 
-                this.velocity.y * this.velocity.y + 
-                this.velocity.z * this.velocity.z
-            );
-            
-            if (speed < CONFIG.STONE.stopThreshold) {
-                this.velocity.x = 0;
-                this.velocity.y = 0;
-                this.velocity.z = 0;
-                this.isStatic = true;
-                this.isThrown = false;
-            }
-        }
-    }
-
-    serialize() {
-        return {
-            id: this.id,
-            position: this.position,
-            velocity: this.velocity,
-            isHeld: this.isHeld,
-            heldBy: this.heldBy,
-            isThrown: this.isThrown,
-            isStatic: this.isStatic
-        };
-    }
-}
-
 // Function to create a random stone at the beach
 function createRandomStone() {
     const beachEdge = CONFIG.WORLD.size / 2; // Define the edge of the world
@@ -494,14 +204,147 @@ function createRandomStone() {
     return new Stone(null, position, velocity);
 }
 
-// Game state
-const gameState = {
-    players: {},
-    towers: [],
-    stones: new Map(),
-    lastStoneSpawnTime: Date.now(),
-    stoneSpawnInterval: 10000
-};
+// TOWER-RELATED FUNCTIONS
+
+function handleTowerUpdate(ws, data) {
+    const { id, position, level } = data;
+    
+    // Find or create tower
+    let tower = gameState.towers.find(t => t.id === id);
+    if (!tower) {
+        tower = {
+            id,
+            position,
+            level,
+            createdAt: Date.now()
+        };
+        gameState.towers.push(tower);
+    } else {
+        tower.position = position;
+        tower.level = level;
+    }
+
+    // Broadcast tower update to all clients
+    broadcastToAll({
+        type: 'tower_update',
+        tower
+    }, ws);
+}
+
+function handleTowerCreated(ws, data) {
+    const tower = data.tower;
+    
+    // Add tower to game state
+    gameState.towers.push(tower);
+    
+    // Broadcast to all clients except sender
+    broadcastToAll({
+        type: 'tower_created',
+        tower: tower,
+        createdBy: ws.playerId
+    }, ws);
+}
+
+function handleTowerDestroyed(data) {
+    const towerId = data.towerId;
+    const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
+    if (towerIndex > -1) {
+        gameState.towers.splice(towerIndex, 1);
+        
+        // Broadcast tower removal to all clients
+        broadcastToAll({
+            type: 'tower_removed',
+            towerId: towerId
+        });
+    }
+}
+
+// GENERAL MESSAGE HANDLING
+
+// Handler function
+function handleRequestState(ws) {
+    // Send current game state to requesting client
+    ws.send(JSON.stringify({
+        type: 'initial_state',
+        players: Object.values(gameState.players),
+        towers: gameState.towers,
+        stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
+    }));
+}
+
+// Handle WebSocket connections
+wss.on('connection', (ws) => {
+    //console.log('Client connected');
+    let playerId = null;
+
+    // Send welcome message with initial state
+    ws.send(JSON.stringify({
+        type: 'initial_state',
+        players: Object.values(gameState.players),
+        towers: gameState.towers,
+        stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
+    }));
+
+    // Handle messages from clients
+    ws.on('message', function(message) {
+        try {
+            const data = JSON.parse(message);
+            
+            // Route message to appropriate handler
+            switch(data.type) {
+                case 'player_join':
+                    handlePlayerJoin(ws, data);
+                    break;
+                case 'player_update':
+                    handlePlayerUpdate(ws, data);
+                    break;
+                case 'request_state':
+                    handleRequestState(ws);
+                    break;
+                case 'stone_update':
+                    handleStoneUpdate(ws, { ...data, playerId });
+                    break;
+                case 'tower_update':
+                    handleTowerUpdate(ws, { ...data, playerId });
+                    break;
+                case 'tower_created':
+                    handleTowerCreated(ws, data);
+                    break;
+                case 'stone_pickup':
+                    handleStonePickup(data);
+                    break;
+                case 'stone_throw':
+                    handleStoneThrow(data);
+                    break;
+                case 'tower_destroyed':
+                    handleTowerDestroyed(data);
+                    break;
+                default:
+                    console.log(`Unknown message type: ${data.type}`);
+            }
+        } catch (e) {
+            console.error('Error processing message:', e);
+        }
+    });
+
+    // Handle client disconnection
+    ws.on('close', () => {
+        const playerId = ws.playerId;
+        console.log(`Player disconnected: ${playerId}`);
+        
+        // Remove from connections
+        connections.delete(playerId);
+        
+        // Remove from game state
+        delete gameState.players[playerId];
+        
+        // Notify other clients
+        broadcastToAll({
+            type: 'player_left',
+            playerId: playerId
+        });
+    });
+});
 
 // Game update loop
 const TICK_RATE = 60;
@@ -518,11 +361,17 @@ setInterval(() => {
         const stone = createRandomStone();
         console.log('Stone created:', {
             id: stone.id,
-            position: stone.position
+            position: stone.position,
+            isHeld: stone.isHeld,
+            isStatic: stone.isStatic
         });
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
+        // Log the stone data being broadcast
+        const serializedStone = stone.serialize();
+        console.log('Broadcasting stone:', serializedStone);
+        
         // Broadcast stone creation
         broadcastToAll({
             type: 'stone_spawned',
