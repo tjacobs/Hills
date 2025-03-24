@@ -154,10 +154,10 @@ const Network = {
         
         // Handle stones
         message.stones.forEach(stoneData => {
-            console.log('Initial state stone:', {
-                id: stoneData.id,
-                position: stoneData.position
-            });
+            //console.log('Initial state stone:', {
+            //    id: stoneData.id,
+            //    position: stoneData.position
+            //});
             
             if (!Game.getStoneById(stoneData.id)) {
                 const stone = new Stone(stoneData.id);

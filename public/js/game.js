@@ -207,7 +207,9 @@ const Game = {
                 const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
                 // Apply height with edge falloff
-                vertices[index + 2] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
+
+                // Just flat ground for now
+                vertices[index + 2] = 0; //Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
             }
         }
         
@@ -504,6 +506,8 @@ const Game = {
         const gridX = Math.floor(normalizedX * this.segments);
         const gridZ = Math.floor(normalizedZ * this.segments);
         
+        //console.log(`Client height lookup: world(${x.toFixed(1)}, ${z.toFixed(1)}) -> normalized(${normalizedX.toFixed(2)}, ${normalizedZ.toFixed(2)}) -> grid(${gridX}, ${gridZ})`);
+        
         // Ensure indices are within bounds
         if (gridX < 0 || gridX >= this.segments || 
             gridZ < 0 || gridZ >= this.segments) {
@@ -516,6 +520,8 @@ const Game = {
         const h01 = this.heightMap[gridX][Math.min(gridZ + 1, this.segments)];
         const h11 = this.heightMap[Math.min(gridX + 1, this.segments)][Math.min(gridZ + 1, this.segments)];
         
+        //console.log(`Client heights: h00=${h00.toFixed(1)} h10=${h10.toFixed(1)} h01=${h01.toFixed(1)} h11=${h11.toFixed(1)}`);
+        
         // Calculate fractional position within the grid cell
         const fx = normalizedX * this.segments - gridX;
         const fz = normalizedZ * this.segments - gridZ;
@@ -525,7 +531,10 @@ const Game = {
         const h1 = h01 * (1 - fx) + h11 * fx;
         const height = h0 * (1 - fz) + h1 * fz;
         
-        return height;
+        //console.log(`Client interpolated height=${height.toFixed(1)} (fx=${fx.toFixed(2)} fz=${fz.toFixed(2)})`);
+
+        // Always return 0 for flat terrain, regardless of calculated height
+        return 0;
     },
 
     // Player management
