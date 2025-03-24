@@ -350,7 +350,7 @@ const Network = {
         }
         
         // Create new player
-        console.log(`Adding player from join: ${playerId}`);
+        //console.log(`Adding player from join: ${playerId}`);
         const player = new Player(playerId, message.username);
         player.position.set(
             message.position.x,
