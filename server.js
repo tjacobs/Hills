@@ -84,20 +84,9 @@ wss.on('connection', (ws) => {
         case 'stone_throw':
           handleStoneThrow(data);
           break;
-        case 'tower_destroyed': {
-          const towerId = data.towerId;
-          const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
-          if (towerIndex > -1) {
-            gameState.towers.splice(towerIndex, 1);
-            
-            // Broadcast tower removal to all clients
-            broadcastToAll({
-              type: 'tower_removed',
-              towerId: towerId
-            });
-          }
+        case 'tower_destroyed':
+          handleTowerDestroyed(data);
           break;
-        }
         default:
           console.log(`Unknown message type: ${data.type}`);
       }
@@ -229,7 +218,8 @@ function handleTowerUpdate(ws, data) {
     tower.position = position;
     tower.level = level;
   }
-  
+
+  // Broadcast tower update to all clients
   broadcastToAll({
     type: 'tower_update',
     tower
@@ -246,7 +236,7 @@ function broadcastToAll(message, excludeWs = null) {
   });
 }
 
-// Add the handler function
+// Handler function
 function handleRequestState(ws) {
     // Send current game state to requesting client
     ws.send(JSON.stringify({
@@ -257,7 +247,7 @@ function handleRequestState(ws) {
     }));
 }
 
-// Add this function to handle tower creation
+// Handle tower creation
 function handleTowerCreated(ws, data) {
     const tower = data.tower;
     
@@ -272,7 +262,7 @@ function handleTowerCreated(ws, data) {
     }, ws);
 }
 
-// Add these functions to handle stone messages
+// Handle stone messages
 function handleStonePickup(data) {
     const stone = gameState.stones.get(data.stoneId);
     if (stone && !stone.isHeld) {
@@ -305,6 +295,21 @@ function handleStoneThrow(data) {
             stoneId: stone.id,
             position: stone.position,
             velocity: stone.velocity
+        });
+    }
+}
+
+// Add this with the other handler functions
+function handleTowerDestroyed(data) {
+    const towerId = data.towerId;
+    const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
+    if (towerIndex > -1) {
+        gameState.towers.splice(towerIndex, 1);
+        
+        // Broadcast tower removal to all clients
+        broadcastToAll({
+            type: 'tower_removed',
+            towerId: towerId
         });
     }
 }
@@ -373,6 +378,7 @@ class Terrain {
         const h1 = h01 * (1 - fx) + h11 * fx;
         const height = h0 * (1 - fz) + h1 * fz;
         
+        // Return height
         return height;
     }
 }
@@ -380,7 +386,7 @@ class Terrain {
 // Create terrain instance and use it in Stone class
 const terrain = new Terrain();
 
-// Update Stone class to use terrain
+// Stone
 class Stone {
     constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
@@ -494,14 +500,13 @@ const gameState = {
     towers: [],
     stones: new Map(),
     lastStoneSpawnTime: Date.now(),
-    stoneSpawnInterval: 2000 // Spawn every 2 seconds
+    stoneSpawnInterval: 10000
 };
 
 // Game update loop
 const TICK_RATE = 60;
 const TICK_TIME = 1000 / TICK_RATE;
 let lastUpdate = Date.now();
-
 setInterval(() => {
     const now = Date.now();
     const deltaTime = (now - lastUpdate) / 1000;
@@ -515,7 +520,6 @@ setInterval(() => {
             id: stone.id,
             position: stone.position
         });
-        
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
