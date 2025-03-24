@@ -92,6 +92,12 @@ const Network = {
                     case 'tower_removed':
                         this.handleTowerRemoved(data);
                         break;
+                    case 'stone_thrown':
+                        this.handleStoneThrown(data);
+                        break;
+                    case 'tower_created':
+                        this.handleTowerCreated(data);
+                        break;
                     default:
                         console.log('Unknown message type:', data.type);
                 }
@@ -473,27 +479,15 @@ const Network = {
     
     // Handle stone thrown message
     handleStoneThrown(message) {
-        // Skip if this is our own action
-        if (message.playerId === Game.localPlayer.id) return;
-        
-        log(`Player ${message.playerId} threw a stone`);
-        
-        // Create or update stone
-        const stone = Stone.fromJSON(message.stone);
-        
-        // Add to game
-        Game.addStone(stone);
-        
-        // Update remote player's held stones
-        const player = Game.getPlayerById(message.playerId);
-        
-        if (player) {
-            // Remove stone from player's held stones
-            const index = player.heldStones.indexOf(stone.id);
-            
-            if (index !== -1) {
-                player.heldStones.splice(index, 1);
-            }
+        const stone = Game.getStoneById(message.stoneId);
+        if (stone) {
+            stone.position.copy(message.position);
+            stone.velocity.copy(message.velocity);
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
         }
     },
     
