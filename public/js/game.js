@@ -206,10 +206,11 @@ const Game = {
                 const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
                 
                 // Apply height with edge falloff
+                //vertices[index + 2] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight; // * edgeFalloff;
 
                 // Just flat ground for now
-                vertices[index + 2] = Math.sin(i / xs) * 5
-                //; // * Math.sin(j / ys) * 20; // * edgeFalloff;
+                vertices[index + 2] = Math.sin(i / xs) * maxHeight;
+                //vertices[index + 2] = Math.sin(j / ys) * maxHeight;
                 //vertices[index + 2] = i / 10 - 10;
             }
         }
