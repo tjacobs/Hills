@@ -436,8 +436,10 @@ class Stone {
         
         // Get ground height and calculate slope
         const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-        const stoneRadius = CONFIG.STONE.height / 2;
+        const stoneHeight = 1.0;
+        const stoneRadius = stoneHeight / 2;
         const groundOffset = 0.05;
+        const collisionThreshold = groundHeight + stoneRadius + groundOffset;
         
         // Sample heights for slope calculation
         const sampleDistance = 2.0;
@@ -454,9 +456,9 @@ class Stone {
         console.log(`Stone ${this.id} collision check: pos.y=${this.position.y.toFixed(1)} ground=${groundHeight.toFixed(1)} threshold=${(groundHeight + stoneRadius + groundOffset).toFixed(1)} vel.y=${this.velocity.y.toFixed(2)}`);
       
         // Ground collision
-        if (this.position.y < groundHeight + stoneRadius + groundOffset) {
-            console.log(`Stone ${this.id} hit ground: bouncing from ${this.velocity.y.toFixed(2)} to ${(-this.velocity.y * CONFIG.STONE.bounce).toFixed(2)}`);
-            this.position.y = groundHeight + stoneRadius + groundOffset;
+        if (this.position.y < collisionThreshold) {
+            console.log(`Stone ${this.id} bounce: vel.y ${this.velocity.y.toFixed(2)} -> ${(-this.velocity.y * CONFIG.STONE.bounce).toFixed(2)}`);
+            this.position.y = collisionThreshold;
             
             // Bounce with damping
             if (this.velocity.y < -0.05) {
