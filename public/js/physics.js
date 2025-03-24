@@ -6,11 +6,6 @@ const Physics = {
     
     // Update physics
     update(deltaTime) {
-        // Update stones
-        for (const stone of Game.stones) {
-            stone.update(deltaTime);
-        }
-
         // Update clouds
         for (const cloud of Game.clouds) {
             cloud.update(deltaTime);
