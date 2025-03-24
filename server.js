@@ -514,10 +514,7 @@ setInterval(() => {
     if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
         gameState.stones.size < CONFIG.STONE.maxCount) {
         const stone = createRandomStone();
-        console.log('Stone created:', {
-            id: stone.id,
-            position: stone.position
-        });
+        console.log(`Stone spawned: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
