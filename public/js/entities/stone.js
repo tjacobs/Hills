@@ -11,20 +11,33 @@ class Stone {
         this.isStatic = false;
         this.lastUpdateTime = Date.now();
 
-        // Create mesh
+        // Create mesh with proper texture
         const geometry = new THREE.BoxGeometry(
             CONFIG.STONE.width,
             CONFIG.STONE.height,
             CONFIG.STONE.depth
         );
+        
+        // Load texture from Three.js examples
+        const textureLoader = new THREE.TextureLoader();
+        const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
+        
         const material = new THREE.MeshStandardMaterial({
-            color: 0x777777,
             roughness: 0.9,
-            metalness: 0.1
+            metalness: 0.1,
+            color: 0x808080,
+            bumpMap: stoneTexture,
+            bumpScale: 0.5
         });
+        
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
+        
+        // Set initial mesh position
+        if (position) {
+            this.mesh.position.copy(position);
+        }
     }
 
     update(deltaTime) {
@@ -251,6 +264,7 @@ class Stone {
     // Method to update stone properties from server data
     updateFromData(data) {
         this.position.set(data.position.x, data.position.y, data.position.z);
+        this.mesh.position.copy(this.position);
         this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
         this.isHeld = data.isHeld;
         this.heldBy = data.heldBy;
