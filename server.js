@@ -441,10 +441,10 @@ class Stone {
         
         // Calculate rotation based on movement
         // Roll around Z axis when moving in X direction
-        this.rotation.z -= dx * 2; // Adjust multiplier for faster/slower rotation
+        this.rotation.z -= dx * 1; // Adjust multiplier for faster/slower rotation
         
         // Roll around X axis when moving in Z direction
-        this.rotation.x += dz * 2; // Adjust multiplier for faster/slower rotation
+        this.rotation.x += dz * 1; // Adjust multiplier for faster/slower rotation
         
         // Normalize rotation angles to stay within 0-2π
         this.rotation.x = this.rotation.x % (Math.PI * 2);
