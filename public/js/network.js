@@ -549,7 +549,7 @@ const Network = {
             stoneId: stoneId,
             playerId: Game.localPlayer.id
         });
-        console.log('Stone picked up:', stoneId);
+//        console.log('Stone picked up:', stoneId);
     },
     
     // Send stone dropped
