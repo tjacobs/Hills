@@ -561,6 +561,8 @@ class LocalPlayer extends Player {
             velocity: velocity
         });
         
+        console.log('Throwing stone:', stone.id);
+        
         // Remove from held stones (server will confirm)
         this.removeHeldStone(stone);
     }
