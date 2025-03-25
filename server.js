@@ -414,75 +414,118 @@ class Stone {
         this.isThrown = false;
         this.throwTime = 0;
         this.isStatic = false;
-        this.radius = 0.5; // Assuming a default radius
+        this.radius = 0.5;
     }
 
     update(deltaTime) {
         if (this.isHeld) return;
         
-        // Apply gravity
-        const gravity = CONFIG.PHYSICS.gravity;
-        this.velocity.y -= gravity * deltaTime;
+        // Apply gravity (increase gravity effect)
+        this.velocity.y += CONFIG.WORLD.gravity * deltaTime * 5;
         
-        // Move stone based on velocity
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-        this.position.z += this.velocity.z * deltaTime;
+        // Update position (increase velocity effect)
+        this.position.x += this.velocity.x * deltaTime * 5;
+        this.position.y += this.velocity.y * deltaTime * 5;
+        this.position.z += this.velocity.z * deltaTime * 5;
         
-        // Get terrain height at stone position
-        const terrainHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
+        // Calculate distance from center for water check
+        const distanceFromCenter = Math.sqrt(
+            this.position.x * this.position.x + 
+            this.position.z * this.position.z
+        );
         
-        // Stone radius plus small offset to prevent z-fighting
-        const groundOffset = this.radius + 0.01;
+        const worldHalfSize = CONFIG.WORLD.size / 2;
+        const beachDistance = worldHalfSize * CONFIG.WORLD.shoreRadius;
         
-        // Check for collision with ground
-        if (this.position.y < terrainHeight + groundOffset) {
-            // Position stone on ground
-            this.position.y = terrainHeight + groundOffset;
+        // Check if in water
+        const isInWater = distanceFromCenter > beachDistance;
+        
+        // Apply water forces
+        if (isInWater) {
+            // Calculate direction toward center
+            const magnitude = Math.sqrt(this.position.x * this.position.x + this.position.z * this.position.z);
+            const dirX = -this.position.x / magnitude;
+            const dirZ = -this.position.z / magnitude;
             
-            // Calculate slope vector (tangent to surface)
-            const sampleDistance = 0.5;
-            const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
-            const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
-            const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
-            const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
+            // Apply wave force
+            this.velocity.x += dirX * CONFIG.STONE.waveStrength;
+            this.velocity.z += dirZ * CONFIG.STONE.waveStrength;
+            this.velocity.y += CONFIG.STONE.waveStrength * 0.8; // Upward bias
+        }
+        
+        // Get ground height and calculate slope
+        const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
+        const stoneHeight = 0.5;
+        const stoneRadius = stoneHeight / 2;
+        const groundOffset = 0.01;
+        const collisionThreshold = groundHeight + stoneRadius + groundOffset;
+        
+        // Sample heights for slope calculation
+        const sampleDistance = 2.0;
+        const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
+        const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
+        const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
+        const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
+        
+        // Calculate slope
+        const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+        const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+        const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+        
+        // Ground collision
+        if (this.position.y < collisionThreshold) {
+            this.position.y = collisionThreshold;
             
-            // Calculate slope (derivative of height)
-            const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
-            const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
-            
-            // For small slopes, stop the stone
-            const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
-            const slopeThreshold = 0.2; // Adjust as needed
-            
-            if (slopeMagnitude > slopeThreshold) {
-                // Apply slope-based acceleration (rolling down hill)
-                const slopeAcceleration = CONFIG.PHYSICS.slopeAcceleration;
-                this.velocity.x += slopeX * slopeAcceleration * deltaTime;
-                this.velocity.z += slopeZ * slopeAcceleration * deltaTime;
+            // Bounce with damping (increase bounce effect)
+            if (this.velocity.y < -0.05) {
+                this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
             } else {
-                // Apply friction to slow down rolling on flat surfaces
-                const frictionFactor = 1.0 - CONFIG.PHYSICS.friction * deltaTime;
-                this.velocity.x *= frictionFactor;
-                this.velocity.z *= frictionFactor;
+                this.velocity.y = 0;
             }
             
-            // Bounce with dampening if hitting the ground
-            if (this.velocity.y < 0) {
-                this.velocity.y = -this.velocity.y * CONFIG.PHYSICS.restitution;
+            // Apply friction based on slope (increase friction effect)
+            const frictionFactor = Math.max(0.5, 0.8 - slopeMagnitude * 5);
+            this.velocity.x *= frictionFactor;
+            this.velocity.z *= frictionFactor;
+            
+            // Apply slope forces (increase roll effect)
+            this.velocity.x += slopeX * CONFIG.STONE.rollFactor * 5;
+            this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * 5;
+            
+            // Extra downhill acceleration on steep slopes
+            if (slopeMagnitude > 0.05) {
+                const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+                const downhillX = slopeX / magnitude;
+                const downhillZ = slopeZ / magnitude;
+                const downhillFactor = slopeMagnitude * 0.1;
                 
-                // If velocity is very small, stop bouncing
-                if (Math.abs(this.velocity.y) < 0.1) {
-                    this.velocity.y = 0;
-                }
+                this.velocity.x += downhillX * downhillFactor;
+                this.velocity.z += downhillZ * downhillFactor;
             }
         }
         
-        // Add world boundaries if needed
-        const worldSize = CONFIG.WORLD.size / 2;
-        if (Math.abs(this.position.x) > worldSize || Math.abs(this.position.z) > worldSize) {
-            // Stone out of bounds - can be respawned or removed
-            this.outOfBounds = true;
+        // Cap maximum velocity
+        const speed = Math.sqrt(
+            this.velocity.x * this.velocity.x +
+            this.velocity.y * this.velocity.y +
+            this.velocity.z * this.velocity.z
+        );
+        
+        if (speed > CONFIG.STONE.maxVelocity) {
+            const scale = CONFIG.STONE.maxVelocity / speed;
+            this.velocity.x *= scale;
+            this.velocity.y *= scale;
+            this.velocity.z *= scale;
+        }
+        
+        // Check if stone has stopped
+        if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.y) < CONFIG.STONE.stopThreshold && 
+            Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
+            this.velocity = { x: 0, y: 0, z: 0 };
+            this.isStatic = true;
+        } else {
+            this.isStatic = false;
         }
     }
 
