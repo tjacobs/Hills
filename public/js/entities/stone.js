@@ -265,6 +265,16 @@ class Stone {
     updateFromData(data) {
         this.position.set(data.position.x, data.position.y, data.position.z);
         this.mesh.position.copy(this.position);
+        
+        // Add rotation update from server
+        if (data.rotation) {
+            this.mesh.rotation.set(
+                data.rotation.x,
+                data.rotation.y,
+                data.rotation.z
+            );
+        }
+        
         this.velocity.set(data.velocity.x, data.velocity.y, data.velocity.z);
         this.isHeld = data.isHeld;
         this.heldBy = data.heldBy;

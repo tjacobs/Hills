@@ -410,6 +410,7 @@ class Stone {
         this.id = id || Math.random().toString(36).substr(2, 9);
         this.position = position || { x: 0, y: 10, z: 0 };
         this.velocity = velocity || { x: 0, y: 0, z: 0 };
+        this.rotation = { x: 0, y: 0, z: 0 };
         this.isHeld = false;
         this.heldBy = null;
         this.isThrown = false;
@@ -423,6 +424,10 @@ class Stone {
         
         const multiplier = CONFIG.PHYSICS.speedMultiplier;
         
+        // Store previous position for rotation calculation
+        const prevX = this.position.x;
+        const prevZ = this.position.z;
+        
         // Apply gravity (increase gravity effect)
         this.velocity.y += CONFIG.WORLD.gravity * deltaTime * multiplier;
         
@@ -430,6 +435,22 @@ class Stone {
         this.position.x += this.velocity.x * deltaTime * multiplier;
         this.position.y += this.velocity.y * deltaTime * multiplier;
         this.position.z += this.velocity.z * deltaTime * multiplier;
+        
+        // Calculate movement direction and speed for rotation
+        const dx = this.position.x - prevX;
+        const dz = this.position.z - prevZ;
+        const moveSpeed = Math.sqrt(dx * dx + dz * dz);
+        
+        // Calculate rotation based on movement
+        // Roll around Z axis when moving in X direction
+        this.rotation.z -= dx * 2; // Adjust multiplier for faster/slower rotation
+        
+        // Roll around X axis when moving in Z direction
+        this.rotation.x += dz * 2; // Adjust multiplier for faster/slower rotation
+        
+        // Normalize rotation angles to stay within 0-2π
+        this.rotation.x = this.rotation.x % (Math.PI * 2);
+        this.rotation.z = this.rotation.z % (Math.PI * 2);
         
         // Calculate distance from center for water check
         const distanceFromCenter = Math.sqrt(
@@ -537,6 +558,7 @@ class Stone {
             id: this.id,
             position: this.position,
             velocity: this.velocity,
+            rotation: this.rotation,
             isHeld: this.isHeld,
             heldBy: this.heldBy,
             isThrown: this.isThrown,

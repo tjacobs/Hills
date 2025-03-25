@@ -154,29 +154,10 @@ const Network = {
         
         // Handle stones
         message.stones.forEach(stoneData => {
-            //console.log('Initial state stone:', {
-            //    id: stoneData.id,
-            //    position: stoneData.position
-            //});
-            
             if (!Game.getStoneById(stoneData.id)) {
                 const stone = new Stone(stoneData.id);
-                stone.position.set(stoneData.position.x, stoneData.position.y, stoneData.position.z);
-                stone.mesh.position.copy(stone.position);
-                if (stoneData.velocity) {
-                    stone.velocity.set(stoneData.velocity.x, stoneData.velocity.y, stoneData.velocity.z);
-                }
-                stone.isHeld = stoneData.isHeld;
-                stone.heldBy = stoneData.heldBy;
-                stone.isThrown = stoneData.isThrown;
-                stone.isStatic = stoneData.isStatic;
+                stone.updateFromData(stoneData);
                 Game.addStone(stone);
-                
-                //console.log('Added stone to game:', {
-                //    id: stone.id,
-                //    position: stone.position.toArray(),
-                //    meshPosition: stone.mesh.position.toArray()
-                //});
             }
         });
         
