@@ -663,9 +663,9 @@ setInterval(() => {
                 
                 // Position stone in front and slightly up from player
                 stone.position = {
-                    x: player.position.x + (forward.x * 2),
-                    y: player.position.y + 1,
-                    z: player.position.z + (forward.z * 2)
+                    x: player.position.x + (forward.x * 1),
+                    y: player.position.y - 1,
+                    z: player.position.z + (forward.z * 1)
                 };
                 
                 stone.velocity = { x: 0, y: 0, z: 0 };
