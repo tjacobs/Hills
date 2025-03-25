@@ -92,17 +92,14 @@ const Network = {
                     case 'tower_removed':
                         this.handleTowerRemoved(data);
                         break;
-                    case 'stone_thrown':
-                        this.handleStoneThrown(data);
+                    case 'stone_throw':
+                        this.handleStoneThrow(data);
                         break;
                     case 'tower_created':
                         this.handleTowerCreated(data);
                         break;
                     case 'stone_pickup':
                         this.handleStonePickup(data);
-                        break;
-                    case 'stone_throw':
-                        this.handleStoneThrow(data);
                         break;
                     case 'player_disconnected':
                         this.handlePlayerDisconnected(data);
@@ -480,7 +477,7 @@ const Network = {
     },
     
     // Handle stone thrown message
-    handleStoneThrown(data) {
+    handleStoneThrow(data) {
         const stone = Game.getStoneById(data.stoneId);
         if (stone) {
             stone.position.copy(data.position);
