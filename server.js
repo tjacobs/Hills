@@ -77,7 +77,7 @@ wss.on('connection', (ws) => {
           handleStoneUpdate(ws, { ...data, playerId });
           break;
         case 'stone_pickup':
-          handleStonePickup(data);
+          handleStonePickup({ ...data, playerId: ws.playerId });
           break;
         case 'stone_throw':
           handleStoneThrow(data);

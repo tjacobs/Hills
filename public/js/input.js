@@ -158,9 +158,6 @@ const Input = {
         if (event.button === 0) {
             // Left click - throw stone
             this.handleThrow();
-        } else if (event.button === 2) {
-            // Right click - pickup stone
-            this.handlePickup();
         }
     },
     

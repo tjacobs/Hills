@@ -497,7 +497,7 @@ class LocalPlayer extends Player {
             if (stone.isHeld) continue;
             
             const distance = this.position.distanceTo(stone.mesh.position);
-            if (distance < CONFIG.PLAYER.radius * 4) {
+            if (distance < CONFIG.PLAYER.radius * 8) {
                 // Request pickup from server
                 Network.sendStonePickup(stone.id);
                 break;
