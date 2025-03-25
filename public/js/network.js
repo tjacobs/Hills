@@ -443,8 +443,12 @@ const Network = {
             stone.heldBy = data.playerId;
             stone.isStatic = false;
             
+            // Add stone to local player's held stones if we picked it up
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.addHeldStone(stone);
+            }
             // If another player picked up the stone
-            if (data.playerId !== Game.localPlayer.id) {
+            else {
                 const player = Game.getPlayerById(data.playerId);
                 if (player) {
                     player.addHeldStone(stone);
