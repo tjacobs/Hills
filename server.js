@@ -303,25 +303,39 @@ function handleStonePickup(data) {
 
 function handleStoneThrow(ws, data) {
     const stone = gameState.stones.get(data.stoneId);
-    console.log('Stone throw request:', {
-        stoneId: data.stoneId,
-        playerId: data.playerId
-    });
     if (stone && stone.heldBy === ws.playerId) {
+        // Add random spread to velocity
+        const spreadAngle = Math.PI / 6; // 30 degrees
+        const randomAngleX = (Math.random() - 0.5) * spreadAngle;
+        const randomAngleY = (Math.random() - 0.5) * spreadAngle;
+        
+        // Create rotation matrix for random spread
+        const cosX = Math.cos(randomAngleX);
+        const sinX = Math.sin(randomAngleX);
+        const cosY = Math.cos(randomAngleY);
+        const sinY = Math.sin(randomAngleY);
+        
+        // Apply rotation to velocity
+        const velocity = {
+            x: data.velocity.x * cosY + data.velocity.z * sinY,
+            y: data.velocity.y + Math.random() * 2, // Add random upward boost
+            z: -data.velocity.x * sinY + data.velocity.z * cosY
+        };
+        
         stone.position = data.position;
-        stone.velocity = data.velocity;
+        stone.velocity = velocity;
         stone.isHeld = false;
         stone.heldBy = null;
         stone.isThrown = true;
         stone.throwTime = Date.now();
         stone.isStatic = false;
-       console.log('Stone thrown:', stone.id);
+        
         broadcastToAll({
             type: 'stone_throw',
             stoneId: stone.id,
             playerId: ws.playerId,
             position: stone.position,
-            velocity: stone.velocity
+            velocity: velocity
         });
     }
 }
@@ -691,10 +705,15 @@ setInterval(() => {
                     z: -Math.cos(player.rotation.y)
                 };
                 
-                // Position stone in front and slightly up from player
+                // Get all stones held by this player
+                const playerStones = Array.from(gameState.stones.values())
+                    .filter(s => s.heldBy === player.playerId);
+                const stackIndex = playerStones.indexOf(stone);
+                
+                // Position stone in front and slightly up from player, stacked vertically
                 stone.position = {
                     x: player.position.x + (forward.x * 1),
-                    y: player.position.y - 1,
+                    y: player.position.y - 1 + (stackIndex * 0.5), // Stack stones with 0.5 unit spacing
                     z: player.position.z + (forward.z * 1)
                 };
                 
