@@ -38,6 +38,12 @@ const CONFIG = {
         terrainXScale: 8,
         terrainYScale: 8,
         shoreRadius: 0.8
+    },
+    PHYSICS: {
+        gravity: -9.8,
+        restitution: 0.9,
+        friction: 0.35,
+        slopeAcceleration: 0.5
     }
 };
 
@@ -408,30 +414,75 @@ class Stone {
         this.isThrown = false;
         this.throwTime = 0;
         this.isStatic = false;
+        this.radius = 0.5; // Assuming a default radius
     }
 
     update(deltaTime) {
         if (this.isHeld) return;
         
         // Apply gravity
-        this.velocity.y += CONFIG.WORLD.gravity * deltaTime * 5;
+        const gravity = CONFIG.PHYSICS.gravity;
+        this.velocity.y -= gravity * deltaTime;
         
-        // Update only vertical position
-        this.position.y += this.velocity.y * deltaTime * 5;
+        // Move stone based on velocity
+        this.position.x += this.velocity.x * deltaTime;
+        this.position.y += this.velocity.y * deltaTime;
+        this.position.z += this.velocity.z * deltaTime;
         
-        // Get ground height
-        const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-        const stoneHeight = 0.5;
-        const stoneRadius = stoneHeight / 2;
-        const groundOffset = 0.01;
-        const collisionThreshold = groundHeight + stoneRadius + groundOffset;
+        // Get terrain height at stone position
+        const terrainHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
         
-        // Ground collision
-        if (this.position.y < collisionThreshold) {
-            this.position.y = collisionThreshold;
-            this.velocity.y = 0;
-            this.isStatic = true;
-//            console.log(`Stone ${this.id} settled at height ${this.position.y.toFixed(1)} (ground=${groundHeight.toFixed(1)})`);
+        // Stone radius plus small offset to prevent z-fighting
+        const groundOffset = this.radius + 0.01;
+        
+        // Check for collision with ground
+        if (this.position.y < terrainHeight + groundOffset) {
+            // Position stone on ground
+            this.position.y = terrainHeight + groundOffset;
+            
+            // Calculate slope vector (tangent to surface)
+            const sampleDistance = 0.5;
+            const heightNorth = terrain.getHeightAtPosition(this.position.x, this.position.z - sampleDistance);
+            const heightSouth = terrain.getHeightAtPosition(this.position.x, this.position.z + sampleDistance);
+            const heightEast = terrain.getHeightAtPosition(this.position.x + sampleDistance, this.position.z);
+            const heightWest = terrain.getHeightAtPosition(this.position.x - sampleDistance, this.position.z);
+            
+            // Calculate slope (derivative of height)
+            const slopeX = (heightWest - heightEast) / (2 * sampleDistance);
+            const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
+            
+            // For small slopes, stop the stone
+            const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
+            const slopeThreshold = 0.2; // Adjust as needed
+            
+            if (slopeMagnitude > slopeThreshold) {
+                // Apply slope-based acceleration (rolling down hill)
+                const slopeAcceleration = CONFIG.PHYSICS.slopeAcceleration;
+                this.velocity.x += slopeX * slopeAcceleration * deltaTime;
+                this.velocity.z += slopeZ * slopeAcceleration * deltaTime;
+            } else {
+                // Apply friction to slow down rolling on flat surfaces
+                const frictionFactor = 1.0 - CONFIG.PHYSICS.friction * deltaTime;
+                this.velocity.x *= frictionFactor;
+                this.velocity.z *= frictionFactor;
+            }
+            
+            // Bounce with dampening if hitting the ground
+            if (this.velocity.y < 0) {
+                this.velocity.y = -this.velocity.y * CONFIG.PHYSICS.restitution;
+                
+                // If velocity is very small, stop bouncing
+                if (Math.abs(this.velocity.y) < 0.1) {
+                    this.velocity.y = 0;
+                }
+            }
+        }
+        
+        // Add world boundaries if needed
+        const worldSize = CONFIG.WORLD.size / 2;
+        if (Math.abs(this.position.x) > worldSize || Math.abs(this.position.z) > worldSize) {
+            // Stone out of bounds - can be respawned or removed
+            this.outOfBounds = true;
         }
     }
 
