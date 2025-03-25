@@ -40,7 +40,7 @@ const CONFIG = {
         shoreRadius: 0.8
     },
     PHYSICS: {
-        gravity: -9.8,
+        gravity: 9.8,
         restitution: 0.9,
         friction: 0.35,
         slopeAcceleration: 0.5
