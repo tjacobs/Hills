@@ -708,11 +708,11 @@ setInterval(() => {
                 const playerStones = Array.from(gameState.stones.values())
                     .filter(s => s.heldBy === player.playerId);
                 const stackIndex = playerStones.indexOf(stone);
-                console.log("Stack index:", stackIndex);
+
                 // Position stone in front and stack vertically
                 stone.position = {
                     x: player.position.x + (forward.x * 1.5),
-                    y: player.position.y + (-0.5 + (stackIndex * 0.5)), // Stack stones with 0.5 unit spacing
+                    y: player.position.y + (-0.5 + (stackIndex * 0.8)),
                     z: player.position.z + (forward.z * 1.5)
                 };
                 
