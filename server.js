@@ -115,6 +115,8 @@ wss.on('connection', (ws) => {
         type: 'player_left',
         playerId: playerId
     });
+
+    handleDisconnect(ws);
   });
 });
 
@@ -337,6 +339,29 @@ function handleTowerDestroyed(data) {
             towerId: towerId
         });
     }
+}
+
+function handleDisconnect(ws) {
+    // Drop all stones held by disconnecting player
+    for (const stone of gameState.stones.values()) {
+        if (stone.heldBy === ws.playerId) {
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
+            stone.velocity = { x: 0, y: 0, z: 0 }; // Let gravity take over
+            
+            // Broadcast stone drop to all clients
+            broadcastToAll({
+                type: 'stone_dropped',
+                stoneId: stone.id,
+                playerId: ws.playerId
+            });
+        }
+    }
+    
+    // Rest of disconnect handling...
 }
 
 class Terrain {
