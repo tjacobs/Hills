@@ -41,6 +41,9 @@ const CONFIG = {
     },
     PHYSICS: {
         speedMultiplier: 20     // Global physics speed multiplier
+    },
+    TOWER: {
+        baseRadius: 0.5         // Base radius for tower creation
     }
 };
 
@@ -746,12 +749,73 @@ setInterval(() => {
         stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
     });
 
-    // Log positions of first 3 stones
-    //const firstThreeStones = Array.from(gameState.stones.values()).slice(0, 3);
-    //firstThreeStones.forEach(stone => {
-    //    console.log(`Stone update: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
-    //});
+    // Check for potential tower creation
+    checkTowerCreation();
+
 }, TICK_TIME);
+
+function checkTowerCreation() {
+    // Get all static stones
+    const stationaryStones = Array.from(gameState.stones.values())
+        .filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
+    
+    // Check each stone for nearby stones
+    for (const stone of stationaryStones) {
+        // Find nearby stones
+        const nearbyStones = stationaryStones.filter(otherStone => {
+            if (otherStone === stone) return false;
+            
+            const dx = stone.position.x - otherStone.position.x;
+            const dz = stone.position.z - otherStone.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            return distance < CONFIG.TOWER.baseRadius;
+        });
+
+        // If enough stones are nearby (3 total including this one)
+        if (nearbyStones.length >= 2) {
+            // Calculate average position
+            const position = {
+                x: stone.position.x,
+                y: stone.position.y,
+                z: stone.position.z
+            };
+            
+            nearbyStones.forEach(nearbyStone => {
+                position.x += nearbyStone.position.x;
+                position.y += nearbyStone.position.y;
+                position.z += nearbyStone.position.z;
+            });
+            
+            position.x /= (nearbyStones.length + 1);
+            position.y /= (nearbyStones.length + 1);
+            position.z /= (nearbyStones.length + 1);
+
+            // Create tower
+            const tower = {
+                id: crypto.randomUUID(),
+                position: position,
+                level: 1
+            };
+            
+            // Remove used stones
+            const usedStones = [stone, ...nearbyStones];
+            usedStones.forEach(s => gameState.stones.delete(s.id));
+            
+            // Add tower
+            gameState.towers.push(tower);
+            
+            // Notify all clients
+            broadcastToAll({
+                type: 'tower_created',
+                tower: tower,
+                removedStones: usedStones.map(s => s.id)
+            });
+            
+            break; // Only create one tower per tick
+        }
+    }
+}
 
 // Start server
 server.listen(port, () => {
