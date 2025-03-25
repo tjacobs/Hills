@@ -23,28 +23,25 @@ const connections = new Map();
 // Game configuration
 const CONFIG = {
     STONE: {
-        maxCount: 200,
-        bounce: 0.9,
-        friction: 0.35,
-        rollFactor: 0.25,
-        maxVelocity: 0.5,
-        stopThreshold: 0.05,
-        waveStrength: 0.05
+        maxCount: 200,          // Maximum number of stones in world
+        bounce: 0.9,            // How bouncy stones are on collision
+        friction: 0.35,         // Ground friction coefficient
+        rollFactor: 0.25,       // How easily stones roll on slopes
+        maxVelocity: 0.5,       // Maximum stone velocity
+        stopThreshold: 0.05,    // Velocity threshold for coming to rest
+        waveStrength: 0.05,     // Strength of water wave effect
+        radius: 0.5             // Stone collision radius
     },
     WORLD: {
-        gravity: -9.8,
-        size: 200,
-        maxTerrainHeight: 5,
-        terrainXScale: 8,
-        terrainYScale: 8,
-        shoreRadius: 0.8
+        gravity: -9.8,          // World gravity constant
+        size: 200,              // World size (ground plane dimensions)
+        maxTerrainHeight: 5,    // Maximum height of terrain
+        terrainXScale: 8,       // Terrain scale X
+        terrainYScale: 8,       // Terrain scale Z
+        shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
-        gravity: 9.8,
-        restitution: 0.9,
-        friction: 0.35,
-        slopeAcceleration: 0.5,
-        speedMultiplier: 10
+        speedMultiplier: 10     // Global physics speed multiplier
     }
 };
 
