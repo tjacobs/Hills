@@ -47,6 +47,9 @@ const CONFIG = {
     }
 };
 
+// Add this near the top of the file to see the configuration
+console.log("CONFIG.STONE.stopThreshold =", CONFIG.STONE.stopThreshold);
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   let playerId = null;
@@ -610,15 +613,24 @@ class Stone {
             this.velocity.z * this.velocity.z
         );
         
-        // Log velocity and static status
-        if (velocityMagnitude < 0.1) {
-            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(4)}, isStatic: ${this.isStatic}`);
+        // Log more detailed information about stones with low velocity
+        if (velocityMagnitude < 0.2) {
+            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(4)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
+            
+            // Log individual velocity components
+            console.log(`  Velocity components: x=${this.velocity.x.toFixed(4)}, y=${this.velocity.y.toFixed(4)}, z=${this.velocity.z.toFixed(4)}`);
         }
         
-        // Mark as static if velocity is below threshold
+        // Mark as static if velocity is below threshold and not thrown recently
         if (velocityMagnitude < CONFIG.STONE.stopThreshold && !this.isStatic) {
-            console.log(`Stone ${this.id} has come to rest, marking as static`);
-            this.isStatic = true;
+            // If stone was thrown, make sure it's been at least 1 second
+            const canBeStatic = !this.isThrown || (Date.now() - this.throwTime > 1000);
+            
+            if (canBeStatic) {
+                console.log(`Stone ${this.id} has come to rest, marking as static`);
+                this.isStatic = true;
+                this.isThrown = false; // Reset thrown flag when it becomes static
+            }
         } else if (velocityMagnitude >= CONFIG.STONE.stopThreshold && this.isStatic) {
             console.log(`Stone ${this.id} is moving again, no longer static`);
             this.isStatic = false;
