@@ -1,4 +1,6 @@
-// Stone entity with exact original appearance from main.js
+// Static texture loader
+const stoneTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
+
 class Stone {
     constructor(id = null, position = null, velocity = null) {
         this.id = id || Math.random().toString(36).substr(2, 9);
@@ -18,15 +20,11 @@ class Stone {
             CONFIG.STONE.depth
         );
         
-        // Load texture from Three.js examples
-        const textureLoader = new THREE.TextureLoader();
-        const stoneTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg');
-        
         const material = new THREE.MeshStandardMaterial({
             roughness: 0.9,
             metalness: 0.1,
             color: 0x808080,
-            bumpMap: stoneTexture,
+            bumpMap: stoneTexture,  // Use the pre-loaded texture
             bumpScale: 0.5
         });
         
