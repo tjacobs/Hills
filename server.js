@@ -44,7 +44,7 @@ const CONFIG = {
         restitution: 0.9,
         friction: 0.35,
         slopeAcceleration: 0.5,
-        speedMultiplier: 50
+        speedMultiplier: 10
     }
 };
 
@@ -423,17 +423,18 @@ class Stone {
         if (this.isHeld) return;
         
         const multiplier = CONFIG.PHYSICS.speedMultiplier;
+        const gravityMultiplier = multiplier * 0.2; // Reduce gravity effect to 20% of the speed multiplier
         
         // Store previous position for rotation calculation
         const prevX = this.position.x;
         const prevZ = this.position.z;
         
-        // Apply gravity (increase gravity effect)
-        this.velocity.y += CONFIG.WORLD.gravity * deltaTime * multiplier;
+        // Apply gravity with reduced multiplier
+        this.velocity.y += CONFIG.WORLD.gravity * deltaTime * gravityMultiplier;
         
-        // Update position (increase velocity effect)
+        // Update position - use full multiplier for X and Z, reduced for Y
         this.position.x += this.velocity.x * deltaTime * multiplier;
-        this.position.y += this.velocity.y * deltaTime * multiplier;
+        this.position.y += this.velocity.y * deltaTime * gravityMultiplier;
         this.position.z += this.velocity.z * deltaTime * multiplier;
         
         // Calculate movement direction and speed for rotation
