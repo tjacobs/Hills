@@ -759,6 +759,8 @@ function checkTowerCreation() {
     const stationaryStones = Array.from(gameState.stones.values())
         .filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
     
+    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
+    
     // Check each stone for nearby stones
     for (const stone of stationaryStones) {
         // Find nearby stones
@@ -772,8 +774,12 @@ function checkTowerCreation() {
             return distance < CONFIG.TOWER.baseRadius;
         });
 
+        console.log(`Stone ${stone.id} has ${nearbyStones.length} nearby stones (need 2+)`);
+
         // If enough stones are nearby (3 total including this one)
         if (nearbyStones.length >= 2) {
+            console.log(`Creating tower from ${nearbyStones.length + 1} stones`);
+            
             // Calculate average position
             const position = {
                 x: stone.position.x,
@@ -791,6 +797,8 @@ function checkTowerCreation() {
             position.y /= (nearbyStones.length + 1);
             position.z /= (nearbyStones.length + 1);
 
+            console.log(`Tower position: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+
             // Create tower
             const tower = {
                 id: crypto.randomUUID(),
@@ -800,17 +808,23 @@ function checkTowerCreation() {
             
             // Remove used stones
             const usedStones = [stone, ...nearbyStones];
-            usedStones.forEach(s => gameState.stones.delete(s.id));
+            usedStones.forEach(s => {
+                console.log(`Removing stone ${s.id} from game state`);
+                gameState.stones.delete(s.id);
+            });
             
             // Add tower
             gameState.towers.push(tower);
+            console.log(`Added tower ${tower.id} to game state, total towers: ${gameState.towers.length}`);
             
             // Notify all clients
-            broadcastToAll({
+            const message = {
                 type: 'tower_created',
                 tower: tower,
                 removedStones: usedStones.map(s => s.id)
-            });
+            };
+            console.log('Broadcasting tower creation:', message);
+            broadcastToAll(message);
             
             break; // Only create one tower per tick
         }
