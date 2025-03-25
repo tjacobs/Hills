@@ -579,15 +579,29 @@ const Game = {
     },
 
     clearAllStones() {
-        // Remove all stone meshes from the scene
+        // Remove all stone meshes from the scene and dispose of resources
         this.stones.forEach(stone => {
             if (stone.mesh) {
+                // Remove from scene
                 this.scene.remove(stone.mesh);
+                
+                // Dispose of geometry and materials
+                if (stone.mesh.geometry) stone.mesh.geometry.dispose();
+                if (stone.mesh.material) {
+                    if (Array.isArray(stone.mesh.material)) {
+                        stone.mesh.material.forEach(material => material.dispose());
+                    } else {
+                        stone.mesh.material.dispose();
+                    }
+                }
             }
         });
         
         // Clear the stones array
         this.stones = [];
+        
+        // Update UI to reflect zero stones
+        updateUI();
     }
 };
 
