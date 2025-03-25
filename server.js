@@ -25,8 +25,7 @@ const CONFIG = {
     STONE: {
         maxCount: 200,          // Maximum number of stones in world
         bounce: 0.9,            // How bouncy stones are on collision
-        friction: 0.75,         // Ground friction coefficient
-        rollFactor: 0.15,       // How easily stones roll on slopes
+        rollFactor: 0.05,       // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
         stopThreshold: 0.05,    // Velocity threshold for coming to rest
         waveStrength: 0.05,     // Strength of water wave effect
@@ -567,7 +566,7 @@ class Stone {
             }
             
             // Apply friction based on slope
-            const frictionFactor = Math.max(0.5, 0.8 - slopeMagnitude * multiplier);
+            const frictionFactor = Math.max(0.9, 0.8 - slopeMagnitude * multiplier);
             this.velocity.x *= frictionFactor;
             this.velocity.z *= frictionFactor;
             
