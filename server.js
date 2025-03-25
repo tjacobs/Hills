@@ -649,6 +649,30 @@ setInterval(() => {
     const deltaTime = (now - lastUpdate) / 1000;
     lastUpdate = now;
 
+    // Update held stones positions based on their holders
+    for (const stone of gameState.stones.values()) {
+        if (stone.isHeld && stone.heldBy) {
+            const player = gameState.players[stone.heldBy];
+            if (player) {
+                // Calculate position in front of player
+                const forward = {
+                    x: -Math.sin(player.rotation.y),
+                    y: 0,
+                    z: -Math.cos(player.rotation.y)
+                };
+                
+                // Position stone in front and slightly up from player
+                stone.position = {
+                    x: player.position.x + (forward.x * 2),
+                    y: player.position.y + 1,
+                    z: player.position.z + (forward.z * 2)
+                };
+                
+                stone.velocity = { x: 0, y: 0, z: 0 };
+            }
+        }
+    }
+
     // Check if we should spawn a new stone
     if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
         gameState.stones.size < CONFIG.STONE.maxCount) {
