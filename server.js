@@ -267,12 +267,29 @@ function handleTowerCreated(ws, data) {
 
 // Handle stone messages
 function handleStonePickup(data) {
+    console.log('Stone pickup request:', {
+        stoneId: data.stoneId,
+        playerId: data.playerId
+    });
+    
     const stone = gameState.stones.get(data.stoneId);
+    console.log('Found stone:', stone ? 'yes' : 'no');
+    
+    if (stone) {
+        console.log('Stone state:', {
+            isHeld: stone.isHeld,
+            heldBy: stone.heldBy,
+            isStatic: stone.isStatic
+        });
+    }
+    
     if (stone && !stone.isHeld) {
         stone.isHeld = true;
         stone.heldBy = data.playerId;
         stone.isStatic = false;
         stone.velocity = { x: 0, y: 0, z: 0 };
+        
+        console.log('Stone pickup successful, broadcasting to all');
         
         broadcastToAll({
             type: 'stone_pickup',
