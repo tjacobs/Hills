@@ -446,16 +446,9 @@ const Network = {
             stone.heldBy = data.playerId;
             stone.isStatic = false;
             
-            // Add stone to local player's held stones if we picked it up
+            // Only track held stones for local player
             if (data.playerId === Game.localPlayer.id) {
                 Game.localPlayer.addHeldStone(stone);
-            }
-            // If another player picked up the stone
-            else {
-                const player = Game.getPlayerById(data.playerId);
-                if (player) {
-                    player.addHeldStone(stone);
-                }
             }
         }
     },
@@ -498,12 +491,9 @@ const Network = {
             stone.throwTime = Date.now();
             stone.isStatic = false;
             
-            // If another player threw the stone
-            if (data.playerId !== Game.localPlayer.id) {
-                const player = Game.getPlayerById(data.playerId);
-                if (player) {
-                    player.removeHeldStone(stone);
-                }
+            // Only remove from local player's held stones
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.removeHeldStone(stone);
             }
         }
     },
@@ -674,27 +664,6 @@ const Network = {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
             Game.removeTower(tower);
-        }
-    },
-    
-    handleStoneThrow(data) {
-        const stone = Game.getStoneById(data.stoneId);
-        if (stone) {
-            stone.position.copy(data.position);
-            stone.velocity.copy(data.velocity);
-            stone.isHeld = false;
-            stone.heldBy = null;
-            stone.isThrown = true;
-            stone.throwTime = Date.now();
-            stone.isStatic = false;
-            
-            // If another player threw the stone
-            if (data.playerId !== Game.localPlayer.id) {
-                const player = Game.getPlayerById(data.playerId);
-                if (player) {
-                    player.removeHeldStone(stone);
-                }
-            }
         }
     },
     
