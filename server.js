@@ -567,26 +567,49 @@ class Stone {
 
 // Function to create a random stone at the beach
 function createRandomStone() {
-    const spawnRadius = 100;
-    const spawnHeight = 10;  // Fixed height above ground
+    const worldSize = CONFIG.WORLD.size;
+    const shoreRadius = CONFIG.WORLD.shoreRadius;
+    const spawnHeight = -5;  // Start below water
+    const upwardVelocity = 0.8;  // Initial upward velocity
     
-    const position = {
-        x: Math.random() * spawnRadius * 2 - spawnRadius,
-        y: spawnHeight,
-        z: Math.random() * spawnRadius * 2 - spawnRadius
-    };
+    // Choose a random edge (0-3: North, East, South, West)
+    const edge = Math.floor(Math.random() * 4);
     
-    const velocity = {
-        x: 0,
-        y: 0,
-        z: 0
-    };
+    // Calculate spawn position based on chosen edge
+    let position = { x: 0, y: spawnHeight, z: 0 };
+    let velocity = { x: 0, y: upwardVelocity, z: 0 };
     
-    // Create stone
+    const edgeDistance = (worldSize / 2) * shoreRadius * 1.1; // Slightly outside shore radius
+    const randomOffset = (Math.random() - 0.5) * worldSize * 0.5; // Random position along edge
+    
+    switch(edge) {
+        case 0: // North
+            position.z = -edgeDistance;
+            position.x = randomOffset;
+            velocity.z = 0.2;
+            break;
+        case 1: // East
+            position.x = edgeDistance;
+            position.z = randomOffset;
+            velocity.x = -0.2;
+            break;
+        case 2: // South
+            position.z = edgeDistance;
+            position.x = randomOffset;
+            velocity.z = -0.2;
+            break;
+        case 3: // West
+            position.x = -edgeDistance;
+            position.z = randomOffset;
+            velocity.x = 0.2;
+            break;
+    }
+    
+    // Create stone with position and initial velocity
     const stone = new Stone(null, position, velocity);
     
     // Log initial position
-    //console.log(`New stone created: id=${stone.id} pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+    console.log(`New stone spawned at edge ${edge}: pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
     
     return stone;
 }
@@ -613,7 +636,6 @@ setInterval(() => {
     if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
         gameState.stones.size < CONFIG.STONE.maxCount) {
         const stone = createRandomStone();
-        console.log(`Stone spawned: id=${stone.id} pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
