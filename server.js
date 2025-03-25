@@ -25,7 +25,7 @@ const CONFIG = {
     STONE: {
         maxCount: 200,          // Maximum number of stones in world
         bounce: 0.9,            // How bouncy stones are on collision
-        rollFactor: 0.05,       // How easily stones roll on slopes
+        rollFactor: 0.25,       // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
         stopThreshold: 0.05,    // Velocity threshold for coming to rest
         waveStrength: 0.05,     // Strength of water wave effect
@@ -40,7 +40,7 @@ const CONFIG = {
         shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
-        speedMultiplier: 20     // Global physics speed multiplier
+        speedMultiplier: 10     // Global physics speed multiplier
     }
 };
 
