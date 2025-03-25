@@ -569,8 +569,8 @@ class Stone {
 function createRandomStone() {
     const worldSize = CONFIG.WORLD.size;
     const shoreRadius = CONFIG.WORLD.shoreRadius;
-    const spawnHeight = -5;  // Start below water
-    const upwardVelocity = 0.8;  // Initial upward velocity
+    const spawnHeight = -8;  // Start deeper below water
+    const upwardVelocity = 1.2;  // Stronger upward velocity
     
     // Choose a random edge (0-3: North, East, South, West)
     const edge = Math.floor(Math.random() * 4);
@@ -579,29 +579,29 @@ function createRandomStone() {
     let position = { x: 0, y: spawnHeight, z: 0 };
     let velocity = { x: 0, y: upwardVelocity, z: 0 };
     
-    const edgeDistance = (worldSize / 2) * shoreRadius * 1.1; // Slightly outside shore radius
-    const randomOffset = (Math.random() - 0.5) * worldSize * 0.5; // Random position along edge
+    const edgeDistance = (worldSize / 2) * shoreRadius * 1.4; // Much further out from shore
+    const randomOffset = (Math.random() - 0.5) * worldSize * 0.6; // Wider spread along edge
     
     switch(edge) {
         case 0: // North
             position.z = -edgeDistance;
             position.x = randomOffset;
-            velocity.z = 0.2;
+            velocity.z = 0.4; // Faster inward velocity
             break;
         case 1: // East
             position.x = edgeDistance;
             position.z = randomOffset;
-            velocity.x = -0.2;
+            velocity.x = -0.4;
             break;
         case 2: // South
             position.z = edgeDistance;
             position.x = randomOffset;
-            velocity.z = -0.2;
+            velocity.z = -0.4;
             break;
         case 3: // West
             position.x = -edgeDistance;
             position.z = randomOffset;
-            velocity.x = 0.2;
+            velocity.x = 0.4;
             break;
     }
     
