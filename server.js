@@ -80,7 +80,7 @@ wss.on('connection', (ws) => {
           handleStonePickup({ ...data, playerId: ws.playerId });
           break;
         case 'stone_throw':
-          handleStoneThrow(data);
+          handleStoneThrow(ws, data);
           break;
         case 'tower_update':
           handleTowerUpdate(ws, { ...data, playerId });
@@ -299,9 +299,13 @@ function handleStonePickup(data) {
     }
 }
 
-function handleStoneThrow(data) {
+function handleStoneThrow(ws, data) {
     const stone = gameState.stones.get(data.stoneId);
-    if (stone && stone.isHeld && stone.heldBy === data.playerId) {
+    console.log('Stone throw request:', {
+        stoneId: data.stoneId,
+        playerId: data.playerId
+    });
+    if (stone && stone.heldBy === ws.playerId) {
         stone.position = data.position;
         stone.velocity = data.velocity;
         stone.isHeld = false;
@@ -309,10 +313,11 @@ function handleStoneThrow(data) {
         stone.isThrown = true;
         stone.throwTime = Date.now();
         stone.isStatic = false;
-        
+       console.log('Stone thrown:', stone.id);
         broadcastToAll({
             type: 'stone_throw',
             stoneId: stone.id,
+            playerId: ws.playerId,
             position: stone.position,
             velocity: stone.velocity
         });
