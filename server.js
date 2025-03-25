@@ -603,13 +603,24 @@ class Stone {
             this.velocity.z *= scale;
         }
         
-        // Check if stone has stopped
-        if (Math.abs(this.velocity.x) < CONFIG.STONE.stopThreshold && 
-            Math.abs(this.velocity.y) < CONFIG.STONE.stopThreshold && 
-            Math.abs(this.velocity.z) < CONFIG.STONE.stopThreshold) {
-            this.velocity = { x: 0, y: 0, z: 0 };
+        // Check if stone has come to rest
+        const velocityMagnitude = Math.sqrt(
+            this.velocity.x * this.velocity.x + 
+            this.velocity.y * this.velocity.y + 
+            this.velocity.z * this.velocity.z
+        );
+        
+        // Log velocity and static status
+        if (velocityMagnitude < 0.1) {
+            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(4)}, isStatic: ${this.isStatic}`);
+        }
+        
+        // Mark as static if velocity is below threshold
+        if (velocityMagnitude < CONFIG.STONE.stopThreshold && !this.isStatic) {
+            console.log(`Stone ${this.id} has come to rest, marking as static`);
             this.isStatic = true;
-        } else {
+        } else if (velocityMagnitude >= CONFIG.STONE.stopThreshold && this.isStatic) {
+            console.log(`Stone ${this.id} is moving again, no longer static`);
             this.isStatic = false;
         }
     }
