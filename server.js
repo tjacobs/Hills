@@ -770,7 +770,7 @@ function checkTowerCreation() {
     const stationaryStones = Array.from(gameState.stones.values())
         .filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
     
-    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
+//    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
     
     // Check each stone for nearby stones
     for (const stone of stationaryStones) {
