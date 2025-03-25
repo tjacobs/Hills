@@ -705,16 +705,16 @@ setInterval(() => {
                     z: -Math.cos(player.rotation.y)
                 };
                 
-                // Get all stones held by this player
+                // Get all stones held by this player in order
                 const playerStones = Array.from(gameState.stones.values())
                     .filter(s => s.heldBy === player.playerId);
                 const stackIndex = playerStones.indexOf(stone);
-                
-                // Position stone in front and slightly up from player, stacked vertically
+                console.log("Stack index:", stackIndex);
+                // Position stone in front and stack vertically
                 stone.position = {
-                    x: player.position.x + (forward.x * 1),
-                    y: player.position.y - 1 + (stackIndex * 0.5), // Stack stones with 0.5 unit spacing
-                    z: player.position.z + (forward.z * 1)
+                    x: player.position.x + (forward.x * 1.5),
+                    y: player.position.y + (-0.5 + (stackIndex * 0.5)), // Stack stones with 0.5 unit spacing
+                    z: player.position.z + (forward.z * 1.5)
                 };
                 
                 stone.velocity = { x: 0, y: 0, z: 0 };
