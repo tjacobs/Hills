@@ -33,7 +33,7 @@ const CONFIG = {
         depth: 0.8,
 
         // Maximum number of stones player can hold
-        maxHeld: 1,
+        maxHeld: 5,
 
         // Physics parameters
         gravity: -9.8,
