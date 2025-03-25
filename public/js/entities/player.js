@@ -561,7 +561,8 @@ class LocalPlayer extends Player {
             velocity: velocity
         });
         
-        console.log('Throwing stone:', stone.id);
+        // Set last throw time to prevent immediate pickup
+        this.lastThrowTime = Date.now();
         
         // Remove from held stones (server will confirm)
         this.removeHeldStone(stone);
@@ -646,5 +647,20 @@ class LocalPlayer extends Player {
             // Match player's rotation
             stone.mesh.rotation.copy(this.rotation);
         });
+    }
+
+    addHeldStone(stone) {
+        if (this.heldStones.length >= this.maxStones) return false;
+        if (stone.isHeld && stone.heldBy !== this.id) return false;
+        
+        this.heldStones.push(stone);
+        stone.isHeld = true;
+        stone.heldBy = this.id;
+        stone.isStatic = false;
+        
+        // Update positions of held stones
+        this.updateHeldStonesPositions();
+        
+        return true;
     }
 }
