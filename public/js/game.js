@@ -576,6 +576,18 @@ const Game = {
             }
             updateUI(); // Update counts immediately
         }
+    },
+
+    clearAllStones() {
+        // Remove all stone meshes from the scene
+        this.stones.forEach(stone => {
+            if (stone.mesh) {
+                this.scene.remove(stone.mesh);
+            }
+        });
+        
+        // Clear the stones array
+        this.stones = [];
     }
 };
 

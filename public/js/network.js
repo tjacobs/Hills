@@ -691,9 +691,14 @@ const Network = {
     },
     
     disconnect() {
-        if (this.socket && this.isConnected) {
+        if (this.socket) {
             this.socket.close();
-            this.isConnected = false;
+            this.socket = null;
+            
+            // Clear all stones from the game
+            Game.clearAllStones();
+            
+            console.log('Disconnected from server');
         }
     }
 }; 
