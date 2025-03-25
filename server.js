@@ -41,7 +41,7 @@ const CONFIG = {
         shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
-        speedMultiplier: 10     // Global physics speed multiplier
+        speedMultiplier: 20     // Global physics speed multiplier
     }
 };
 
@@ -420,8 +420,8 @@ class Stone {
         if (this.isHeld) return;
         
         const multiplier = CONFIG.PHYSICS.speedMultiplier;
-        const gravityMultiplier = multiplier * 0.2; // Reduce gravity effect to 20% of the speed multiplier
-        
+        const gravityMultiplier = multiplier * 0.5;
+
         // Store previous position for rotation calculation
         const prevX = this.position.x;
         const prevZ = this.position.z;
