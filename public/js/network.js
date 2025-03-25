@@ -104,6 +104,9 @@ const Network = {
                     case 'stone_throw':
                         this.handleStoneThrow(data);
                         break;
+                    case 'player_disconnected':
+                        this.handlePlayerDisconnected(data);
+                        break;
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }
@@ -692,6 +695,23 @@ const Network = {
                     player.removeHeldStone(stone);
                 }
             }
+        }
+    },
+    
+    handlePlayerDisconnected(data) {
+        const player = Game.getPlayerById(data.playerId);
+        if (player) {
+            // Drop all stones held by disconnected player
+            player.heldStones.forEach(stone => {
+                stone.isHeld = false;
+                stone.heldBy = null;
+                stone.isThrown = true;
+                stone.throwTime = Date.now();
+                stone.isStatic = false;
+            });
+            
+            // Remove player from game
+            Game.removePlayer(data.playerId);
         }
     },
     
