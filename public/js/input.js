@@ -157,7 +157,7 @@ const Input = {
     handleMouseDown(event) {
         if (event.button === 0) {
             // Left click - throw stone
-            this.handleThrow();
+            Game.localPlayer.handleSpaceBar();
         }
     },
     
@@ -178,48 +178,6 @@ const Input = {
         return;
     },
     
-    // Handle pickup action
-    handlePickup() {
-        if (!Game.localPlayer) return;
-        
-        // Check if player can pick up more stones
-        if (Game.localPlayer.heldStones.length >= CONFIG.STONE.maxHeld) {
-            return;
-        }
-        
-        // Find nearest stone
-        let nearestStone = null;
-        let nearestDistance = Infinity;
-        
-        for (const stone of Game.stones) {
-            // Skip stones that are already held or in motion
-            if (stone.isHeld || stone.isThrown || !stone.isStatic) continue;
-            
-            // Calculate distance to stone
-            const distance = Game.localPlayer.position.distanceTo(stone.mesh.position);
-            
-            // Update nearest stone if this one is closer
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestStone = stone;
-            }
-        }
-        
-        // If a stone is found and is close enough
-        if (nearestStone && nearestDistance < 2) {
-            Game.localPlayer.pickupStone(nearestStone);
-        }
-    },
-    
-    // Handle throw action
-    handleThrow() {
-        if (!Game.localPlayer) return;
-        
-        // Check if player has stones to throw
-        if (Game.localPlayer.heldStones.length > 0) {
-            Game.localPlayer.throwStone();
-        }
-    },
     
     handleTouchStart(event) {
         event.preventDefault();
