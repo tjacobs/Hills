@@ -39,6 +39,7 @@ const CONFIG = {
         terrainXScale: 8,       // Terrain scale X
         terrainYScale: 8,       // Terrain scale Z
         minTerrainHeight: -2,   // Minimum height of terrain
+        edgeFalloff: 5,         // Edge falloff factor for terrain
         shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
@@ -342,8 +343,8 @@ class Terrain {
                 // Calculate distance from center (0 to 1)
                 const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
                 
-                // Create sharper edge falloff factor (1 in center, 0 at edges)
-                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
+                // Create edge falloff factor
+                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, CONFIG.WORLD.edgeFalloff));
                 
                 // Use the same formula as we want in game.js
                 const xs = CONFIG.WORLD.terrainXScale;

@@ -203,7 +203,7 @@ const Game = {
                 const distFromCenter = Math.max(Math.abs(nx), Math.abs(ny));
                 
                 // Create sharper edge falloff factor (1 in center, 0 at edges)
-                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, 3));
+                const edgeFalloff = Math.max(0, 1 - Math.pow(distFromCenter * 1.0, CONFIG.WORLD.edgeFalloff));
                 
                 // Apply height with edge falloff and ensure minimum height
                 vertices[index + 2] = Math.max(CONFIG.WORLD.minTerrainHeight, Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff);
