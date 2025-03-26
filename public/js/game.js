@@ -441,11 +441,6 @@ const Game = {
             } else {
                 log(`A level ${tower.level} tower was created!`, 'info');
             }
-            
-            // Notify network if needed
-            if (notifyNetwork) {
-                Network.sendTowerCreated(tower);
-            }
         }
         return tower;
     },

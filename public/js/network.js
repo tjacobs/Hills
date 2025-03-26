@@ -300,10 +300,10 @@ const Network = {
         // Update towers
         if (message.towers && Array.isArray(message.towers)) {
             // Clear existing towers
-            for (const tower of Game.towers) {
-                Game.scene.remove(tower.mesh);
-            }
-            Game.towers = [];
+//            for (const tower of Game.towers) {
+//                Game.scene.remove(tower.mesh);
+//            }
+//            Game.towers = [];
             
             // Add new towers
             for (const towerData of message.towers) {
