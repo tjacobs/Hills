@@ -644,7 +644,7 @@ const Network = {
     handleTowerUpdate(message) {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
-            // Use the new updateFromData method
+            // Update tower
             tower.updateFromData(message);
             
             // Remove the stone that was used to level up
