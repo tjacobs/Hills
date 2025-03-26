@@ -222,13 +222,13 @@ function handleStonePickup(data) {
         stone.heldBy = data.playerId;
         stone.isStatic = false;
         stone.velocity = { x: 0, y: 0, z: 0 };
+        stone.rotation = { x: 0, y: 0, z: 0 };
 
-        // Needed?
-//        broadcastToAll({
-//            type: 'stone_pickup',
-//            stoneId: stone.id,
-//            playerId: data.playerId
-//        });
+        broadcastToAll({
+            type: 'stone_pickup',
+            stoneId: stone.id,
+            playerId: data.playerId
+        });
     }
 }
 
@@ -607,7 +607,7 @@ setInterval(() => {
                 // Position stone in front and stack vertically
                 stone.position = {
                     x: player.position.x + (-Math.sin(player.rotation.y) * 1.2),
-                    y: player.position.y + (-1.5 + (stackIndex * 1.0)),
+                    y: player.position.y + (-1.5 + (stackIndex * 0.9)),
                     z: player.position.z + (-Math.cos(player.rotation.y) * 1.2)
                 };
                 stone.velocity = { x: 0, y: 0, z: 0 };
