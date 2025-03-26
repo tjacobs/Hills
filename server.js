@@ -23,7 +23,7 @@ const connections = new Map();
 // Game configuration
 const CONFIG = {
     STONE: {
-        maxCount: 50,           // Maximum number of stones in world
+        maxCount: 10,           // Maximum number of stones in world
         bounce: 0.5,            // How bouncy stones are on collision
         friction: 0.7,          // How much friction stones have
         rollFactor: 0.5,        // How easily stones roll on slopes
@@ -631,7 +631,7 @@ setInterval(() => {
     }
 
     // Check for potential tower creation
-//    checkTowerCreation();
+    checkTowerCreation();
 
     // Broadcast stone positions
     broadcastToAll({
@@ -640,7 +640,7 @@ setInterval(() => {
     });
 
     // Log stone states every 10 seconds
-    if (now % 10000 < TICK_TIME) {
+    if (false &&now % 10000 < TICK_TIME) {
         const totalStones = gameState.stones.size;
         const heldStones = Array.from(gameState.stones.values()).filter(s => s.isHeld).length;
         const staticStones = Array.from(gameState.stones.values()).filter(s => s.isStatic).length;
@@ -650,8 +650,8 @@ setInterval(() => {
 }, TICK_TIME);
 
 function checkTowerCreation() {
-    // Get all static stones
-    const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
+    // Get all static thrown stones
+    const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && stone.isThrown && stone.isStatic);
     
     // Log details of stationary stones if there are any
     if (stationaryStones.length > 0) {
@@ -665,11 +665,9 @@ function checkTowerCreation() {
         // Find nearby stones
         const nearbyStones = stationaryStones.filter(otherStone => {
             if (otherStone === stone) return false;
-            
             const dx = stone.position.x - otherStone.position.x;
             const dz = stone.position.z - otherStone.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
-            
             return distance < CONFIG.TOWER.baseRadius;
         });
 
@@ -704,7 +702,7 @@ function checkTowerCreation() {
 
             // Create tower
             const tower = {
-                id: crypto.randomUUID(),
+                id: Math.random().toString(36).substr(2, 9),
                 position: position,
                 level: 1
             };
@@ -729,7 +727,8 @@ function checkTowerCreation() {
             console.log('Broadcasting tower creation:', message);
             broadcastToAll(message);
             
-            break; // Only create one tower per tick
+            // Only create one tower for now
+            break; 
         }
     }
 }
