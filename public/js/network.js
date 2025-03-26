@@ -433,7 +433,7 @@ const Network = {
         const tower = Tower.fromJSON(message.tower);
         
         // Add to game
-        Game.addTower(tower, false); // Don't notify network
+        Game.addTower(tower, false);
         
         // Update UI
         updateUI();
@@ -663,11 +663,27 @@ const Network = {
     handleTowerUpdate(message) {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
-            tower.updateFromData(message);
-        } else {
-            // Create new tower if it doesn't exist
-            const newTower = Tower.fromJSON(message);
-            Game.addTower(newTower);
+            // Update tower level directly
+            tower.level = message.newLevel;
+            
+            // Update tower mesh if needed
+            if (tower.updateMesh) {
+                tower.updateMesh();
+            }
+            
+            // Remove the stone that was used to level up
+            if (message.removedStoneId) {
+                const stone = Game.getStoneById(message.removedStoneId);
+                if (stone) {
+                    Game.removeStone(stone);
+                }
+            }
+            
+            // Log the level up
+            log(`Tower leveled up to level ${message.newLevel}!`, 'info');
+            
+            // Update UI
+            updateUI();
         }
     },
     
