@@ -50,7 +50,11 @@ const Network = {
     
     setupSocketHandlers() {
         this.socket.onclose = () => this.handleDisconnect();
-        this.socket.onerror = (error) => console.error('WebSocket error:', error);
+        this.socket.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            // Clear stones on socket error as well
+            Game.clearAllStones();
+        };
         
         this.socket.onmessage = (event) => {
             try {
@@ -116,6 +120,9 @@ const Network = {
     handleDisconnect() {
         console.log('Disconnected from server');
         this.isConnected = false;
+        
+        // Clear all stones immediately on disconnect
+        Game.clearAllStones();
         
         // Try to reconnect
         if (this.reconnectAttempts < CONFIG.NETWORK.maxReconnectAttempts) {
@@ -683,13 +690,14 @@ const Network = {
     
     disconnect() {
         if (this.socket) {
-            this.socket.close();
-            this.socket = null;
+            this.socket.disconnect();
+            this.isConnected = false;
             
-            // Clear all stones from the game
+            // Clear all stones when disconnected
             Game.clearAllStones();
             
-            console.log('Disconnected from server');
+            // Log disconnection
+            log('Disconnected from server', 'error');
         }
     }
 }; 
