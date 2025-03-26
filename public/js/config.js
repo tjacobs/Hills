@@ -4,6 +4,7 @@ const CONFIG = {
     PLAYER: {
         height: 1.7,
         radius: 0.5,
+        stonePickupRadius: 8,
         baseHeight: 3,            // Default height above ground
         
         // Movement parameters
