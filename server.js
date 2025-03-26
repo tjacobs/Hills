@@ -350,7 +350,7 @@ class Terrain {
                 const maxHeight = CONFIG.WORLD.maxTerrainHeight;
                 
                 // Two-dimensional hills with both sine functions
-                this.heightMap[i][j] = Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff;
+                this.heightMap[i][j] = Math.max(-4, Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff);
             }
         }
     }
