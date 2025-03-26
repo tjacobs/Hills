@@ -29,7 +29,7 @@ class Cloud {
             opacity: 0.7,
             side: THREE.DoubleSide,
             depthWrite: false,
-            blending: THREE.AdditiveBlending,  // Use additive blending for the glow effect
+            blending: THREE.AdditiveBlending,
             color: 0xffffff
         });
         
