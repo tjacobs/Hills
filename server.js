@@ -640,7 +640,7 @@ setInterval(() => {
     });
 
     // Log stone states every 10 seconds
-    if (false &&now % 10000 < TICK_TIME) {
+    if (false && now % 10000 < TICK_TIME) {
         const totalStones = gameState.stones.size;
         const heldStones = Array.from(gameState.stones.values()).filter(s => s.isHeld).length;
         const staticStones = Array.from(gameState.stones.values()).filter(s => s.isStatic).length;
@@ -653,18 +653,49 @@ function checkTowerCreation() {
     // Get all static thrown stones
     const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && stone.isThrown && stone.isStatic);
     
-    // Log details of stationary stones if there are any
-    if (stationaryStones.length > 0) {
-        stationaryStones.forEach(stone => {
-//            console.log(`  Stationary stone ${stone.id}: pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
-        });
+    // First check for stones near existing towers
+    for (const stone of stationaryStones) {
+        // Check each tower
+        for (let i = 0; i < gameState.towers.length; i++) {
+            const tower = gameState.towers[i];
+            
+            // Calculate distance to tower
+            const dx = stone.position.x - tower.position.x;
+            const dz = stone.position.z - tower.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            // If stone is close enough to tower
+            if (distance < CONFIG.TOWER.baseRadius) {
+                console.log(`Stone ${stone.id} landed near tower ${tower.id}, leveling up tower`);
+                
+                // Level up tower
+                tower.level += 1;
+                
+                // Remove the stone
+                gameState.stones.delete(stone.id);
+                
+                // Notify all clients
+                broadcastToAll({
+                    type: 'tower_updated',
+                    towerId: tower.id,
+                    newLevel: tower.level,
+                    removedStoneId: stone.id
+                });
+                
+                // Skip to next stone since this one was used
+                continue;
+            }
+        }
     }
     
-    // Check each stone for nearby stones
+    // Then check for new tower creation with remaining stones
     for (const stone of stationaryStones) {
+        // Skip stones that were already used for leveling
+        if (!gameState.stones.has(stone.id)) continue;
+        
         // Find nearby stones
         const nearbyStones = stationaryStones.filter(otherStone => {
-            if (otherStone === stone) return false;
+            if (otherStone === stone || !gameState.stones.has(otherStone.id)) return false;
             const dx = stone.position.x - otherStone.position.x;
             const dz = stone.position.z - otherStone.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
