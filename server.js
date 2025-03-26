@@ -744,6 +744,9 @@ setInterval(() => {
                 
                 stone.velocity = { x: 0, y: 0, z: 0 };
             }
+        } else {
+            // Only update non-held stones with physics
+            stone.update(deltaTime);
         }
     }
 
@@ -761,19 +764,14 @@ setInterval(() => {
         });
     }
 
-    // Update all stones
-    for (const stone of gameState.stones.values()) {
-        stone.update(deltaTime);
-    }
+    // Check for potential tower creation
+    checkTowerCreation();
 
     // Broadcast stone positions
     broadcastToAll({
         type: 'stone_positions',
         stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
     });
-
-    // Check for potential tower creation
-    checkTowerCreation();
 
 }, TICK_TIME);
 
