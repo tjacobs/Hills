@@ -46,7 +46,7 @@ const CONFIG = {
         speedMultiplier: 10     // Global physics speed multiplier
     },
     TOWER: {
-        baseRadius: 0.5         // Base radius for tower creation
+        baseRadius: 5         // Base radius for tower creation
     }
 };
 
@@ -656,7 +656,7 @@ function checkTowerCreation() {
     // Log details of stationary stones if there are any
     if (stationaryStones.length > 0) {
         stationaryStones.forEach(stone => {
-            console.log(`  Stationary stone ${stone.id}: pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
+//            console.log(`  Stationary stone ${stone.id}: pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
         });
     }
     
