@@ -873,27 +873,6 @@ function checkTowerCreation() {
     }
 }
 
-// Also add a function to force some stones to become static for testing
-function forceStaticStones() {
-    console.log("Forcing some stones to become static for testing");
-    let count = 0;
-    
-    // Get stones that are close to each other
-    const stones = Array.from(gameState.stones.values());
-    
-    // Sort by position to find stones that are close to each other
-    stones.sort((a, b) => {
-        const distA = Math.sqrt(a.position.x * a.position.x + a.position.z * a.position.z);
-        const distB = Math.sqrt(b.position.x * b.position.x + b.position.z * b.position.z);
-        return distA - distB;
-    });
-    
-    console.log(`Forced ${count} stones to become static`);
-}
-
-// Call this function after 30 seconds to test tower creation
-setTimeout(forceStaticStones, 30000);
-
 // Start server
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
