@@ -482,7 +482,7 @@ class Stone {
             this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * multiplier;
             
             // Extra downhill acceleration on steep slopes
-            if (slopeMagnitude > 0.05) {
+            if (false && slopeMagnitude > 0.05) {
                 const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
                 const downhillX = slopeX / magnitude;
                 const downhillZ = slopeZ / magnitude;
@@ -625,10 +625,10 @@ setInterval(() => {
         gameState.lastStoneSpawnTime = now;
 
         // Broadcast stone creation
-        //broadcastToAll({
-        //    type: 'stone_spawned',
-        //    stone: stone.serialize()
-        //});
+        broadcastToAll({
+            type: 'stone_spawned',
+            stone: stone.serialize()
+        });
     }
 
     // Check for potential tower creation
