@@ -569,8 +569,8 @@ class Stone {
                 this.velocity.y = 0;
             }
             
-            // Apply friction based on slope
-            const frictionFactor = Math.max(0.9, 0.8 - slopeMagnitude * multiplier);
+            // Apply stronger friction to help stones come to rest
+            const frictionFactor = 0.7; // Stronger friction (was 0.9)
             this.velocity.x *= frictionFactor;
             this.velocity.z *= frictionFactor;
             
@@ -579,7 +579,7 @@ class Stone {
             this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * multiplier;
             
             // Extra downhill acceleration on steep slopes
-            if (slopeMagnitude > 0.05) {
+            if (false && slopeMagnitude > 0.05) {
                 const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
                 const downhillX = slopeX / magnitude;
                 const downhillZ = slopeZ / magnitude;
@@ -590,15 +590,14 @@ class Stone {
             }
         }
         
-        // Cap maximum velocity
-        const speed = Math.sqrt(
-            this.velocity.x * this.velocity.x +
-            this.velocity.y * this.velocity.y +
+        // Check if stone has come to rest - ONLY CHECK X AND Z VELOCITY
+        const horizontalVelocity = Math.sqrt(
+            this.velocity.x * this.velocity.x + 
             this.velocity.z * this.velocity.z
         );
         
-        if (speed > CONFIG.STONE.maxVelocity) {
-            const scale = CONFIG.STONE.maxVelocity / speed;
+        if (moveSpeed > CONFIG.STONE.maxVelocity) {
+            const scale = CONFIG.STONE.maxVelocity / moveSpeed;
             this.velocity.x *= scale;
             this.velocity.y *= scale;
             this.velocity.z *= scale;
@@ -612,8 +611,8 @@ class Stone {
         );
         
         // Log more detailed information about stones with low velocity
-        if (velocityMagnitude < 0.5) {
-            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(6)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
+        if (velocityMagnitude < 0.2) {
+            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(6)}, horizontal: ${horizontalVelocity.toFixed(6)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
             console.log(`  Velocity components: x=${this.velocity.x.toFixed(6)}, y=${this.velocity.y.toFixed(6)}, z=${this.velocity.z.toFixed(6)}`);
             console.log(`  Position: x=${this.position.x.toFixed(2)}, y=${this.position.y.toFixed(2)}, z=${this.position.z.toFixed(2)}`);
             
@@ -630,12 +629,17 @@ class Stone {
             }
         }
         
-        // Mark as static if velocity is below threshold
-        if (velocityMagnitude < CONFIG.STONE.stopThreshold && !this.isStatic) {
-            console.log(`Stone ${this.id} has come to rest, marking as static`);
-            this.isStatic = true;
-            this.isThrown = false; // Reset thrown flag when it becomes static
-        } else if (velocityMagnitude >= CONFIG.STONE.stopThreshold && this.isStatic) {
+        // Mark as static if HORIZONTAL velocity is below threshold
+        if (horizontalVelocity < CONFIG.STONE.stopThreshold && !this.isStatic) {
+            // If stone was thrown, make sure it's been at least 1 second
+            //const canBeStatic = !this.isThrown || (Date.now() - this.throwTime > 1000);
+            
+            //if (canBeStatic) {
+                console.log(`Stone ${this.id} has come to rest, marking as static`);
+                this.isStatic = true;
+                this.isThrown = false; // Reset thrown flag when it becomes static
+            //}
+        } else if (horizontalVelocity >= CONFIG.STONE.stopThreshold && this.isStatic) {
             console.log(`Stone ${this.id} is moving again, no longer static`);
             this.isStatic = false;
         }
