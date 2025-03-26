@@ -261,7 +261,7 @@ function handleRequestState(ws) {
 function handleTowerCreated(ws, data) {
     const tower = data.tower;
     
-    // Add tower to game state
+/*    // Add tower to game state
     gameState.towers.push(tower);
     
     // Broadcast to all clients except sender
@@ -269,7 +269,7 @@ function handleTowerCreated(ws, data) {
         type: 'tower_created',
         tower: tower,
         createdBy: ws.playerId
-    }, ws);
+    }, ws);*/
 }
 
 // Handle stone messages
