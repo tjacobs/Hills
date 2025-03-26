@@ -88,7 +88,6 @@ const CONFIG = {
     // Debug settings
     DEBUG: {
         enabled: false,
-        showPhysics: false,
         logNetworkMessages: false
     }
 }; 

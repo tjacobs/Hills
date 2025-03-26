@@ -68,9 +68,6 @@ const Game = {
         // Initialize network
         Network.init();
         
-        // Initialize physics
-        Physics.init();
-        
         // Add window resize listener
         window.addEventListener('resize', this.handleResize.bind(this));
         
@@ -380,10 +377,7 @@ const Game = {
     },
     
     // Update entities
-    updateEntities(deltaTime) {
-        // Update physics
-        Physics.update(deltaTime);
-        
+    updateEntities(deltaTime) {        
         // Update local player
         if (this.localPlayer) {
             this.localPlayer.update(deltaTime);
