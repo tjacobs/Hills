@@ -27,7 +27,7 @@ const CONFIG = {
         bounce: 0.9,            // How bouncy stones are on collision
         rollFactor: 0.1,       // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
-        stopThreshold: 0.05,    // Velocity threshold for coming to rest
+        stopThreshold: 0.2,    // Velocity threshold for coming to rest
         waveStrength: 0.05,     // Strength of water wave effect
         radius: 0.5             // Stone collision radius
     },
@@ -279,6 +279,8 @@ function handleStonePickup(data) {
         stoneId: data.stoneId,
         playerId: data.playerId
     });
+
+    // Get stone
     const stone = gameState.stones.get(data.stoneId);
     if (stone) {
         console.log('Stone state:', {
@@ -610,7 +612,7 @@ class Stone {
         );
         
         // Log more detailed information about stones with low velocity
-        if (velocityMagnitude < 0.1) {
+        if (velocityMagnitude < 0.5) {
             console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(6)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
             console.log(`  Velocity components: x=${this.velocity.x.toFixed(6)}, y=${this.velocity.y.toFixed(6)}, z=${this.velocity.z.toFixed(6)}`);
             console.log(`  Position: x=${this.position.x.toFixed(2)}, y=${this.position.y.toFixed(2)}, z=${this.position.z.toFixed(2)}`);
@@ -628,16 +630,11 @@ class Stone {
             }
         }
         
-        // Mark as static if velocity is below threshold and not thrown recently
+        // Mark as static if velocity is below threshold
         if (velocityMagnitude < CONFIG.STONE.stopThreshold && !this.isStatic) {
-            // If stone was thrown, make sure it's been at least 1 second
-            const canBeStatic = true; //!this.isThrown || (Date.now() - this.throwTime > 1000);
-            
-            if (canBeStatic) {
-                console.log(`Stone ${this.id} has come to rest, marking as static`);
-                this.isStatic = true;
-                this.isThrown = false; // Reset thrown flag when it becomes static
-            }
+            console.log(`Stone ${this.id} has come to rest, marking as static`);
+            this.isStatic = true;
+            this.isThrown = false; // Reset thrown flag when it becomes static
         } else if (velocityMagnitude >= CONFIG.STONE.stopThreshold && this.isStatic) {
             console.log(`Stone ${this.id} is moving again, no longer static`);
             this.isStatic = false;
@@ -875,6 +872,39 @@ function checkTowerCreation() {
         }
     }
 }
+
+// Also add a function to force some stones to become static for testing
+function forceStaticStones() {
+    console.log("Forcing some stones to become static for testing");
+    let count = 0;
+    
+    // Get stones that are close to each other
+    const stones = Array.from(gameState.stones.values());
+    
+    // Sort by position to find stones that are close to each other
+    stones.sort((a, b) => {
+        const distA = Math.sqrt(a.position.x * a.position.x + a.position.z * a.position.z);
+        const distB = Math.sqrt(b.position.x * b.position.x + b.position.z * b.position.z);
+        return distA - distB;
+    });
+    
+    // Force the first 10 stones to become static
+    for (let i = 0; i < Math.min(10, stones.length); i++) {
+        const stone = stones[i];
+        if (!stone.isHeld) {
+            stone.isStatic = true;
+            stone.isThrown = false;
+            stone.velocity = { x: 0, y: 0, z: 0 };
+            count++;
+            console.log(`Forced stone ${stone.id} to become static at position (${stone.position.x.toFixed(2)}, ${stone.position.y.toFixed(2)}, ${stone.position.z.toFixed(2)})`);
+        }
+    }
+    
+    console.log(`Forced ${count} stones to become static`);
+}
+
+// Call this function after 30 seconds to test tower creation
+setTimeout(forceStaticStones, 30000);
 
 // Start server
 server.listen(port, () => {
