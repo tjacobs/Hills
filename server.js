@@ -629,18 +629,14 @@ class Stone {
             }
         }
         
-        // Mark as static if HORIZONTAL velocity is below threshold
+        // Mark as static if horizontal velocity is below threshold
         if (horizontalVelocity < CONFIG.STONE.stopThreshold && !this.isStatic) {
             // If stone was thrown, make sure it's been at least 1 second
             //const canBeStatic = !this.isThrown || (Date.now() - this.throwTime > 1000);
-            
             //if (canBeStatic) {
-                console.log(`Stone ${this.id} has come to rest, marking as static`);
                 this.isStatic = true;
-                this.isThrown = false; // Reset thrown flag when it becomes static
             //}
         } else if (horizontalVelocity >= CONFIG.STONE.stopThreshold && this.isStatic) {
-            console.log(`Stone ${this.id} is moving again, no longer static`);
             this.isStatic = false;
         }
     }
