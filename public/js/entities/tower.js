@@ -1,4 +1,4 @@
-// Create a simple tower with a ring of stones that match regular stones
+// A tower made of a ring of stones
 class Tower {
     constructor(id = null, position = new THREE.Vector3(), level = 1) {
         this.id = id || generateId('tower_');
@@ -7,11 +7,11 @@ class Tower {
         this.createdBy = null;
         this.mesh = null;
         
-        // Create the mesh immediately
-        this.createSimpleTower();
+        // Create the mesh
+        this.createTowerMesh();
     }
     
-    createSimpleTower() {
+    createTowerMesh() {
         // Clean up old mesh if it exists
         if (this.mesh) {
             // Remove all children and dispose of geometries/materials
@@ -27,6 +27,7 @@ class Tower {
                 }
                 this.mesh.remove(child);
             }
+
             // Remove mesh from parent if it exists
             if (this.mesh.parent) {
                 this.mesh.parent.remove(this.mesh);
@@ -58,8 +59,7 @@ class Tower {
         
         // Load texture once and reuse
         const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(
-            'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg',
+        textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg',
             (bumpMap) => {
                 baseMaterial.bumpMap = bumpMap;
                 baseMaterial.needsUpdate = true;
@@ -80,9 +80,8 @@ class Tower {
             for (let verticalLayer = 0; verticalLayer < 4; verticalLayer++) {
                 const ringY = (level * 4 + verticalLayer) * CONFIG.STONE.depth;
                 
-                // Create concentric rings at each height
+                // Create concentric rings at each height, in this case just one ring
                 const ringRadii = [CONFIG.TOWER.baseRadius];
-                
                 for (let ringIndex = 0; ringIndex < ringRadii.length; ringIndex++) {
                     // Add rotation offset for each level, layer, and ring to interleave stones
                     const levelRotationOffset = (level * Math.PI / CONFIG.TOWER.blockCount);
@@ -92,8 +91,8 @@ class Tower {
                     // Create a ring of stones
                     const stoneCount = CONFIG.TOWER.blockCount;
                     const radius = ringRadii[ringIndex];
-                    
                     for (let i = 0; i < stoneCount; i++) {
+                        // Calculate angle for this stone
                         const angle = (i / stoneCount) * Math.PI * 2 + levelRotationOffset + layerRotationOffset + ringRotationOffset;
                         
                         // Skip stones in the entrance area for first two levels
@@ -113,13 +112,15 @@ class Tower {
                             }
                         }
                         
+                        // Calculate stone position
                         const x = Math.cos(angle) * radius;
                         const z = Math.sin(angle) * radius;
                         
                         // Create stone with cloned material
                         const stoneMaterial = baseMaterial.clone();
                         const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
-                        
+
+                        // Enable shadows
                         stone.castShadow = true;
                         stone.receiveShadow = true;
                         
@@ -153,18 +154,23 @@ class Tower {
         }
     }
     
-    // Add a new level to the tower
-    addLevel() {
-        this.level++;
-        // Remove old mesh
-        if (this.mesh && this.mesh.parent) {
-            this.mesh.parent.remove(this.mesh);
+    // Handle tower updates
+    updateFromData(data) {
+        if (data.newLevel && data.newLevel !== this.level) {
+            // Update level
+            this.level = data.newLevel;
+
+            // Remove old mesh
+            if (this.mesh && this.mesh.parent) {
+                this.mesh.parent.remove(this.mesh);
+            }
+
+            // Create new mesh with updated level
+            this.createTowerMesh();
         }
-        // Create new mesh with updated levels
-        this.createSimpleTower();
     }
     
-    // Convert to JSON for network transmission
+    // Convert to JSON
     toJSON() {
         return {
             id: this.id,
@@ -180,7 +186,7 @@ class Tower {
     
     // Create from JSON data
     static fromJSON(data) {
-        // Handle both position object formats
+        // Position
         let position;
         if (data.position) {
             position = new THREE.Vector3(
@@ -198,35 +204,12 @@ class Tower {
             position,
             data.level || 1
         );
-        
         if (data.createdBy) {
             tower.createdBy = data.createdBy;
         }
-        
+
+        // Return tower
         return tower;
     }
-    
-    // Remove tower
-    remove() {
-        if (this.mesh && this.mesh.parent) {
-            this.mesh.parent.remove(this.mesh);
-        }
-    }
 
-    // Add this method to handle tower updates
-    updateFromData(data) {
-        if (data.newLevel && data.newLevel !== this.level) {
-            this.level = data.newLevel;
-            // Remove old mesh
-            if (this.mesh && this.mesh.parent) {
-                this.mesh.parent.remove(this.mesh);
-            }
-            // Create new mesh with updated level
-            this.createSimpleTower();
-            // Add to scene
-            if (Game.scene) {
-                Game.scene.add(this.mesh);
-            }
-        }
-    }
 } 
