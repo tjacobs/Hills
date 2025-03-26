@@ -436,6 +436,24 @@ class LocalPlayer extends Player {
             this.verticalVelocity = 0;
             this.isGrounded = true;
             this.isJumping = false;
+        } else {
+            // Only set to false if we're not on a tower
+            const onTower = Game.towers.some(tower => {
+                const horizontalDistance = new THREE.Vector2(
+                    this.position.x - tower.position.x,
+                    this.position.z - tower.position.z
+                ).length();
+                
+                if (horizontalDistance < CONFIG.TOWER.baseRadius) {
+                    const towerHeight = tower.level * CONFIG.STONE.blockHeight;
+                    return Math.abs(this.position.y - towerHeight - CONFIG.PLAYER.height) < 0.5;
+                }
+                return false;
+            });
+            
+            if (!onTower && !this.isClimbing) {
+                this.isGrounded = false;
+            }
         }
         
         // Smooth camera height over terrain
