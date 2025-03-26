@@ -23,7 +23,7 @@ const connections = new Map();
 // Game configuration
 const CONFIG = {
     STONE: {
-        maxCount: 200,          // Maximum number of stones in world
+        maxCount: 50,           // Maximum number of stones in world
         bounce: 0.5,            // How bouncy stones are on collision
         friction: 0.7,          // How much friction stones have
         rollFactor: 0.5,        // How easily stones roll on slopes
@@ -41,7 +41,7 @@ const CONFIG = {
         shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
-        speedMultiplier: 20     // Global physics speed multiplier
+        speedMultiplier: 10     // Global physics speed multiplier
     },
     TOWER: {
         baseRadius: 0.5         // Base radius for tower creation
@@ -206,24 +206,16 @@ function handleStonePickup(data) {
         playerId: data.playerId
     });
 
-    // Get stone
-    const stone = gameState.stones.get(data.stoneId);
-    if (false &&stone) {
-        console.log('Stone state:', {
-            isHeld: stone.isHeld,
-            heldBy: stone.heldBy,
-            isStatic: stone.isStatic
-        });
-    }
-
     // Pick up stone
+    const stone = gameState.stones.get(data.stoneId);
     if (stone && !stone.isHeld) {
         stone.isHeld = true;
         stone.heldBy = data.playerId;
         stone.isStatic = false;
         stone.velocity = { x: 0, y: 0, z: 0 };
-        stone.rotation = { x: 0, y: 0, z: 0 };
+        stone.rotation = { x: stone.rotation.x / 10, y: stone.rotation.y / 10, z: stone.rotation.z / 10 };
 
+        // Broadcast stone pickup
         broadcastToAll({
             type: 'stone_pickup',
             stoneId: stone.id,
