@@ -25,9 +25,9 @@ const CONFIG = {
     STONE: {
         maxCount: 200,          // Maximum number of stones in world
         bounce: 0.9,            // How bouncy stones are on collision
-        rollFactor: 0.1,       // How easily stones roll on slopes
+        rollFactor: 0.1,        // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
-        stopThreshold: 0.2,    // Velocity threshold for coming to rest
+        stopThreshold: 0.2,     // Velocity threshold for coming to rest
         waveStrength: 0.05,     // Strength of water wave effect
         radius: 0.5             // Stone collision radius
     },
@@ -215,7 +215,7 @@ function handleTowerUpdate(ws, data) {
   const { id, position, level } = data;
   
   // Find or create tower
-  let tower = gameState.towers.find(t => t.id === id);
+/*  let tower = gameState.towers.find(t => t.id === id);
   if (!tower) {
     tower = {
       id,
@@ -233,7 +233,7 @@ function handleTowerUpdate(ws, data) {
   broadcastToAll({
     type: 'tower_update',
     tower
-  }, ws);
+  }, ws);*/
 }
 
 // Broadcast message to all clients except sender
