@@ -614,17 +614,28 @@ class Stone {
         );
         
         // Log more detailed information about stones with low velocity
-        if (velocityMagnitude < 0.2) {
-            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(4)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
+        if (velocityMagnitude < 0.1) {
+            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(6)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
+            console.log(`  Velocity components: x=${this.velocity.x.toFixed(6)}, y=${this.velocity.y.toFixed(6)}, z=${this.velocity.z.toFixed(6)}`);
+            console.log(`  Position: x=${this.position.x.toFixed(2)}, y=${this.position.y.toFixed(2)}, z=${this.position.z.toFixed(2)}`);
             
-            // Log individual velocity components
-            console.log(`  Velocity components: x=${this.velocity.x.toFixed(4)}, y=${this.velocity.y.toFixed(4)}, z=${this.velocity.z.toFixed(4)}`);
+            // Check if the stone is on the ground
+            const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
+            const stoneHeight = this.position.y;
+            const heightDiff = stoneHeight - groundHeight;
+            console.log(`  Ground height: ${groundHeight.toFixed(2)}, stone height: ${stoneHeight.toFixed(2)}, diff: ${heightDiff.toFixed(2)}`);
+            
+            // Check if the thrown timer is preventing it from becoming static
+            if (this.isThrown) {
+                const timeSinceThrow = Date.now() - this.throwTime;
+                console.log(`  Time since thrown: ${timeSinceThrow}ms (needs 1000ms)`);
+            }
         }
         
         // Mark as static if velocity is below threshold and not thrown recently
         if (velocityMagnitude < CONFIG.STONE.stopThreshold && !this.isStatic) {
             // If stone was thrown, make sure it's been at least 1 second
-            const canBeStatic = !this.isThrown || (Date.now() - this.throwTime > 1000);
+            const canBeStatic = true; //!this.isThrown || (Date.now() - this.throwTime > 1000);
             
             if (canBeStatic) {
                 console.log(`Stone ${this.id} has come to rest, marking as static`);
