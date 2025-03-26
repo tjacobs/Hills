@@ -25,6 +25,7 @@ const CONFIG = {
     STONE: {
         maxCount: 200,          // Maximum number of stones in world
         bounce: 0.5,            // How bouncy stones are on collision
+        friction: 0.7,          // How much friction stones have
         rollFactor: 0.5,        // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
         stopThreshold: 0.2,     // Velocity threshold for coming to rest
@@ -47,8 +48,6 @@ const CONFIG = {
     }
 };
 
-// Add this near the top of the file to see the configuration
-console.log("CONFIG.STONE.stopThreshold =", CONFIG.STONE.stopThreshold);
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
@@ -78,23 +77,11 @@ wss.on('connection', (ws) => {
         case 'request_state':
           handleRequestState(ws);
           break;
-        case 'stone_update':
-          handleStoneUpdate(ws, { ...data, playerId });
-          break;
         case 'stone_pickup':
           handleStonePickup({ ...data, playerId: ws.playerId });
           break;
         case 'stone_throw':
           handleStoneThrow(ws, data);
-          break;
-        case 'tower_update':
-          handleTowerUpdate(ws, { ...data, playerId });
-          break;
-        case 'tower_created':
-          handleTowerCreated(ws, data);
-          break;
-        case 'tower_destroyed':
-          handleTowerDestroyed(data);
           break;
         default:
           console.log(`Unknown message type: ${data.type}`);
@@ -190,52 +177,6 @@ function handlePlayerUpdate(ws, data) {
   }, ws); // Send to all except sender
 }
 
-function handleStoneUpdate(ws, data) {
-  const { id, position, velocity, isStatic } = data;
-  
-  // Find and update stone in game state
-  const stoneIndex = gameState.stones.findIndex(s => s.id === id);
-  if (stoneIndex !== -1) {
-    gameState.stones[stoneIndex] = {
-      ...gameState.stones[stoneIndex],
-      position,
-      velocity,
-      isStatic
-    };
-    
-    // Broadcast update to all clients
-    broadcastToAll({
-      type: 'stone_update',
-      stone: gameState.stones[stoneIndex]
-    }, ws);
-  }
-}
-
-function handleTowerUpdate(ws, data) {
-  const { id, position, level } = data;
-  
-  // Find or create tower
-/*  let tower = gameState.towers.find(t => t.id === id);
-  if (!tower) {
-    tower = {
-      id,
-      position,
-      level,
-      createdAt: Date.now()
-    };
-    gameState.towers.push(tower);
-  } else {
-    tower.position = position;
-    tower.level = level;
-  }
-
-  // Broadcast tower update to all clients
-  broadcastToAll({
-    type: 'tower_update',
-    tower
-  }, ws);*/
-}
-
 // Broadcast message to all clients except sender
 function broadcastToAll(message, excludeWs = null) {
   const messageStr = JSON.stringify(message);
@@ -246,7 +187,7 @@ function broadcastToAll(message, excludeWs = null) {
   });
 }
 
-// Handler function
+// Initial state request
 function handleRequestState(ws) {
     // Send current game state to requesting client
     ws.send(JSON.stringify({
@@ -255,21 +196,6 @@ function handleRequestState(ws) {
         towers: gameState.towers,
         stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
     }));
-}
-
-// Handle tower creation
-function handleTowerCreated(ws, data) {
-    const tower = data.tower;
-    
-/*    // Add tower to game state
-    gameState.towers.push(tower);
-    
-    // Broadcast to all clients except sender
-    broadcastToAll({
-        type: 'tower_created',
-        tower: tower,
-        createdBy: ws.playerId
-    }, ws);*/
 }
 
 // Handle stone messages
@@ -282,7 +208,7 @@ function handleStonePickup(data) {
 
     // Get stone
     const stone = gameState.stones.get(data.stoneId);
-    if (stone) {
+    if (false &&stone) {
         console.log('Stone state:', {
             isHeld: stone.isHeld,
             heldBy: stone.heldBy,
@@ -296,15 +222,18 @@ function handleStonePickup(data) {
         stone.heldBy = data.playerId;
         stone.isStatic = false;
         stone.velocity = { x: 0, y: 0, z: 0 };
-        broadcastToAll({
-            type: 'stone_pickup',
-            stoneId: stone.id,
-            playerId: data.playerId
-        });
+
+        // Needed?
+//        broadcastToAll({
+//            type: 'stone_pickup',
+//            stoneId: stone.id,
+//            playerId: data.playerId
+//        });
     }
 }
 
 function handleStoneThrow(ws, data) {
+    // Ge stone
     const stone = gameState.stones.get(data.stoneId);
     if (stone && stone.heldBy === ws.playerId) {
         // Add random spread to velocity
@@ -313,18 +242,17 @@ function handleStoneThrow(ws, data) {
         const randomAngleY = (Math.random() - 0.5) * spreadAngle;
         
         // Create rotation matrix for random spread
-        const cosX = Math.cos(randomAngleX);
-        const sinX = Math.sin(randomAngleX);
         const cosY = Math.cos(randomAngleY);
         const sinY = Math.sin(randomAngleY);
         
         // Apply rotation to velocity
         const velocity = {
             x: data.velocity.x * cosY + data.velocity.z * sinY,
-            y: data.velocity.y + Math.random() * 2, // Add random upward boost
+            y: 2,
             z: -data.velocity.x * sinY + data.velocity.z * cosY
         };
         
+        // Set stone state
         stone.position = data.position;
         stone.velocity = velocity;
         stone.isHeld = false;
@@ -333,28 +261,14 @@ function handleStoneThrow(ws, data) {
         stone.throwTime = Date.now();
         stone.isStatic = false;
         
-        broadcastToAll({
-            type: 'stone_throw',
-            stoneId: stone.id,
-            playerId: ws.playerId,
-            position: stone.position,
-            velocity: velocity
-        });
-    }
-}
-
-// Handle tower destruction
-function handleTowerDestroyed(data) {
-    const towerId = data.towerId;
-    const towerIndex = gameState.towers.findIndex(t => t.id === towerId);
-    if (towerIndex > -1) {
-        gameState.towers.splice(towerIndex, 1);
-        
-        // Broadcast tower removal to all clients
-        broadcastToAll({
-            type: 'tower_removed',
-            towerId: towerId
-        });
+        // Broadcast stone throw
+//        broadcastToAll({
+//            type: 'stone_throw',
+//            stoneId: stone.id,
+//            playerId: ws.playerId,
+//            position: stone.position,
+//            velocity: velocity
+//        });
     }
 }
 
@@ -367,18 +281,16 @@ function handleDisconnect(ws) {
             stone.isThrown = true;
             stone.throwTime = Date.now();
             stone.isStatic = false;
-            stone.velocity = { x: 0, y: 0, z: 0 }; // Let gravity take over
+            stone.velocity = { x: 0, y: 0, z: 0 };
             
             // Broadcast stone drop to all clients
-            broadcastToAll({
-                type: 'stone_dropped',
-                stoneId: stone.id,
-                playerId: ws.playerId
-            });
+//            broadcastToAll({
+//                type: 'stone_dropped',
+//                stoneId: stone.id,
+//                playerId: ws.playerId
+//            });
         }
     }
-    
-    // Rest of disconnect handling...
 }
 
 class Terrain {
@@ -392,7 +304,6 @@ class Terrain {
 
     getHeightAtPosition(x, z) {
         // Convert world coordinates to heightmap indices
-        // IMPORTANT: Swap the Z and X coordinates to account for the plane rotation
         const halfSize = this.groundSize / 2;
         const normalizedX = (z + halfSize) / this.groundSize; // Swap z instead of x
         const normalizedZ = (x + halfSize) / this.groundSize; // Swap x instead of z
@@ -400,11 +311,6 @@ class Terrain {
         // Calculate grid indices
         const gridX = Math.floor(normalizedX * this.segments);
         const gridZ = Math.floor(normalizedZ * this.segments);
-        
-        // Debug log coordinates
-        //console.log("Server height lookup: world(", x.toFixed(1), ",", z.toFixed(1), 
-        //           ") -> normalized(", normalizedX.toFixed(2), ",", normalizedZ.toFixed(2), 
-        //           ") -> grid(", gridX, ",", gridZ, ")");
         
         // Ensure indices are within bounds
         if (gridX < 0 || gridX >= this.segments || 
@@ -418,9 +324,6 @@ class Terrain {
         const h01 = this.heightMap[gridX][Math.min(gridZ + 1, this.segments)];
         const h11 = this.heightMap[Math.min(gridX + 1, this.segments)][Math.min(gridZ + 1, this.segments)];
         
-        //console.log("Server heights: h00=", h00.toFixed(1), "h10=", h10.toFixed(1), 
-        //           "h01=", h01.toFixed(1), "h11=", h11.toFixed(1));
-        
         // Calculate fractional position within the grid cell
         const fx = normalizedX * this.segments - gridX;
         const fz = normalizedZ * this.segments - gridZ;
@@ -429,14 +332,13 @@ class Terrain {
         const h0 = h00 * (1 - fx) + h10 * fx;
         const h1 = h01 * (1 - fx) + h11 * fx;
         const height = h0 * (1 - fz) + h1 * fz;
-        
-        //console.log("Server interpolated height=", height.toFixed(1), 
-        //           "(fx=", fx.toFixed(2), "fz=", fz.toFixed(2), ")");
-        
+
+        // Return height
         return height;
     }
 
     createHeightmap() {
+        // Create heightmap
         for (let i = 0; i <= this.segments; i++) {
             this.heightMap[i] = [];
             for (let j = 0; j <= this.segments; j++) {
@@ -483,6 +385,7 @@ class Stone {
     update(deltaTime) {
         if (this.isHeld) return;
         
+        // Multiplier
         const multiplier = CONFIG.PHYSICS.speedMultiplier;
         const gravityMultiplier = multiplier * 0.5;
 
@@ -503,7 +406,6 @@ class Stone {
         const dz = this.position.z - prevZ;
         const moveSpeed = Math.sqrt(dx * dx + dz * dz);
         
-        // Calculate rotation based on movement
         // Roll around Z axis when moving in X direction
         this.rotation.z -= dx * 1; // Adjust multiplier for faster/slower rotation
         
@@ -519,7 +421,8 @@ class Stone {
             this.position.x * this.position.x + 
             this.position.z * this.position.z
         );
-        
+
+        // Get sizes
         const worldHalfSize = CONFIG.WORLD.size / 2;
         const beachDistance = worldHalfSize * CONFIG.WORLD.shoreRadius;
         
@@ -569,8 +472,8 @@ class Stone {
                 this.velocity.y = 0;
             }
             
-            // Apply stronger friction to help stones come to rest
-            const frictionFactor = 0.7; // Stronger friction (was 0.9)
+            // Apply friction to help stones come to rest
+            const frictionFactor = CONFIG.STONE.friction;
             this.velocity.x *= frictionFactor;
             this.velocity.z *= frictionFactor;
             
@@ -579,63 +482,33 @@ class Stone {
             this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * multiplier;
             
             // Extra downhill acceleration on steep slopes
-            if (false && slopeMagnitude > 0.05) {
+            if (slopeMagnitude > 0.05) {
                 const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
                 const downhillX = slopeX / magnitude;
                 const downhillZ = slopeZ / magnitude;
                 const downhillFactor = slopeMagnitude * (multiplier * 0.02);
-                
                 this.velocity.x += downhillX * downhillFactor;
                 this.velocity.z += downhillZ * downhillFactor;
             }
         }
         
-        // Check if stone has come to rest - ONLY CHECK X AND Z VELOCITY
-        const horizontalVelocity = Math.sqrt(
-            this.velocity.x * this.velocity.x + 
-            this.velocity.z * this.velocity.z
-        );
-        
+        // Cap velocity
         if (moveSpeed > CONFIG.STONE.maxVelocity) {
             const scale = CONFIG.STONE.maxVelocity / moveSpeed;
             this.velocity.x *= scale;
             this.velocity.y *= scale;
             this.velocity.z *= scale;
         }
-        
+
         // Check if stone has come to rest
-        const velocityMagnitude = Math.sqrt(
+        const horizontalVelocity = Math.sqrt(
             this.velocity.x * this.velocity.x + 
-            this.velocity.y * this.velocity.y + 
             this.velocity.z * this.velocity.z
         );
         
-        // Log more detailed information about stones with low velocity
-        if (velocityMagnitude < 0.2) {
-            console.log(`Stone ${this.id} velocity: ${velocityMagnitude.toFixed(6)}, horizontal: ${horizontalVelocity.toFixed(6)}, isStatic: ${this.isStatic}, isThrown: ${this.isThrown}, stopThreshold: ${CONFIG.STONE.stopThreshold}`);
-            console.log(`  Velocity components: x=${this.velocity.x.toFixed(6)}, y=${this.velocity.y.toFixed(6)}, z=${this.velocity.z.toFixed(6)}`);
-            console.log(`  Position: x=${this.position.x.toFixed(2)}, y=${this.position.y.toFixed(2)}, z=${this.position.z.toFixed(2)}`);
-            
-            // Check if the stone is on the ground
-            const groundHeight = terrain.getHeightAtPosition(this.position.x, this.position.z);
-            const stoneHeight = this.position.y;
-            const heightDiff = stoneHeight - groundHeight;
-            console.log(`  Ground height: ${groundHeight.toFixed(2)}, stone height: ${stoneHeight.toFixed(2)}, diff: ${heightDiff.toFixed(2)}`);
-            
-            // Check if the thrown timer is preventing it from becoming static
-            if (this.isThrown) {
-                const timeSinceThrow = Date.now() - this.throwTime;
-                console.log(`  Time since thrown: ${timeSinceThrow}ms (needs 1000ms)`);
-            }
-        }
-        
         // Mark as static if horizontal velocity is below threshold
         if (horizontalVelocity < CONFIG.STONE.stopThreshold && !this.isStatic) {
-            // If stone was thrown, make sure it's been at least 1 second
-            //const canBeStatic = !this.isThrown || (Date.now() - this.throwTime > 1000);
-            //if (canBeStatic) {
-                this.isStatic = true;
-            //}
+            this.isStatic = true;
         } else if (horizontalVelocity >= CONFIG.STONE.stopThreshold && this.isStatic) {
             this.isStatic = false;
         }
@@ -655,12 +528,12 @@ class Stone {
     }
 }
 
-// Function to create a random stone at the beach
+// Create a random stone at the beach
 function createRandomStone() {
     const worldSize = CONFIG.WORLD.size;
     const shoreRadius = CONFIG.WORLD.shoreRadius;
-    const spawnHeight = -8;  // Start deeper below water
-    const upwardVelocity = 1.5;  // Stronger upward velocity
+    const spawnHeight = -8;
+    const upwardVelocity = 1.5;
     
     // Choose a random edge (0-3: North, East, South, West)
     const edge = Math.floor(Math.random() * 4);
@@ -668,10 +541,8 @@ function createRandomStone() {
     // Calculate spawn position based on chosen edge
     let position = { x: 0, y: spawnHeight, z: 0 };
     let velocity = { x: 0, y: upwardVelocity, z: 0 };
-    
-    const edgeDistance = (worldSize / 2) * shoreRadius * 1.2; // Much further out from shore
-    const randomOffset = (Math.random() - 0.5) * worldSize * 0.6; // Wider spread along edge
-    
+    const edgeDistance = (worldSize / 2) * shoreRadius * 1.2;
+    const randomOffset = (Math.random() - 0.5) * worldSize * 0.6;
     switch(edge) {
         case 0: // North
             position.z = -edgeDistance;
@@ -701,6 +572,7 @@ function createRandomStone() {
     // Log initial position
     console.log(`New stone spawned at edge ${edge}: pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
     
+    // Return stone
     return stone;
 }
 
@@ -709,7 +581,7 @@ const gameState = {
     players: {},
     towers: [],
     stones: new Map(),
-    lastStoneSpawnTime: Date.now(),
+    lastStoneSpawnTime: 0,
     stoneSpawnInterval: 1000
 };
 
@@ -718,6 +590,7 @@ const TICK_RATE = 60;
 const TICK_TIME = 1000 / TICK_RATE;
 let lastUpdate = Date.now();
 setInterval(() => {
+    // Get delta time
     const now = Date.now();
     const deltaTime = (now - lastUpdate) / 1000;
     lastUpdate = now;
@@ -727,25 +600,16 @@ setInterval(() => {
         if (stone.isHeld && stone.heldBy) {
             const player = gameState.players[stone.heldBy];
             if (player) {
-                // Calculate position in front of player
-                const forward = {
-                    x: -Math.sin(player.rotation.y),
-                    y: 0,
-                    z: -Math.cos(player.rotation.y)
-                };
-                
-                // Get all stones held by this player in order
-                const playerStones = Array.from(gameState.stones.values())
-                    .filter(s => s.heldBy === player.playerId);
+                // Get stackIndex
+                const playerStones = Array.from(gameState.stones.values()).filter(s => s.heldBy === player.playerId);
                 const stackIndex = playerStones.indexOf(stone);
 
                 // Position stone in front and stack vertically
                 stone.position = {
-                    x: player.position.x + (forward.x * 1.5),
-                    y: player.position.y + (-0.5 + (stackIndex * 0.8)),
-                    z: player.position.z + (forward.z * 1.5)
+                    x: player.position.x + (-Math.sin(player.rotation.y) * 1.2),
+                    y: player.position.y + (-1.5 + (stackIndex * 1.0)),
+                    z: player.position.z + (-Math.cos(player.rotation.y) * 1.2)
                 };
-                
                 stone.velocity = { x: 0, y: 0, z: 0 };
             }
         } else {
@@ -755,17 +619,16 @@ setInterval(() => {
     }
 
     // Check if we should spawn a new stone
-    if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && 
-        gameState.stones.size < CONFIG.STONE.maxCount) {
+    if (now - gameState.lastStoneSpawnTime > gameState.stoneSpawnInterval && gameState.stones.size < CONFIG.STONE.maxCount) {
         const stone = createRandomStone();
         gameState.stones.set(stone.id, stone);
         gameState.lastStoneSpawnTime = now;
 
         // Broadcast stone creation
-        broadcastToAll({
-            type: 'stone_spawned',
-            stone: stone.serialize()
-        });
+        //broadcastToAll({
+        //    type: 'stone_spawned',
+        //    stone: stone.serialize()
+        //});
     }
 
     // Check for potential tower creation
@@ -783,18 +646,13 @@ setInterval(() => {
         const heldStones = Array.from(gameState.stones.values()).filter(s => s.isHeld).length;
         const staticStones = Array.from(gameState.stones.values()).filter(s => s.isStatic).length;
         const thrownStones = Array.from(gameState.stones.values()).filter(s => s.isThrown).length;
-        
         console.log(`Stone stats: total=${totalStones}, held=${heldStones}, static=${staticStones}, thrown=${thrownStones}`);
     }
-
 }, TICK_TIME);
 
 function checkTowerCreation() {
     // Get all static stones
-    const stationaryStones = Array.from(gameState.stones.values())
-        .filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
-    
-//    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
+    const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
     
     // Log details of stationary stones if there are any
     if (stationaryStones.length > 0) {
@@ -816,6 +674,7 @@ function checkTowerCreation() {
             return distance < CONFIG.TOWER.baseRadius;
         });
 
+        // Log nearby stones
         console.log(`Stone ${stone.id} has ${nearbyStones.length} nearby stones (need 2+)`);
 
         // If enough stones are nearby (3 total including this one)
@@ -829,16 +688,19 @@ function checkTowerCreation() {
                 z: stone.position.z
             };
             
+            // Sum positions
             nearbyStones.forEach(nearbyStone => {
                 position.x += nearbyStone.position.x;
                 position.y += nearbyStone.position.y;
                 position.z += nearbyStone.position.z;
             });
             
+            // Calculate average position
             position.x /= (nearbyStones.length + 1);
             position.y /= (nearbyStones.length + 1);
             position.z /= (nearbyStones.length + 1);
 
+            // Log tower position
             console.log(`Tower position: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
 
             // Create tower
