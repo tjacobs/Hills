@@ -12,7 +12,28 @@ class Tower {
     }
     
     createSimpleTower() {
-        // Create a group to hold all stones
+        // Clean up old mesh if it exists
+        if (this.mesh) {
+            // Remove all children and dispose of geometries/materials
+            while (this.mesh.children.length > 0) {
+                const child = this.mesh.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => mat.dispose());
+                    } else {
+                        child.material.dispose();
+                    }
+                }
+                this.mesh.remove(child);
+            }
+            // Remove mesh from parent if it exists
+            if (this.mesh.parent) {
+                this.mesh.parent.remove(this.mesh);
+            }
+        }
+
+        // Create a new group to hold all stones
         this.mesh = new THREE.Group();
         
         // Position the tower on the terrain
@@ -189,6 +210,23 @@ class Tower {
     remove() {
         if (this.mesh && this.mesh.parent) {
             this.mesh.parent.remove(this.mesh);
+        }
+    }
+
+    // Add this method to handle tower updates
+    updateFromData(data) {
+        if (data.newLevel && data.newLevel !== this.level) {
+            this.level = data.newLevel;
+            // Remove old mesh
+            if (this.mesh && this.mesh.parent) {
+                this.mesh.parent.remove(this.mesh);
+            }
+            // Create new mesh with updated level
+            this.createSimpleTower();
+            // Add to scene
+            if (Game.scene) {
+                Game.scene.add(this.mesh);
+            }
         }
     }
 } 
