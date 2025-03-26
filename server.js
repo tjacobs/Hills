@@ -676,7 +676,7 @@ function checkTowerCreation() {
                 
                 // Notify all clients
                 broadcastToAll({
-                    type: 'tower_updated',
+                    type: 'tower_update',
                     towerId: tower.id,
                     newLevel: tower.level,
                     removedStoneId: stone.id
@@ -703,7 +703,7 @@ function checkTowerCreation() {
         });
 
         // Log nearby stones
-        console.log(`Stone ${stone.id} has ${nearbyStones.length} nearby stones (need 2+)`);
+//        console.log(`Stone ${stone.id} has ${nearbyStones.length} nearby stones (need 2+)`);
 
         // If enough stones are nearby (3 total including this one)
         if (nearbyStones.length >= 2) {
