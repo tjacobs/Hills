@@ -773,7 +773,7 @@ setInterval(() => {
     }
 
     // Check for potential tower creation
-    checkTowerCreation();
+//    checkTowerCreation();
 
     // Broadcast stone positions
     broadcastToAll({
@@ -891,18 +891,6 @@ function forceStaticStones() {
         const distB = Math.sqrt(b.position.x * b.position.x + b.position.z * b.position.z);
         return distA - distB;
     });
-    
-    // Force the first 10 stones to become static
-    for (let i = 0; i < Math.min(10, stones.length); i++) {
-        const stone = stones[i];
-        if (!stone.isHeld) {
-            stone.isStatic = true;
-            stone.isThrown = false;
-            stone.velocity = { x: 0, y: 0, z: 0 };
-            count++;
-            console.log(`Forced stone ${stone.id} to become static at position (${stone.position.x.toFixed(2)}, ${stone.position.y.toFixed(2)}, ${stone.position.z.toFixed(2)})`);
-        }
-    }
     
     console.log(`Forced ${count} stones to become static`);
 }
