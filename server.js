@@ -773,6 +773,16 @@ setInterval(() => {
         stones: Array.from(gameState.stones.values()).map(stone => stone.serialize())
     });
 
+    // Log stone states every 10 seconds
+    if (now % 10000 < TICK_TIME) {
+        const totalStones = gameState.stones.size;
+        const heldStones = Array.from(gameState.stones.values()).filter(s => s.isHeld).length;
+        const staticStones = Array.from(gameState.stones.values()).filter(s => s.isStatic).length;
+        const thrownStones = Array.from(gameState.stones.values()).filter(s => s.isThrown).length;
+        
+        console.log(`Stone stats: total=${totalStones}, held=${heldStones}, static=${staticStones}, thrown=${thrownStones}`);
+    }
+
 }, TICK_TIME);
 
 function checkTowerCreation() {
@@ -780,7 +790,14 @@ function checkTowerCreation() {
     const stationaryStones = Array.from(gameState.stones.values())
         .filter(stone => !stone.isHeld && !stone.isThrown && stone.isStatic);
     
-//    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
+    console.log(`Checking tower creation with ${stationaryStones.length} stationary stones`);
+    
+    // Log details of stationary stones if there are any
+    if (stationaryStones.length > 0) {
+        stationaryStones.forEach(stone => {
+            console.log(`  Stationary stone ${stone.id}: pos=(${stone.position.x.toFixed(1)}, ${stone.position.y.toFixed(1)}, ${stone.position.z.toFixed(1)})`);
+        });
+    }
     
     // Check each stone for nearby stones
     for (const stone of stationaryStones) {
