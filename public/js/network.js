@@ -421,6 +421,14 @@ const Network = {
         
         log(`Player ${message.createdBy} created a tower`);
         
+        // Remove stones that were used to create the tower
+        message.removedStones.forEach(stoneId => {
+            const stone = Game.getStoneById(stoneId);
+            if (stone) {
+                Game.removeStone(stone);
+            }
+        });
+        
         // Create tower from data
         const tower = Tower.fromJSON(message.tower);
         
