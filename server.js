@@ -215,7 +215,14 @@ function handleStonePickup(data) {
         stone.heldBy = data.playerId;
         stone.isStatic = false;
         stone.velocity = { x: 0, y: 0, z: 0 };
-        stone.rotation = { x: stone.rotation.x / 10, y: stone.rotation.y / 10, z: stone.rotation.z / 10 };
+        
+        // Set rotation to almost flat but with slight random tilt
+        const smallTilt = (Math.random() - 0.5) * 0.2; // Random tilt ±0.1 radians (about ±5.7 degrees)
+        stone.rotation = { 
+            x: smallTilt,
+            y: 0,
+            z: smallTilt
+        };
 
         // Broadcast stone pickup
         broadcastToAll({
@@ -227,23 +234,20 @@ function handleStonePickup(data) {
 }
 
 function handleStoneThrow(ws, data) {
-    // Ge stone
+    // Get stone
     const stone = gameState.stones.get(data.stoneId);
     if (stone && stone.heldBy === ws.playerId) {
         // Add random spread to velocity
-        const spreadAngle = Math.PI / 6; // 30 degrees
-        const randomAngleX = (Math.random() - 0.5) * spreadAngle;
-        const randomAngleY = (Math.random() - 0.5) * spreadAngle;
+        const spreadAngle = Math.PI / 6; // 30 degrees spread
+        const randomSpread = (Math.random() - 0.5) * spreadAngle;
+        const throwForce = 5 + Math.random() * 2; // Random force between 5-7
         
-        // Create rotation matrix for random spread
-        const cosY = Math.cos(randomAngleY);
-        const sinY = Math.sin(randomAngleY);
-        
-        // Apply rotation to velocity
+        // Calculate velocity with spread and force
+        const throwAngle = Math.atan2(data.velocity.x, data.velocity.z) + randomSpread;
         const velocity = {
-            x: data.velocity.x * cosY + data.velocity.z * sinY,
-            y: 2,
-            z: -data.velocity.x * sinY + data.velocity.z * cosY
+            x: Math.sin(throwAngle) * throwForce,
+            y: 2 + Math.random(), // Random upward force between 2-3
+            z: Math.cos(throwAngle) * throwForce
         };
         
         // Set stone state
@@ -256,13 +260,13 @@ function handleStoneThrow(ws, data) {
         stone.isStatic = false;
         
         // Broadcast stone throw
-//        broadcastToAll({
-//            type: 'stone_throw',
-//            stoneId: stone.id,
-//            playerId: ws.playerId,
-//            position: stone.position,
-//            velocity: velocity
-//        });
+        broadcastToAll({
+            type: 'stone_throw',
+            stoneId: stone.id,
+            playerId: ws.playerId,
+            position: stone.position,
+            velocity: velocity
+        });
     }
 }
 
@@ -377,11 +381,12 @@ class Stone {
     }
 
     update(deltaTime) {
+        // If stone is held, don't update position
         if (this.isHeld) return;
         
         // Multiplier
         const multiplier = CONFIG.PHYSICS.speedMultiplier;
-        const gravityMultiplier = multiplier * 0.5;
+        const gravityMultiplier = multiplier * 0.2;
 
         // Store previous position for rotation calculation
         const prevX = this.position.x;
