@@ -702,9 +702,6 @@ function checkTowerCreation() {
             return distance < CONFIG.TOWER.baseRadius;
         });
 
-        // Log nearby stones
-//        console.log(`Stone ${stone.id} has ${nearbyStones.length} nearby stones (need 2+)`);
-
         // If enough stones are nearby (3 total including this one)
         if (nearbyStones.length >= 2) {
             console.log(`Creating tower from ${nearbyStones.length + 1} stones`);
