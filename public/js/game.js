@@ -59,7 +59,6 @@ const Game = {
         
         // Set camera to player
         this.camera.position.copy(this.localPlayer.position);
-        this.camera.position.y += CONFIG.PLAYER.height;
         this.localPlayer.camera = this.camera;
         
         // Initialize input

@@ -2,11 +2,6 @@
 const CONFIG = {
     // Player settings
     PLAYER: {
-        height: 1.7,
-        radius: 0.5,
-        stonePickupRadius: 8,
-        baseHeight: 3,            // Default height above ground
-        
         // Movement parameters
         maxSpeed: 0.2,            // Maximum movement speed
         strafeSpeed: 0.1,         // Base strafe movement speed
@@ -17,78 +12,54 @@ const CONFIG = {
         turnAcceleration: 0.006,  // Turning acceleration
         deceleration: 0.02,       // Movement deceleration
         turnDeceleration: 0.002,  // Turning deceleration
-        
+
+        // Player height
+        height: 2.5,              // Eye level height above ground
+        meshHeightOffset: 1.5,      // Offset for the player mesh
+
         // Physics parameters
         jumpForce: 1.0,           // Jump
         gravity: -0.02,           // Gravity force applied to player
-        heightSmoothness: 0.05,   // How smoothly camera follows terrain
+        heightSmoothness: 0.05,   // How smoothly player follows terrain
         
         // Interaction parameters
-        maxStones: 3              // Maximum number of stones player can hold
+        maxStones: 5,              // Maximum number of stones player can hold
+        stonePickupRadius: 4,      // Radius for picking up stones
     },
     
     // Stone settings
     STONE: {
+        // Stone size
         width: 1.2,
         height: 1.0,
         depth: 0.8,
 
-        // Maximum number of stones player can hold
-        maxHeld: 5,
-
-        // Physics parameters
-        gravity: -9.8,
-        bounce: 0.9,
-        friction: 0.35,
-        rollFactor: 0.25,
-        maxVelocity: 0.5,
-        stopThreshold: 0.05,
-        
         // Interaction parameters
         throwForce: 0.2,
         throwUpward: 0.2,
-        
-        // Ocean parameters
-        waveStrength: 0.01,
-        
-        // Spawning parameters
-        maxCount: 20  // Maximum number of stones in the world
     },
-    
+
     // Tower settings
     TOWER: {
-        baseRadius: 3.0,
-        blockCount: 24,
-        maxLevel: 100
+        baseRadius: 3.0,          // Base radius for tower creation
+        blockCount: 24           // Number of blocks in each ring in the tower
     },
     
     // World settings
     WORLD: {
         size: 200,
-        cloudHeight: 50,
         maxTerrainHeight: 5,      // Maximum height of terrain hills
         terrainXScale: 8,         // X-scale factor for terrain undulation
         terrainYScale: 8,         // Y-scale factor for terrain undulation
         minTerrainHeight: -2,     // Minimum height of terrain
         edgeFalloff: 5,           // Edge falloff factor for terrain
-        shoreRadius: 0.9          // Percentage where beach/water transition occurs
-    },
-    
-    // Input settings
-    INPUT: {
-        mouseSensitivity: 0.002
+        shoreRadius: 0.9,         // Percentage where beach/water transition occurs
+        cloudHeight: 20           // Height of clouds above terrain
     },
     
     // Network settings
     NETWORK: {
-        updateRate: 30, // Updates per second
         reconnectInterval: 3000,
         maxReconnectAttempts: 5
-    },
-    
-    // Debug settings
-    DEBUG: {
-        enabled: false,
-        logNetworkMessages: false
     }
 }; 

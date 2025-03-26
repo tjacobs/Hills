@@ -191,7 +191,7 @@ class Player {
         if (data.position) {
             this.targetPosition = new THREE.Vector3(
                 data.position.x,
-                data.position.y - 2,
+                data.position.y - CONFIG.PLAYER.meshHeightOffset,
                 data.position.z
             );
         }
@@ -258,7 +258,6 @@ class LocalPlayer extends Player {
         
         // Stone handling
         this.heldStones = [];
-        this.maxStones = CONFIG.STONE.maxHeld;
         this.lastThrowTime = 0;
         this.pickupDelay = 1000; // 1 second delay after throwing
         
@@ -274,7 +273,6 @@ class LocalPlayer extends Player {
         // Initialize camera position and rotation
         if (this.camera) {
             this.camera.position.copy(this.position);
-            this.camera.position.y += CONFIG.PLAYER.height;
             this.camera.rotation.y = this.rotation.y;
             this.camera.rotation.x = this.cameraPitch;
         }
@@ -395,13 +393,13 @@ class LocalPlayer extends Player {
         const terrainHeight = Game.getHeightAtPosition(this.position.x, this.position.z);
         if (!inTower) {
             // Normal terrain height handling
-            const targetHeight = terrainHeight + CONFIG.PLAYER.baseHeight;
+            const targetHeight = terrainHeight + CONFIG.PLAYER.height;
             const smoothness = CONFIG.PLAYER.heightSmoothness;
             this.position.y += (targetHeight - this.position.y) * smoothness;
         }
         
         // Check ground collision
-        const playerHeight = CONFIG.PLAYER.baseHeight;
+        const playerHeight = CONFIG.PLAYER.height;
         if (this.position.y < terrainHeight + playerHeight) {
             this.position.y = terrainHeight + playerHeight;
             this.isGrounded = true;
@@ -428,7 +426,7 @@ class LocalPlayer extends Player {
     
     checkStones() {
         // Check if player is holding max stones
-        if (this.heldStones.length >= this.maxStones) return;
+        if (this.heldStones.length >= CONFIG.PLAYER.maxStones) return;
         if (Date.now() - this.lastThrowTime < this.pickupDelay) return;
 
         // Check nearby stones
@@ -440,7 +438,7 @@ class LocalPlayer extends Player {
             const distance = this.position.distanceTo(stone.mesh.position);
 
             // Request pickup from server
-            if (distance < CONFIG.PLAYER.radius * CONFIG.PLAYER.stonePickupRadius) {
+            if (distance < CONFIG.PLAYER.stonePickupRadius) {
                 Network.sendStonePickup(stone.id);
                 break;
             }
@@ -487,7 +485,7 @@ class LocalPlayer extends Player {
 
     addHeldStone(stone) {
         // If player is holding max stones, do nothing
-        if (this.heldStones.length >= this.maxStones) return false;
+        if (this.heldStones.length >= CONFIG.PLAYER.maxStones) return false;
         if (stone.isHeld && stone.heldBy !== this.id) return false;
 
         // Add stone to held stones
@@ -519,14 +517,14 @@ class LocalPlayer extends Player {
                 // Calculate target height at top of tower
                 const topHeight = tower.position.y + 
                     ((tower.level) * 4 * CONFIG.STONE.depth) + 
-                    CONFIG.PLAYER.baseHeight - 1.5;
+                    CONFIG.PLAYER.height - 1.5;
 
                 // Calculate climb progress
                 const timeElapsed = (Date.now() - this.climbStartTime) / 1000;
                 const climbHeight = timeElapsed * this.climbSpeed;
 
                 // Calculate new height
-                const newHeight = tower.position.y + climbHeight + CONFIG.PLAYER.baseHeight;
+                const newHeight = tower.position.y + climbHeight + CONFIG.PLAYER.height;
 
                 // Don't exceed top height
                 this.position.y = Math.min(newHeight, topHeight);
