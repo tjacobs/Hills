@@ -38,6 +38,7 @@ const CONFIG = {
         maxTerrainHeight: 5,    // Maximum height of terrain
         terrainXScale: 8,       // Terrain scale X
         terrainYScale: 8,       // Terrain scale Z
+        minTerrainHeight: -2,   // Minimum height of terrain
         shoreRadius: 0.9        // Radius where beach turns to water (0-1)
     },
     PHYSICS: {
@@ -350,7 +351,7 @@ class Terrain {
                 const maxHeight = CONFIG.WORLD.maxTerrainHeight;
                 
                 // Two-dimensional hills with both sine functions
-                this.heightMap[i][j] = Math.max(-4, Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff);
+                this.heightMap[i][j] = Math.max(CONFIG.WORLD.minTerrainHeight, Math.sin(i / xs) * Math.sin(j / ys) * maxHeight * edgeFalloff);
             }
         }
     }

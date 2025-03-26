@@ -68,6 +68,7 @@ const CONFIG = {
         maxTerrainHeight: 5,      // Maximum height of terrain hills
         terrainXScale: 8,         // X-scale factor for terrain undulation
         terrainYScale: 8,         // Y-scale factor for terrain undulation
+        minTerrainHeight: -2,     // Minimum height of terrain
         shoreRadius: 0.9          // Percentage where beach/water transition occurs
     },
     
