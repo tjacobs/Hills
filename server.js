@@ -606,7 +606,7 @@ setInterval(() => {
                 // Position stone in front and stack vertically
                 stone.position = {
                     x: player.position.x + (-Math.sin(player.rotation.y) * 1.2),
-                    y: player.position.y + (-1.5 + (stackIndex * 0.9)),
+                    y: player.position.y + (-1.5 + (stackIndex * 1.1)),
                     z: player.position.z + (-Math.cos(player.rotation.y) * 1.2)
                 };
                 stone.velocity = { x: 0, y: 0, z: 0 };
