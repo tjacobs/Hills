@@ -195,7 +195,6 @@ const Network = {
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
         };
         
-        //console.log('Sending player update:', updateData.playerId);
         this.sendMessage(updateData);
     },
     
@@ -558,7 +557,6 @@ const Network = {
             stoneId: stoneId,
             playerId: Game.localPlayer.id
         });
-//        console.log('Stone picked up:', stoneId);
     },
     
     // Send stone dropped
