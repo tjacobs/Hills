@@ -663,13 +663,8 @@ const Network = {
     handleTowerUpdate(message) {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
-            // Update tower level directly
-            tower.level = message.newLevel;
-            
-            // Update tower mesh if needed
-            if (tower.updateMesh) {
-                tower.updateMesh();
-            }
+            // Use the new updateFromData method
+            tower.updateFromData(message);
             
             // Remove the stone that was used to level up
             if (message.removedStoneId) {
