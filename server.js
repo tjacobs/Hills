@@ -24,8 +24,8 @@ const connections = new Map();
 const CONFIG = {
     STONE: {
         maxCount: 200,          // Maximum number of stones in world
-        bounce: 0.9,            // How bouncy stones are on collision
-        rollFactor: 0.1,        // How easily stones roll on slopes
+        bounce: 0.5,            // How bouncy stones are on collision
+        rollFactor: 0.5,        // How easily stones roll on slopes
         maxVelocity: 0.5,       // Maximum stone velocity
         stopThreshold: 0.2,     // Velocity threshold for coming to rest
         waveStrength: 0.05,     // Strength of water wave effect
