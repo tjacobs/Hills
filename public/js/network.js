@@ -114,6 +114,12 @@ const Network = {
                     case 'tower_destroyed':
                         this.handleTowerDestroyed(data);
                         break;
+                    case 'tower_destruction_start':
+                        this.handleTowerDestructionStart(data);
+                        break;
+                    case 'tower_destruction_phase':
+                        this.handleTowerDestructionPhase(data);
+                        break;
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }
@@ -440,19 +446,27 @@ const Network = {
     
     // Handle tower destroyed message
     handleTowerDestroyed(message) {
-        // Check if index is valid
-        if (message.index >= 0 && message.index < Game.towers.length) {
-            // Use the Game's destroy tower method
-            Game.destroyTower(message.index, false); // false to prevent network loop
-            
-            // Log the tower destruction
-            log('Tower was destroyed!', 'info');
-            
-            // Update UI
-            updateUI();
-        } else {
-            console.warn(`Received invalid tower index for destruction: ${message.index}`);
+        // Find the tower index
+        const index = message.index;
+        if (index < 0 || index >= Game.towers.length) {
+            console.warn(`Invalid tower index: ${index}`);
+            return;
         }
+        
+        // Get the tower before removing
+        const tower = Game.towers[index];
+        
+        // Play destruction sound
+        playSound('towerDestroy', 1.0, false);
+        
+        // Create explosion effect
+        this.createTowerDestructionEffect(tower);
+        
+        // Destroy tower (doesn't send network message)
+        Game.destroyTower(index, false);
+        
+        // Log tower destruction
+        log(`A tower has been destroyed!`, 'warning');
     },
     
     // Handle stone picked up message
@@ -776,5 +790,210 @@ const Network = {
         }));
         
         log('Sent tower destack request');
+    },
+    
+    // Add these handler methods
+    handleTowerDestructionStart(message) {
+        // Get the cloud and tower
+        const cloud = Game.clouds.find(c => c.id === message.sequence.cloud);
+        const tower = Game.getTowerById(message.sequence.tower);
+        
+        if (!cloud || !tower) {
+            console.warn('Could not find cloud or tower for destruction sequence');
+            return;
+        }
+        
+        // Log the event
+        log(`Cloud is attacking a level ${tower.level} tower!`, 'warning');
+        
+        // Make the camera look at the tower if it's far away
+        this.maybeShowTowerDestruction(tower);
+        
+        // Clouds will just follow server position, no need to animate movement
+        cloud.startDestructionAnimation('moving', tower.id);
+    },
+
+    handleTowerDestructionPhase(message) {
+        // Find the cloud
+        const cloud = Game.clouds.find(c => c.id === message.cloudId);
+        if (!cloud) return;
+        
+        // Update animation phase
+        cloud.startDestructionAnimation(message.phase, message.towerId);
+        
+        if (message.phase === 'raining') {
+            // Play rain sound
+            playSound('rain', 0.5, false);
+            
+            // Log status
+            log(`Cloud is raining on the tower!`, 'info');
+        } 
+        else if (message.phase === 'flooding') {
+            // Play flood sound
+            playSound('flood', 0.7, false);
+            
+            // Log status
+            log(`Tower is being flooded!`, 'warning');
+        }
+    },
+
+    // Add method to create tower destruction explosion
+    createTowerDestructionEffect(tower) {
+        if (!tower || !tower.mesh) return;
+        
+        // Create explosion particles
+        const particleCount = 100;
+        const geometry = new THREE.BufferGeometry();
+        const material = new THREE.PointsMaterial({
+            color: 0xffaa00,
+            size: 0.8,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        // Create particle positions and velocities
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+        
+        // Initialize particles at tower position
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            positions[i3] = tower.position.x;
+            positions[i3 + 1] = tower.position.y + Math.random() * 5;
+            positions[i3 + 2] = tower.position.z;
+            
+            // Random outward velocity
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 8;
+            velocities.push({
+                x: Math.cos(angle) * speed,
+                y: 3 + Math.random() * 7,
+                z: Math.sin(angle) * speed
+            });
+        }
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        // Create particle system
+        const particles = new THREE.Points(geometry, material);
+        particles.userData.velocities = velocities;
+        particles.userData.startTime = Date.now();
+        particles.userData.duration = 2000; // 2 seconds
+        
+        // Add to scene
+        Game.scene.add(particles);
+        
+        // Store in active effects
+        if (!Game.activeEffects) Game.activeEffects = [];
+        Game.activeEffects.push({
+            type: 'explosion',
+            object: particles,
+            update: function(deltaTime) {
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.userData.velocities;
+                
+                // Apply gravity
+                for (let i = 0; i < velocities.length; i++) {
+                    velocities[i].y -= 9.8 * deltaTime;
+                }
+                
+                // Update each particle
+                for (let i = 0; i < positions.length; i += 3) {
+                    const vi = i / 3;
+                    positions[i] += velocities[vi].x * deltaTime;
+                    positions[i + 1] += velocities[vi].y * deltaTime;
+                    positions[i + 2] += velocities[vi].z * deltaTime;
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Fade out over time
+                const elapsed = Date.now() - particles.userData.startTime;
+                const progress = Math.min(1.0, elapsed / particles.userData.duration);
+                particles.material.opacity = 0.8 * (1 - progress);
+                
+                // Return true if effect should be removed
+                return progress >= 1.0;
+            },
+            remove: function() {
+                Game.scene.remove(particles);
+                particles.geometry.dispose();
+                particles.material.dispose();
+            }
+        });
+    },
+
+    // Add method to move camera to view tower destruction
+    maybeShowTowerDestruction(tower) {
+        // Only show if tower is far away
+        const distToPlayer = tower.position.distanceTo(Game.localPlayer.position);
+        if (distToPlayer > 50) {
+            // Create a temporary camera position to view the destruction
+            const lookDirection = new THREE.Vector3().subVectors(tower.position, Game.camera.position).normalize();
+            const distance = 30; // Distance to view from
+            
+            const cameraPos = new THREE.Vector3().copy(tower.position).sub(
+                lookDirection.multiplyScalar(distance)
+            );
+            
+            // Raise camera up to look down at tower
+            cameraPos.y += 20;
+            
+            // Store original camera state
+            const originalPos = Game.camera.position.clone();
+            const originalRot = Game.camera.rotation.clone();
+            
+            // Add to active effects
+            if (!Game.activeEffects) Game.activeEffects = [];
+            Game.activeEffects.push({
+                type: 'cameraMove',
+                startTime: Date.now(),
+                duration: 5000, // 5 seconds
+                targetPos: cameraPos,
+                targetTower: tower.position.clone(),
+                originalPos: originalPos,
+                originalRot: originalRot,
+                update: function(deltaTime) {
+                    const elapsed = Date.now() - this.startTime;
+                    const duration = this.duration;
+                    const progress = Math.min(1.0, elapsed / duration);
+                    
+                    // Move to view tower for first half
+                    if (progress < 0.5) {
+                        const p = progress * 2; // Scale to 0-1
+                        // Smooth transition
+                        const t = 0.5 - 0.5 * Math.cos(p * Math.PI);
+                        
+                        // Interpolate position
+                        Game.camera.position.lerpVectors(this.originalPos, this.targetPos, t);
+                        
+                        // Look at tower
+                        Game.camera.lookAt(this.targetTower);
+                    }
+                    // Return to player in second half
+                    else {
+                        const p = (progress - 0.5) * 2; // Scale to 0-1
+                        // Smooth transition
+                        const t = 0.5 - 0.5 * Math.cos(p * Math.PI);
+                        
+                        // Interpolate back to original position
+                        Game.camera.position.lerpVectors(this.targetPos, this.originalPos, t);
+                        
+                        // Interpolate back to original rotation
+                        if (p > 0.8) {
+                            const rotProgress = (p - 0.8) * 5; // Scale 0.8-1.0 to 0-1
+                            Game.camera.rotation.set(
+                                this.originalRot.x * rotProgress,
+                                this.originalRot.y * rotProgress,
+                                this.originalRot.z * rotProgress
+                            );
+                        }
+                    }
+                    
+                    return progress >= 1.0;
+                }
+            });
+        }
     }
 }; 

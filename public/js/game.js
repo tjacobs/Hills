@@ -77,6 +77,9 @@ const Game = {
         
         // Update UI after player is created
         updateUI();
+
+        // Initialize sounds
+        initSounds();
     },
     
     // Handle window resize
@@ -353,6 +356,9 @@ const Game = {
         // Update entities
         this.updateEntities(cappedDeltaTime);
 
+        // Update visual effects
+        this.updateEffects(cappedDeltaTime);
+
         // Render scene
         this.renderer.render(this.scene, this.camera);
 
@@ -579,7 +585,10 @@ const Game = {
         
         // Update UI to reflect zero stones
         updateUI();
-    }
+    },
+
+    // Add to Game object
+    activeEffects: []
 };
 
 // Initialize game when page loads

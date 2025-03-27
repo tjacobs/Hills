@@ -125,4 +125,42 @@ function parseColorId(id) {
         };
     }
     return null;
+}
+
+// Add sound handling functions
+const SOUNDS = {
+    rain: new Audio('audio/rain.mp3'),
+    flood: new Audio('audio/flood.mp3'),
+    towerDestroy: new Audio('audio/explosion.mp3')
+};
+
+// Initialize sounds
+function initSounds() {
+    // Preload sounds
+    for (const sound of Object.values(SOUNDS)) {
+        sound.load();
+    }
+}
+
+// Play a sound
+function playSound(name, volume = 1.0, loop = false) {
+    const sound = SOUNDS[name];
+    if (!sound) return;
+    
+    // Reset and configure sound
+    sound.currentTime = 0;
+    sound.volume = volume;
+    sound.loop = loop;
+    
+    // Play sound
+    sound.play().catch(e => console.warn(`Error playing sound ${name}:`, e));
+}
+
+// Stop a sound
+function stopSound(name) {
+    const sound = SOUNDS[name];
+    if (!sound) return;
+    
+    sound.pause();
+    sound.currentTime = 0;
 } 

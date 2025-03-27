@@ -402,7 +402,7 @@ class Stone {
         
         // Add a buffer zone beyond the beach where waves don't affect stones
         const waveStartDistance = beachDistance;
-        
+
         // Check if in water and beyond the buffer zone
         const isInWater = distanceFromCenter > waveStartDistance;
         
@@ -624,24 +624,60 @@ class Cloud {
     }
     
     checkTowerDestruction() {
-        // Iterate through all players and towers to check for destruction
+        // Iterate through all players and find those near clouds
         for (const playerId in gameState.players) {
             const player = gameState.players[playerId];
             
             // Find if player is on a tower
+            let playerTowerId = null;
+            let playerTowerIndex = -1;
+            
+            // First determine if the player is on a tower
             for (let i = 0; i < gameState.towers.length; i++) {
                 const tower = gameState.towers[i];
                 const horizontalDistance = getHorizontalDistance(player.position, tower.position);
                 
                 if (horizontalDistance < CONFIG.TOWER.baseRadius) {
-                    // Player is on tower, check distance to cloud
-                    const distanceToCloud = getDistance(player.position, this.position);
+                    playerTowerId = tower.id;
+                    playerTowerIndex = i;
+                    break;
+                }
+            }
+            
+            // Check distance from player to cloud
+            const distanceToCloud = getDistance(player.position, this.position);
+            
+            // If player is near a cloud
+            if (distanceToCloud < 15) {
+                console.log(`Player ${playerId} triggered cloud near tower ${playerTowerId}`);
+                
+                // Find the tallest tower that the player is not on
+                let tallestTowerIndex = -1;
+                let tallestTowerLevel = 0;
+                
+                for (let i = 0; i < gameState.towers.length; i++) {
+                    // Skip the tower the player is on
+                    if (i === playerTowerIndex) continue;
                     
-                    if (distanceToCloud < 15) {
-                        // Destroy tower and notify clients
-                        destroyTower(i);
-                        break;
+                    const tower = gameState.towers[i];
+                    
+                    // Find the tallest tower
+                    if (tower.level > tallestTowerLevel) {
+                        tallestTowerLevel = tower.level;
+                        tallestTowerIndex = i;
                     }
+                }
+                
+                // If we found a tower to destroy
+                if (tallestTowerIndex !== -1) {
+                    const targetTower = gameState.towers[tallestTowerIndex];
+                    console.log(`Targeting tallest tower ${targetTower.id} with level ${targetTower.level} for destruction`);
+                    
+                    // Start cloud destruction sequence
+                    initiateCloudDestructionSequence(this, tallestTowerIndex);
+                    break;
+                } else {
+                    console.log("No suitable tower found for destruction.");
                 }
             }
         }
@@ -690,7 +726,9 @@ const gameState = {
     stones: new Map(),
     clouds: [],
     lastStoneSpawnTime: 0,
-    stoneSpawnInterval: 10000
+    stoneSpawnInterval: 1000,
+    activeDestructionSequences: [],
+    cloudReturnPaths: []
 };
 
 // Initialize clouds
@@ -783,8 +821,14 @@ setInterval(() => {
 
     // Update clouds
     for (const cloud of gameState.clouds) {
-        cloud.update(deltaTime);
+        // Only update clouds that aren't part of a destruction sequence
+        if (!gameState.activeDestructionSequences.some(seq => seq.cloud === cloud.id)) {
+            cloud.update(deltaTime);
+        }
     }
+    
+    // Update tower destruction sequences
+    updateDestructionSequences();
     
     // Broadcast cloud positions periodically
     if (now % 100 < TICK_TIME) { // Send updates every ~100ms
@@ -1073,3 +1117,172 @@ function createStonesFromTower(position, count = CONFIG.TOWER.stonesPerLevel) {
 server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+
+// Add this function to handle the cloud destruction sequence
+function initiateCloudDestructionSequence(cloud, towerIndex) {
+    if (towerIndex < 0 || towerIndex >= gameState.towers.length) return;
+    
+    const tower = gameState.towers[towerIndex];
+    
+    // Store the original cloud position for animation path planning
+    const originalPosition = { ...cloud.position };
+    
+    // Create destruction sequence data
+    const destructionSequence = {
+        cloud: cloud.id,
+        tower: tower.id,
+        towerIndex: towerIndex,
+        towerPosition: tower.position,
+        startPosition: originalPosition,
+        phase: 'moving', // Phases: moving -> raining -> flooding -> destroying
+        startTime: Date.now(),
+        duration: {
+            moving: 3000,   // 3 seconds to move to tower
+            raining: 2000,  // 2 seconds of rain
+            flooding: 2000   // 2 seconds of flooding
+        }
+    };
+    
+    // Add to active sequences
+    gameState.activeDestructionSequences.push(destructionSequence);
+    
+    // Notify clients to start animation
+    broadcastToAll({
+        type: 'tower_destruction_start',
+        sequence: destructionSequence
+    });
+    
+    console.log(`Initiated destruction sequence for tower ${tower.id} using cloud ${cloud.id}`);
+}
+
+// Add this function to update all active destruction sequences
+function updateDestructionSequences() {
+    const now = Date.now();
+    const sequences = gameState.activeDestructionSequences;
+    
+    // Process each active sequence
+    for (let i = sequences.length - 1; i >= 0; i--) {
+        const seq = sequences[i];
+        const elapsedTime = now - seq.startTime;
+        
+        // Find the cloud and tower involved
+        const cloud = gameState.clouds.find(c => c.id === seq.cloud);
+        if (!cloud) {
+            sequences.splice(i, 1);
+            continue;
+        }
+        
+        // Process based on current phase
+        switch (seq.phase) {
+            case 'moving':
+                // Calculate cloud movement (linear interpolation)
+                const moveProgress = Math.min(1.0, elapsedTime / seq.duration.moving);
+                
+                // Update cloud position
+                cloud.position = {
+                    x: seq.startPosition.x + (seq.towerPosition.x - seq.startPosition.x) * moveProgress,
+                    y: seq.startPosition.y, // Keep same height
+                    z: seq.startPosition.z + (seq.towerPosition.z - seq.startPosition.z) * moveProgress
+                };
+                
+                // Broadcast cloud position update
+                broadcastCloudPositions();
+                
+                // Check if movement phase is complete
+                if (moveProgress >= 1.0) {
+                    seq.phase = 'raining';
+                    seq.startTime = now;
+                    
+                    // Notify clients of phase change
+                    broadcastToAll({
+                        type: 'tower_destruction_phase',
+                        cloudId: cloud.id,
+                        towerId: seq.tower,
+                        phase: 'raining'
+                    });
+                }
+                break;
+                
+            case 'raining':
+                // Rain animation is handled by the client
+                // Just check if raining phase is complete
+                if (elapsedTime >= seq.duration.raining) {
+                    seq.phase = 'flooding';
+                    seq.startTime = now;
+                    
+                    // Notify clients of phase change
+                    broadcastToAll({
+                        type: 'tower_destruction_phase',
+                        cloudId: cloud.id,
+                        towerId: seq.tower,
+                        phase: 'flooding'
+                    });
+                }
+                break;
+                
+            case 'flooding':
+                // Flooding animation is handled by the client
+                // Check if flooding phase is complete
+                if (elapsedTime >= seq.duration.flooding) {
+                    // Destroy the tower
+                    destroyTower(seq.towerIndex);
+                    
+                    // Remove this sequence
+                    sequences.splice(i, 1);
+                    
+                    // Reset cloud position (gradually move back to random position)
+                    const randomPos = {
+                        x: (Math.random() * 2 - 1) * CONFIG.WORLD.size / 3,
+                        y: CONFIG.WORLD.cloudHeight,
+                        z: (Math.random() * 2 - 1) * CONFIG.WORLD.size / 3
+                    };
+                    
+                    // Create a return path for the cloud
+                    const returnPath = {
+                        cloud: cloud.id,
+                        startPosition: cloud.position,
+                        endPosition: randomPos,
+                        startTime: now,
+                        duration: 5000 // 5 seconds to return
+                    };
+                    
+                    gameState.cloudReturnPaths.push(returnPath);
+                }
+                break;
+        }
+    }
+    
+    // Also update any cloud return paths
+    updateCloudReturnPaths();
+}
+
+// Helper to update cloud return paths
+function updateCloudReturnPaths() {
+    const now = Date.now();
+    const paths = gameState.cloudReturnPaths;
+    
+    for (let i = paths.length - 1; i >= 0; i--) {
+        const path = paths[i];
+        const cloud = gameState.clouds.find(c => c.id === path.cloud);
+        
+        if (!cloud) {
+            paths.splice(i, 1);
+            continue;
+        }
+        
+        const elapsed = now - path.startTime;
+        const progress = Math.min(1.0, elapsed / path.duration);
+        
+        // Update cloud position with easing
+        cloud.position = {
+            x: path.startPosition.x + (path.endPosition.x - path.startPosition.x) * progress,
+            y: path.startPosition.y + (path.endPosition.y - path.startPosition.y) * progress,
+            z: path.startPosition.z + (path.endPosition.z - path.startPosition.z) * progress
+        };
+        
+        // Remove path when complete
+        if (progress >= 1.0) {
+            paths.splice(i, 1);
+        }
+    }
+}
