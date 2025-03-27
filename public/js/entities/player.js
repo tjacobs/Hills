@@ -286,6 +286,16 @@ class Player {
     showKingNotification() {
         // We'll update the UI in the updateUI function
         updateUI();
+        
+        // Play a sound effect for becoming king
+        if (typeof playSound === 'function') {
+            playSound('crown', 0.7, false);
+        }
+        
+        // Log message
+        if (typeof log === 'function') {
+            log('You are now the king!', 'success');
+        }
     }
 }
 

@@ -1355,13 +1355,8 @@ function broadcastKingStatus(kingId) {
         kingId: kingId
     };
     
-    // Send to all connected clients
-    for (const clientId in connections) {
-        const client = connections.get(clientId);
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(message));
-        }
-    }
+    // Use the existing broadcastToAll function
+    broadcastToAll(message);
     
     console.log(`King status updated: ${kingId || 'No king'}`);
 }

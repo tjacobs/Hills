@@ -146,7 +146,8 @@ function parseColorId(id) {
 const SOUNDS = {
     rain: new Audio('audio/rain.mp3'),
     flood: new Audio('audio/flood.mp3'),
-    towerDestroy: new Audio('audio/explosion.mp3')
+    towerDestroy: new Audio('audio/explosion.mp3'),
+    crown: new Audio('audio/crown.mp3')
 };
 
 // Initialize sounds
