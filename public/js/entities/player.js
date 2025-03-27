@@ -282,9 +282,31 @@ class LocalPlayer extends Player {
         // If holding stones, throw
         if (this.heldStones.length > 0) {
             this.throwStone();
+            return;
         }
-        // Otherwise jump
-        else if (this.isGrounded) {
+
+        // If not holding stones, check if player is standing on a tower
+        for (let i = 0; i < Game.towers.length; i++) {
+            const tower = Game.towers[i];
+            
+            // Calculate horizontal distance to tower
+            const dx = this.position.x - tower.position.x;
+            const dz = this.position.z - tower.position.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            
+            // If player is on top of tower
+            if (distance < CONFIG.TOWER.baseRadius) {
+                // Only destack if tower has more than one level
+                if (tower.level > 1) {
+                    // Send tower destack request
+                    Network.sendTowerDestack(tower.id);
+                    return; // Don't jump after destacking
+                }
+            }
+        }
+        
+        // Otherwise jump (preserve existing behavior)
+        if (this.isGrounded) {
             this.verticalVelocity = CONFIG.PLAYER.jumpForce;
             this.isJumping = true;
             this.isGrounded = false;

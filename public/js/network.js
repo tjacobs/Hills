@@ -733,5 +733,18 @@ const Network = {
             // Log disconnection
             log('Disconnected from server', 'error');
         }
+    },
+    
+    // Add this method to the Network object
+    sendTowerDestack(towerId) {
+        if (!this.isConnected) return;
+        
+        this.socket.send(JSON.stringify({
+            type: 'tower_destack',
+            playerId: Game.localPlayer.id,
+            towerId: towerId
+        }));
+        
+        log('Sent tower destack request');
     }
 }; 

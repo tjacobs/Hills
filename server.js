@@ -57,6 +57,9 @@ wss.on('connection', (ws) => {
         case 'stone_throw':
           handleStoneThrow(ws, data);
           break;
+        case 'tower_destack':
+          handleTowerDestack(ws, data);
+          break;
         default:
           console.log(`Unknown message type: ${data.type}`);
       }
@@ -901,6 +904,85 @@ function destroyTower(index) {
         type: 'tower_destroyed',
         index: index
     });
+}
+
+// Add this function to handle tower destacking
+function handleTowerDestack(ws, data) {
+    // Get player ID and tower ID
+    const playerId = ws.playerId;
+    const towerId = data.towerId;
+    
+    // Log request
+    console.log(`Tower destack request from ${playerId} for tower ${towerId}`);
+    
+    // Find the tower
+    const towerIndex = gameState.towers.findIndex(tower => tower.id === towerId);
+    
+    if (towerIndex === -1) {
+        console.warn(`Tower ${towerId} not found`);
+        return;
+    }
+    
+    const tower = gameState.towers[towerIndex];
+    
+    // Check if tower has more than one level
+    if (tower.level <= 1) {
+        console.warn(`Tower ${towerId} has only one level, cannot destack`);
+        return;
+    }
+    
+    // Check if player is near the tower
+    const player = gameState.players[playerId];
+    if (!player) {
+        console.warn(`Player ${playerId} not found`);
+        return;
+    }
+    
+    // Calculate horizontal distance to tower
+    const dx = player.position.x - tower.position.x;
+    const dz = player.position.z - tower.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    // If player is too far from tower
+    if (distance > CONFIG.TOWER.baseRadius) {
+        console.warn(`Player ${playerId} is too far from tower ${towerId}`);
+        return;
+    }
+    
+    // Lower tower level
+    tower.level -= 1;
+    
+    // Notify all clients about the tower level change first
+    broadcastToAll({
+        type: 'tower_update',
+        towerId: tower.id,
+        newLevel: tower.level,
+        wasDestacked: true // Add a flag to indicate this was a destack operation
+    });
+    
+    // Create stones at the tower's position
+    for (let i = 0; i < 4; i++) {
+        // Calculate position with some spread
+        const angle = Math.PI * 2 * (i / 4);
+        const radius = 2;
+        const position = {
+            x: tower.position.x + Math.cos(angle) * radius,
+            y: tower.position.y + 2, // Place stones above the tower
+            z: tower.position.z + Math.sin(angle) * radius
+        };
+        
+        // Create stone with position and no initial velocity
+        const stone = new Stone(null, position, { x: 0, y: 0, z: 0 });
+        
+        // Add stone to game state
+        gameState.stones.set(stone.id, stone);
+        
+        // Broadcast each new stone to clients
+        broadcastToAll({
+            type: 'stone_spawned',
+            stone: stone.serialize()
+        });
+    }
 }
 
 // Start server
