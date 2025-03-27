@@ -296,12 +296,9 @@ class LocalPlayer extends Player {
             
             // If player is on top of tower
             if (distance < CONFIG.TOWER.baseRadius) {
-                // Only destack if tower has more than one level
-                if (tower.level > 1) {
-                    // Send tower destack request
-                    Network.sendTowerDestack(tower.id);
-                    return; // Don't jump after destacking
-                }
+                // Send tower destack request for any tower level
+                Network.sendTowerDestack(tower.id);
+                return; // Don't jump after destacking
             }
         }
         
