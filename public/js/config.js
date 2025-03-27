@@ -6,10 +6,10 @@ const CONFIG = {
         maxTerrainHeight: 5,      // Maximum height of terrain hills
         terrainXScale: 8,         // X-scale factor for terrain undulation
         terrainYScale: 8,         // Y-scale factor for terrain undulation
-        minTerrainHeight: -4,     // Minimum height of terrain
-        edgeFalloff: 10,          // Edge falloff factor for terrain
+        minTerrainHeight: -4,   // Minimum height of terrain
+        edgeFalloff: 15,          // Edge falloff factor for terrain
         shoreRadius: 0.9,         // Percentage where beach/water transition occurs
-        cloudHeight: 20,          // Height of clouds above terrain
+        cloudHeight: 30,          // Height of clouds above terrain
         gravity: -9.8,            // World gravity constant
     },
 
