@@ -263,8 +263,11 @@ class Player {
         
         this.crownMesh = new THREE.Mesh(geometry, material);
         
-        // Position crown on top of head
-        this.crownMesh.position.y = 1.0;
+        // Position crown higher above the head
+        this.crownMesh.position.y = 1.5;
+        
+        // Make the crown larger (scale it up)
+        this.crownMesh.scale.set(1.5, 1.5, 1.5);
         
         // Add to player mesh
         if (this.mesh) {
