@@ -711,11 +711,15 @@ setInterval(() => {
                 const playerStones = Array.from(gameState.stones.values()).filter(s => s.heldBy === player.playerId);
                 const stackIndex = playerStones.indexOf(stone);
 
-                // Position stone in front and stack vertically
+                // Calculate right-hand side position based on player rotation
+                // Right is 90 degrees (π/2) clockwise from forward direction
+                const rightAngle = player.rotation.y - Math.PI/2;
+                
+                // Position stone to the right side and stack vertically
                 stone.position = {
-                    x: player.position.x + (-Math.sin(player.rotation.y) * 1.2),
-                    y: player.position.y + (-1.5 + (stackIndex * 1.1)),
-                    z: player.position.z + (-Math.cos(player.rotation.y) * 1.2)
+                    x: player.position.x + (Math.sin(rightAngle) * 1.5),
+                    y: player.position.y + (-1.0 + (stackIndex * 1.1)),
+                    z: player.position.z + (Math.cos(rightAngle) * 1.5)
                 };
                 stone.velocity = { x: 0, y: 0, z: 0 };
             }
