@@ -715,11 +715,11 @@ setInterval(() => {
                 // Right is 90 degrees (π/2) clockwise from forward direction
                 const rightAngle = player.rotation.y - Math.PI/2;
                 
-                // Position stone to the right side and stack vertically
+                // Position stone to the center-right side and stack vertically
                 stone.position = {
-                    x: player.position.x + (Math.sin(rightAngle) * 1.5),
+                    x: player.position.x + (Math.sin(rightAngle) * 0.7),
                     y: player.position.y + (-1.0 + (stackIndex * 1.1)),
-                    z: player.position.z + (Math.cos(rightAngle) * 1.5)
+                    z: player.position.z + (Math.cos(rightAngle) * 0.7) - (Math.cos(player.rotation.y) * 0.7)
                 };
                 stone.velocity = { x: 0, y: 0, z: 0 };
             }
