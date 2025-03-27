@@ -69,10 +69,11 @@ const CONFIG = {
     
     // Tower settings
     TOWER: {
-        baseRadius: 3.0,          // Base radius for tower creation
+        baseRadius: 3.0,          // Radius for tower base
+        groupRadius: 8.0,         // Radius for tower creation stones
         blockCount: 24            // Number of blocks in each ring in the tower
     },
-    
+
     // Network settings
     NETWORK: {
         reconnectInterval: 3000,
