@@ -71,7 +71,8 @@ const CONFIG = {
     TOWER: {
         baseRadius: 3.0,          // Radius for tower base
         groupRadius: 8.0,         // Radius for tower creation stones
-        blockCount: 24            // Number of blocks in each ring in the tower
+        blockCount: 24,           // Number of blocks in each ring in the tower
+        stonesPerLevel: 4         // Number of stones per tower level (for creation and destacking)
     },
 
     // Network settings

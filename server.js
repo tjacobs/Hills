@@ -771,7 +771,9 @@ function checkTowerCreation() {
     // Get all static thrown stones
     const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && stone.isThrown && stone.isStatic);
     
-    // First check for stones near existing towers
+    // First phase: track stones near towers for potential level ups
+    const stonesNearTowers = new Map(); // Map of towerId -> array of nearby stones
+    
     for (const stone of stationaryStones) {
         // Check each tower
         for (let i = 0; i < gameState.towers.length; i++) {
@@ -784,29 +786,59 @@ function checkTowerCreation() {
             
             // If stone is close enough to tower
             if (distance < CONFIG.TOWER.groupRadius) {
-                console.log(`Stone ${stone.id} landed near tower ${tower.id}, leveling up tower`);
+                // Initialize array if needed
+                if (!stonesNearTowers.has(tower.id)) {
+                    stonesNearTowers.set(tower.id, []);
+                }
                 
-                // Level up tower
-                tower.level += 1;
-                
-                // Remove the stone
-                gameState.stones.delete(stone.id);
-                
-                // Notify all clients
-                broadcastToAll({
-                    type: 'tower_update',
-                    towerId: tower.id,
-                    newLevel: tower.level,
-                    removedStoneId: stone.id
-                });
-                
-                // Skip to next stone since this one was used
-                continue;
+                // Add stone to the array for this tower
+                stonesNearTowers.get(tower.id).push(stone);
             }
         }
     }
     
-    // Then check for new tower creation with remaining stones
+    // Second phase: process towers that have enough stones nearby to level up
+    for (const [towerId, nearbyStones] of stonesNearTowers.entries()) {
+        // Only process if we have enough stones to level up (stonesPerLevel)
+        if (nearbyStones.length >= CONFIG.TOWER.stonesPerLevel) {
+            // Find the tower
+            const tower = gameState.towers.find(t => t.id === towerId);
+            if (!tower) continue;
+            
+            console.log(`Tower ${towerId} has ${nearbyStones.length} stones nearby, leveling up`);
+            
+            // Level up the tower
+            tower.level += 1;
+            
+            // Get the stones we'll use for the level up (limit to stonesPerLevel)
+            const usedStones = nearbyStones.slice(0, CONFIG.TOWER.stonesPerLevel);
+            
+            // Remove the used stones
+            for (const stone of usedStones) {
+                gameState.stones.delete(stone.id);
+            }
+            
+            // Notify all clients
+            broadcastToAll({
+                type: 'tower_update',
+                towerId: tower.id,
+                newLevel: tower.level,
+                removedStoneIds: usedStones.map(s => s.id)
+            });
+            
+            // Remove used stones from the stationaryStones consideration
+            // for any further tower creation/leveling
+            for (const stone of usedStones) {
+                const index = stationaryStones.indexOf(stone);
+                if (index !== -1) {
+                    stationaryStones.splice(index, 1);
+                }
+            }
+        }
+    }
+    
+    // Third phase: check for new tower creation with remaining stones
+    // This part is from your updated tower creation code
     for (const stone of stationaryStones) {
         // Skip stones that were already used for leveling
         if (!gameState.stones.has(stone.id)) continue;
@@ -820,8 +852,9 @@ function checkTowerCreation() {
             return distance < CONFIG.TOWER.groupRadius;
         });
 
-        // If enough stones are nearby (3 total including this one)
-        if (nearbyStones.length >= 2) {
+        // If enough stones are nearby (CONFIG.TOWER.stonesPerLevel total including this one)
+        // This means we need stonesPerLevel-1 nearby stones plus the current stone
+        if (nearbyStones.length >= CONFIG.TOWER.stonesPerLevel - 1) {
             console.log(`Creating tower from ${nearbyStones.length + 1} stones`);
             
             // Calculate average position
@@ -838,10 +871,10 @@ function checkTowerCreation() {
                 position.z += nearbyStone.position.z;
             });
             
-            // Calculate average position
-            position.x /= (nearbyStones.length + 1);
-            position.y /= (nearbyStones.length + 1);
-            position.z /= (nearbyStones.length + 1);
+            // Calculate average position using the stonesPerLevel config
+            position.x /= CONFIG.TOWER.stonesPerLevel;
+            position.y /= CONFIG.TOWER.stonesPerLevel;
+            position.z /= CONFIG.TOWER.stonesPerLevel;
 
             // Log tower position
             console.log(`Tower position: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
@@ -853,16 +886,18 @@ function checkTowerCreation() {
                 level: 1
             };
             
-            // Remove used stones
-            const usedStones = [stone, ...nearbyStones];
+            // For tower creation, use only the required number of stones
+            const stonesNeeded = CONFIG.TOWER.stonesPerLevel - 1; // -1 because we already have 'stone'
+            const usedStones = [stone, ...nearbyStones.slice(0, stonesNeeded)];
+            
             usedStones.forEach(s => {
-                console.log(`Removing stone ${s.id}`);
+                console.log(`Removing stone ${s.id} from game state`);
                 gameState.stones.delete(s.id);
             });
             
             // Add tower
             gameState.towers.push(tower);
-            console.log(`Added tower ${tower.id}, total towers: ${gameState.towers.length}`);
+            console.log(`Added tower ${tower.id} to game state, total towers: ${gameState.towers.length}`);
             
             // Notify all clients
             const message = {
@@ -968,7 +1003,7 @@ function handleTowerDestack(ws, data) {
 }
 
 // Helper function to create stones at a position
-function createStonesFromTower(position, count = 4) {
+function createStonesFromTower(position, count = CONFIG.TOWER.stonesPerLevel) {
     const stones = [];
     
     for (let i = 0; i < count; i++) {
@@ -990,7 +1025,7 @@ function createStonesFromTower(position, count = 4) {
         // Add to result array
         stones.push(stone);
         
-        // Broadcast new stone to clients
+        // Broadcast each new stone to clients
         broadcastToAll({
             type: 'stone_spawned',
             stone: stone.serialize()

@@ -647,19 +647,40 @@ const Network = {
     handleTowerUpdate(message) {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
-            // Update tower
-            tower.updateFromData(message);
+            // Update tower level
+            tower.level = message.newLevel;
             
-            // Remove the stone that was used to level up
-            if (message.removedStoneId) {
+            // Refresh the tower mesh
+            tower.createTowerMesh();
+            
+            // Handle regular tower update (from a level up)
+            if (message.removedStoneIds && Array.isArray(message.removedStoneIds)) {
+                // Remove all stones that were used to level up the tower
+                message.removedStoneIds.forEach(stoneId => {
+                    const stone = Game.getStoneById(stoneId);
+                    if (stone) {
+                        Game.removeStone(stone);
+                    }
+                });
+                
+                // Log the level up
+                log(`Tower leveled up to level ${message.newLevel}!`, 'info');
+            }
+            // Handle single stone update (for backward compatibility)
+            else if (message.removedStoneId) {
                 const stone = Game.getStoneById(message.removedStoneId);
                 if (stone) {
                     Game.removeStone(stone);
                 }
+                
+                // Log the level up
+                log(`Tower leveled up to level ${message.newLevel}!`, 'info');
             }
-            
-            // Log the level up
-            log(`Tower leveled up to level ${message.newLevel}!`, 'info');
+            // Handle destack operation
+            else if (message.wasDestacked) {
+                // Log the destack
+                log(`Tower destacked to level ${message.newLevel}!`, 'info');
+            }
             
             // Update UI
             updateUI();
