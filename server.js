@@ -922,7 +922,6 @@ function checkTowerCreation() {
     }
     
     // Third phase: check for new tower creation with remaining stones
-    // This part is from your updated tower creation code
     for (const stone of stationaryStones) {
         // Skip stones that were already used for leveling
         if (!gameState.stones.has(stone.id)) continue;
@@ -975,13 +974,13 @@ function checkTowerCreation() {
             const usedStones = [stone, ...nearbyStones.slice(0, stonesNeeded)];
             
             usedStones.forEach(s => {
-                console.log(`Removing stone ${s.id} from game state`);
+                console.log(`Removing stone ${s.id}`);
                 gameState.stones.delete(s.id);
             });
             
             // Add tower
             gameState.towers.push(tower);
-            console.log(`Added tower ${tower.id} to game state, total towers: ${gameState.towers.length}`);
+            console.log(`Added tower ${tower.id}, total towers: ${gameState.towers.length}`);
             
             // Notify all clients
             const message = {
@@ -1295,13 +1294,18 @@ function updateCloudReturnPaths() {
 
 // Determine which player is the king
 function updateKingStatus() {
+    console.log("--- Checking king status ---");
+    
     // Find the tallest tower
     let tallestTower = null;
     let maxHeight = -Infinity;
     
+    // Log all towers
+    console.log(`Total towers: ${gameState.towers.length}`);
     for (let i = 0; i < gameState.towers.length; i++) {
         const tower = gameState.towers[i];
         const towerHeight = tower.position.y + (tower.level * 4 * CONFIG.STONE.depth);
+        console.log(`Tower ${i}: id=${tower.id}, level=${tower.level}, height=${towerHeight.toFixed(2)}, position=(${tower.position.x.toFixed(1)}, ${tower.position.y.toFixed(1)}, ${tower.position.z.toFixed(1)})`);
         
         if (towerHeight > maxHeight) {
             maxHeight = towerHeight;
@@ -1311,6 +1315,7 @@ function updateKingStatus() {
     
     // If no towers, no king
     if (!tallestTower) {
+        console.log("No towers found, no king possible");
         if (currentKingId) {
             currentKingId = null;
             broadcastKingStatus(null);
@@ -1318,9 +1323,13 @@ function updateKingStatus() {
         return;
     }
     
+    console.log(`Tallest tower: id=${tallestTower.id}, level=${tallestTower.level}, height=${maxHeight.toFixed(2)}`);
+    
     // Check which player is on the tallest tower
     let newKingId = null;
     
+    // Log all players
+    console.log(`Total players: ${Object.keys(gameState.players).length}`);
     for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
         
@@ -1333,19 +1342,33 @@ function updateKingStatus() {
         const towerTopY = tallestTower.position.y + (tallestTower.level * 4 * CONFIG.STONE.depth);
         const playerY = player.position.y - CONFIG.PLAYER.height;
         
+        console.log(`Player ${playerId}: position=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+        console.log(`  Distance to tallest tower: ${distance.toFixed(2)}, height diff: ${Math.abs(playerY - towerTopY).toFixed(2)}`);
+        console.log(`  Tower radius check: ${distance < CONFIG.TOWER.baseRadius * 1.3 ? 'PASS' : 'FAIL'}, height check: ${Math.abs(playerY - towerTopY) < 1.0 ? 'PASS' : 'FAIL'}`);
+        
         // Check if player is on top of the tallest tower
         if (distance < CONFIG.TOWER.baseRadius * 1.3 && 
             Math.abs(playerY - towerTopY) < 1.0) {
+            console.log(`Player ${playerId} is on the tallest tower and is the king!`);
             newKingId = playerId;
             break; // First player found on the tower becomes king
         }
     }
     
+    if (!newKingId) {
+        console.log("No player is on the tallest tower");
+    }
+    
     // If king has changed, broadcast the change
     if (newKingId !== currentKingId) {
+        console.log(`King status changed: ${currentKingId || 'none'} -> ${newKingId || 'none'}`);
         currentKingId = newKingId;
         broadcastKingStatus(newKingId);
+    } else {
+        console.log(`King status unchanged: ${currentKingId || 'none'}`);
     }
+    
+    console.log("--- King status check complete ---");
 }
 
 // Send king status to all clients
