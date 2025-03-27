@@ -37,15 +37,24 @@ const CONFIG = {
         // Interaction parameters
         throwForce: 0.2,
         throwUpward: 0.2,
+
+        // Server: Stone physics parameters
+        maxCount: 10,           // Maximum number of stones in world
+        bounce: 0.5,            // How bouncy stones are on collision
+        friction: 0.7,          // How much friction stones have
+        rollFactor: 0.5,        // How easily stones roll on slopes
+        maxVelocity: 0.5,       // Maximum stone velocity
+        stopThreshold: 0.2,     // Velocity threshold for coming to rest
+        waveStrength: 0.05,     // Strength of water wave effect
+        radius: 0.5             // Stone collision radius
     },
 
-    // Tower settings
-    TOWER: {
-        baseRadius: 3.0,          // Base radius for tower creation
-        blockCount: 24           // Number of blocks in each ring in the tower
+    // Server
+    PHYSICS: {
+        speedMultiplier: 10     // Global physics speed multiplier
     },
-    
-    // World settings
+
+    // World settings, client and server
     WORLD: {
         size: 200,
         maxTerrainHeight: 5,      // Maximum height of terrain hills
@@ -54,7 +63,14 @@ const CONFIG = {
         minTerrainHeight: -2,     // Minimum height of terrain
         edgeFalloff: 5,           // Edge falloff factor for terrain
         shoreRadius: 0.9,         // Percentage where beach/water transition occurs
-        cloudHeight: 20           // Height of clouds above terrain
+        cloudHeight: 20,          // Height of clouds above terrain
+        gravity: -9.8,            // World gravity constant
+    },
+    
+    // Tower settings
+    TOWER: {
+        baseRadius: 3.0,          // Base radius for tower creation
+        blockCount: 24            // Number of blocks in each ring in the tower
     },
     
     // Network settings
@@ -62,7 +78,7 @@ const CONFIG = {
         reconnectInterval: 3000,
         maxReconnectAttempts: 5
     }
-}; 
+};
 
 // Export for Node.js
 if (typeof module !== 'undefined' && module.exports) {
