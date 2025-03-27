@@ -1,5 +1,18 @@
 // Game configuration
 const CONFIG = {
+    // World settings, client and server
+    WORLD: {
+        size: 200,
+        maxTerrainHeight: 5,      // Maximum height of terrain hills
+        terrainXScale: 8,         // X-scale factor for terrain undulation
+        terrainYScale: 8,         // Y-scale factor for terrain undulation
+        minTerrainHeight: -4,     // Minimum height of terrain
+        edgeFalloff: 10,          // Edge falloff factor for terrain
+        shoreRadius: 0.9,         // Percentage where beach/water transition occurs
+        cloudHeight: 20,          // Height of clouds above terrain
+        gravity: -9.8,            // World gravity constant
+    },
+
     // Player settings
     PLAYER: {
         // Movement parameters
@@ -54,19 +67,6 @@ const CONFIG = {
         speedMultiplier: 10     // Global physics speed multiplier
     },
 
-    // World settings, client and server
-    WORLD: {
-        size: 200,
-        maxTerrainHeight: 5,      // Maximum height of terrain hills
-        terrainXScale: 8,         // X-scale factor for terrain undulation
-        terrainYScale: 8,         // Y-scale factor for terrain undulation
-        minTerrainHeight: -2,     // Minimum height of terrain
-        edgeFalloff: 5,           // Edge falloff factor for terrain
-        shoreRadius: 0.9,         // Percentage where beach/water transition occurs
-        cloudHeight: 20,          // Height of clouds above terrain
-        gravity: -9.8,            // World gravity constant
-    },
-    
     // Tower settings
     TOWER: {
         baseRadius: 3.0,          // Radius for tower base
