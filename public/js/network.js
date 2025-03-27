@@ -120,6 +120,9 @@ const Network = {
                     case 'tower_destruction_phase':
                         this.handleTowerDestructionPhase(data);
                         break;
+                    case 'king_status':
+                        this.handleKingStatus(data);
+                        break;
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }

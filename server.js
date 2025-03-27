@@ -23,6 +23,9 @@ const wss = new WebSocket.Server({ server });
 // Connections, map playerId to WebSocket connection
 const connections = new Map();
 
+// King status tracking
+let currentKingId = null;
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   let playerId = null;
@@ -843,6 +846,9 @@ setInterval(() => {
         const thrownStones = Array.from(gameState.stones.values()).filter(s => s.isThrown).length;
         console.log(`Stone stats: total=${totalStones}, held=${heldStones}, static=${staticStones}, thrown=${thrownStones}`);
     }
+
+    // Check for king status
+    updateKingStatus();
 }, TICK_TIME);
 
 function checkTowerCreation() {
@@ -1285,4 +1291,77 @@ function updateCloudReturnPaths() {
             paths.splice(i, 1);
         }
     }
+}
+
+// Determine which player is the king
+function updateKingStatus() {
+    // Find the tallest tower
+    let tallestTower = null;
+    let maxHeight = -Infinity;
+    
+    for (let i = 0; i < gameState.towers.length; i++) {
+        const tower = gameState.towers[i];
+        const towerHeight = tower.position.y + (tower.level * 4 * CONFIG.STONE.depth);
+        
+        if (towerHeight > maxHeight) {
+            maxHeight = towerHeight;
+            tallestTower = tower;
+        }
+    }
+    
+    // If no towers, no king
+    if (!tallestTower) {
+        if (currentKingId) {
+            currentKingId = null;
+            broadcastKingStatus(null);
+        }
+        return;
+    }
+    
+    // Check which player is on the tallest tower
+    let newKingId = null;
+    
+    for (const playerId in gameState.players) {
+        const player = gameState.players[playerId];
+        
+        // Calculate horizontal distance to tower
+        const dx = player.position.x - tallestTower.position.x;
+        const dz = player.position.z - tallestTower.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        
+        // Calculate vertical position relative to tower top
+        const towerTopY = tallestTower.position.y + (tallestTower.level * 4 * CONFIG.STONE.depth);
+        const playerY = player.position.y - CONFIG.PLAYER.height;
+        
+        // Check if player is on top of the tallest tower
+        if (distance < CONFIG.TOWER.baseRadius * 1.3 && 
+            Math.abs(playerY - towerTopY) < 1.0) {
+            newKingId = playerId;
+            break; // First player found on the tower becomes king
+        }
+    }
+    
+    // If king has changed, broadcast the change
+    if (newKingId !== currentKingId) {
+        currentKingId = newKingId;
+        broadcastKingStatus(newKingId);
+    }
+}
+
+// Send king status to all clients
+function broadcastKingStatus(kingId) {
+    const message = {
+        type: 'king_status',
+        kingId: kingId
+    };
+    
+    // Send to all connected clients
+    for (const clientId in connections) {
+        const client = connections.get(clientId);
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+        }
+    }
+    
+    console.log(`King status updated: ${kingId || 'No king'}`);
 }

@@ -54,7 +54,13 @@ function updateUI() {
             const colorInfo = parseColorId(Game.localPlayer.id);
             if (colorInfo) {
                 const colorHex = COLOR_HEX[colorInfo.color].toString(16).padStart(6, '0');
-                playerInfo.innerHTML = `You are: <span style="color: #${colorHex}">${colorInfo.color} ${colorInfo.number}</span>`;
+                
+                let kingStatus = '';
+                if (Game.localPlayer.isKing) {
+                    kingStatus = ` 👑 <span style="color: gold">You are the king!</span>`;
+                }
+                
+                playerInfo.innerHTML = `You are: <span style="color: #${colorHex}">${colorInfo.color} ${colorInfo.number}</span>${kingStatus}`;
             }
         }
     }

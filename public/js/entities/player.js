@@ -11,6 +11,8 @@ class Player {
         this.camera = null;
         this.heldStones = [];
         this.isLocal = false;
+        this.isKing = false;
+        this.crownMesh = null;
         
         // Create mesh for remote players only
         if (!this.isLocal) {
@@ -224,6 +226,66 @@ class Player {
                 this.mesh.material.dispose();
             }
         }
+    }
+
+    // Set king status and create/remove crown
+    setKingStatus(isKing) {
+        if (this.isKing === isKing) return; // No change
+        
+        this.isKing = isKing;
+        
+        // Add or remove crown based on king status
+        if (isKing) {
+            this.createCrown();
+            
+            // Show king notification for local player
+            if (this.isLocal) {
+                this.showKingNotification();
+            }
+        } else {
+            this.removeCrown();
+        }
+    }
+    
+    // Create crown on player's head
+    createCrown() {
+        if (this.crownMesh) this.removeCrown();
+        
+        // Create simple crown geometry
+        const geometry = new THREE.CylinderGeometry(0.4, 0.6, 0.4, 5, 1);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0xFFD700, // Gold color
+            metalness: 0.8,
+            roughness: 0.2,
+            emissive: 0xFFD700,
+            emissiveIntensity: 0.2
+        });
+        
+        this.crownMesh = new THREE.Mesh(geometry, material);
+        
+        // Position crown on top of head
+        this.crownMesh.position.y = 1.0;
+        
+        // Add to player mesh
+        if (this.mesh) {
+            this.mesh.add(this.crownMesh);
+        }
+    }
+    
+    // Remove crown
+    removeCrown() {
+        if (this.crownMesh && this.mesh) {
+            this.mesh.remove(this.crownMesh);
+            if (this.crownMesh.geometry) this.crownMesh.geometry.dispose();
+            if (this.crownMesh.material) this.crownMesh.material.dispose();
+            this.crownMesh = null;
+        }
+    }
+    
+    // Show king notification for local player
+    showKingNotification() {
+        // We'll update the UI in the updateUI function
+        updateUI();
     }
 }
 
