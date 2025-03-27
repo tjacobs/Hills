@@ -401,8 +401,8 @@ class Stone {
         const beachDistance = worldHalfSize * CONFIG.WORLD.shoreRadius;
         
         // Add a buffer zone beyond the beach where waves don't affect stones
-        const waveStartDistance = beachDistance * 1.15; // Start waves 15% further out than beach edge
-
+        const waveStartDistance = beachDistance;
+        
         // Check if in water and beyond the buffer zone
         const isInWater = distanceFromCenter > waveStartDistance;
         
