@@ -25,19 +25,13 @@ const connections = new Map();
 
 // King status tracking
 let currentKingId = null;
-
-// Add this variable at the top where other timing variables are declared
 let lastKingCheckTime = 0;
-
-// Add this flag near the top where other configuration variables are declared
 const DEBUG = {
-  kingStatus: false  // Set to true to enable king status logging
+  kingStatus: false
 };
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
-  let playerId = null;
-
   // Send welcome message with initial state
   ws.send(JSON.stringify({
     type: 'initial_state',
@@ -96,6 +90,7 @@ wss.on('connection', (ws) => {
         playerId: playerId
     });
 
+    // Handle disconnect
     handleDisconnect(ws);
   });
 });
