@@ -547,6 +547,113 @@ function createRandomStone() {
     return stone;
 }
 
+// Cloud class for server
+class Cloud {
+    constructor(id = null, position = { x: 0, y: 0, z: 0 }) {
+        this.id = id || generateId('cloud_');
+        this.position = position;
+        this.speed = 0.5 + Math.random() * 1.5;
+        this.direction = normalizeVector({
+            x: Math.random() * 2 - 1,
+            y: 0,
+            z: Math.random() * 2 - 1
+        });
+    }
+
+    update(deltaTime) {
+        // Move cloud
+        this.position.x += this.direction.x * this.speed * deltaTime;
+        this.position.z += this.direction.z * this.speed * deltaTime;
+        
+        // Check world boundaries
+        const worldSize = CONFIG.WORLD.size / 2;
+        let bounced = false;
+        if (this.position.x > worldSize) {
+            this.direction.x = -Math.abs(this.direction.x);
+            bounced = true;
+        } else if (this.position.x < -worldSize) {
+            this.direction.x = Math.abs(this.direction.x);
+            bounced = true;
+        }
+        if (this.position.z > worldSize) {
+            this.direction.z = -Math.abs(this.direction.z);
+            bounced = true;
+        } else if (this.position.z < -worldSize) {
+            this.direction.z = Math.abs(this.direction.z);
+            bounced = true;
+        }
+        
+        // If bounced, slightly change direction
+        if (bounced) {
+            this.direction.x += (Math.random() * 0.2 - 0.1);
+            this.direction.z += (Math.random() * 0.2 - 0.1);
+            this.direction = normalizeVector(this.direction);
+        }
+        
+        // Check for tower destruction
+        this.checkTowerDestruction();
+    }
+    
+    checkTowerDestruction() {
+        // Iterate through all players and towers to check for destruction
+        for (const playerId in gameState.players) {
+            const player = gameState.players[playerId];
+            
+            // Find if player is on a tower
+            for (let i = 0; i < gameState.towers.length; i++) {
+                const tower = gameState.towers[i];
+                const horizontalDistance = getHorizontalDistance(player.position, tower.position);
+                
+                if (horizontalDistance < CONFIG.TOWER.baseRadius) {
+                    // Player is on tower, check distance to cloud
+                    const distanceToCloud = getDistance(player.position, this.position);
+                    
+                    if (distanceToCloud < 15) {
+                        // Destroy tower and notify clients
+                        destroyTower(i);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    serialize() {
+        return {
+            id: this.id,
+            position: this.position,
+            direction: this.direction,
+            speed: this.speed
+        };
+    }
+}
+
+// Helper functions
+function normalizeVector(vector) {
+    const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+    if (length === 0) return { x: 0, y: 0, z: 0 };
+    return {
+        x: vector.x / length,
+        y: vector.y / length,
+        z: vector.z / length
+    };
+}
+
+function getHorizontalDistance(pos1, pos2) {
+    return Math.sqrt(
+        Math.pow(pos1.x - pos2.x, 2) + 
+        Math.pow(pos1.z - pos2.z, 2)
+    );
+}
+
+function getDistance(pos1, pos2) {
+    return Math.sqrt(
+        Math.pow(pos1.x - pos2.x, 2) + 
+        Math.pow(pos1.y - pos2.y, 2) + 
+        Math.pow(pos1.z - pos2.z, 2)
+    );
+}
+
 // Game state
 const gameState = {
     players: {},
@@ -762,113 +869,6 @@ function checkTowerCreation() {
             break; 
         }
     }
-}
-
-// Cloud class for server
-class Cloud {
-    constructor(id = null, position = { x: 0, y: 0, z: 0 }) {
-        this.id = id || generateId('cloud_');
-        this.position = position;
-        this.speed = 0.5 + Math.random() * 1.5;
-        this.direction = normalizeVector({
-            x: Math.random() * 2 - 1,
-            y: 0,
-            z: Math.random() * 2 - 1
-        });
-    }
-
-    update(deltaTime) {
-        // Move cloud
-        this.position.x += this.direction.x * this.speed * deltaTime;
-        this.position.z += this.direction.z * this.speed * deltaTime;
-        
-        // Check world boundaries
-        const worldSize = CONFIG.WORLD.size / 2;
-        let bounced = false;
-        if (this.position.x > worldSize) {
-            this.direction.x = -Math.abs(this.direction.x);
-            bounced = true;
-        } else if (this.position.x < -worldSize) {
-            this.direction.x = Math.abs(this.direction.x);
-            bounced = true;
-        }
-        if (this.position.z > worldSize) {
-            this.direction.z = -Math.abs(this.direction.z);
-            bounced = true;
-        } else if (this.position.z < -worldSize) {
-            this.direction.z = Math.abs(this.direction.z);
-            bounced = true;
-        }
-        
-        // If bounced, slightly change direction
-        if (bounced) {
-            this.direction.x += (Math.random() * 0.2 - 0.1);
-            this.direction.z += (Math.random() * 0.2 - 0.1);
-            this.direction = normalizeVector(this.direction);
-        }
-        
-        // Check for tower destruction
-        this.checkTowerDestruction();
-    }
-    
-    checkTowerDestruction() {
-        // Iterate through all players and towers to check for destruction
-        for (const playerId in gameState.players) {
-            const player = gameState.players[playerId];
-            
-            // Find if player is on a tower
-            for (let i = 0; i < gameState.towers.length; i++) {
-                const tower = gameState.towers[i];
-                const horizontalDistance = getHorizontalDistance(player.position, tower.position);
-                
-                if (horizontalDistance < CONFIG.TOWER.baseRadius) {
-                    // Player is on tower, check distance to cloud
-                    const distanceToCloud = getDistance(player.position, this.position);
-                    
-                    if (distanceToCloud < 15) {
-                        // Destroy tower and notify clients
-                        destroyTower(i);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    
-    serialize() {
-        return {
-            id: this.id,
-            position: this.position,
-            direction: this.direction,
-            speed: this.speed
-        };
-    }
-}
-
-// Helper functions
-function normalizeVector(vector) {
-    const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-    if (length === 0) return { x: 0, y: 0, z: 0 };
-    return {
-        x: vector.x / length,
-        y: vector.y / length,
-        z: vector.z / length
-    };
-}
-
-function getHorizontalDistance(pos1, pos2) {
-    return Math.sqrt(
-        Math.pow(pos1.x - pos2.x, 2) + 
-        Math.pow(pos1.z - pos2.z, 2)
-    );
-}
-
-function getDistance(pos1, pos2) {
-    return Math.sqrt(
-        Math.pow(pos1.x - pos2.x, 2) + 
-        Math.pow(pos1.y - pos2.y, 2) + 
-        Math.pow(pos1.z - pos2.z, 2)
-    );
 }
 
 // Broadcast cloud positions to all connected clients
