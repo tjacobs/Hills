@@ -1003,6 +1003,7 @@ const Network = {
                 }
             });
         }
+    },
     
     // Handle king status update from server
     handleKingStatus(message) {
