@@ -400,9 +400,11 @@ class LocalPlayer extends Player {
         if (this.controls.jump) {
             this.handleSpaceBar();
 
-            // Prevent throwing all stones at once
-            this.controls.jump = false;
-      }
+            // Only reset jump for keyboard controls, not for mobile
+            if (!('ontouchstart' in window)) {
+                this.controls.jump = false;
+            }
+        }
         
         // Handle sprinting
         const sprintMultiplier = this.controls.sprint ? CONFIG.PLAYER.sprintMultiplier : 1.0;

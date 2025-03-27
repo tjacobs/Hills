@@ -248,22 +248,14 @@ const Input = {
             user-select: none;
         `;
         
-        // Use touchstart/end instead of click for better mobile response
+        // Use touchstart only to trigger jump action, don't set controls
         button.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            // Set jump but don't interfere with movement controls
+            // Directly call the space bar handler instead of setting controls
             if (Game.localPlayer) {
-                Game.localPlayer.controls.jump = true;
+                Game.localPlayer.handleSpaceBar();
             }
         }, { passive: false });
-        
-        button.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            // Reset jump without affecting movement
-            if (Game.localPlayer) {
-                Game.localPlayer.controls.jump = false;
-            }
-        });
         
         document.body.appendChild(button);
     },
