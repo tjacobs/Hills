@@ -400,20 +400,27 @@ class Stone {
         const worldHalfSize = CONFIG.WORLD.size / 2;
         const beachDistance = worldHalfSize * CONFIG.WORLD.shoreRadius;
         
-        // Check if in water
-        const isInWater = distanceFromCenter > beachDistance;
+        // Add a buffer zone beyond the beach where waves don't affect stones
+        const waveStartDistance = beachDistance * 1.15; // Start waves 15% further out than beach edge
+
+        // Check if in water and beyond the buffer zone
+        const isInWater = distanceFromCenter > waveStartDistance;
         
-        // Apply water forces
+        // Apply water forces only if truly in water (beyond buffer)
         if (isInWater) {
+            // Calculate wave intensity based on distance from shore
+            // Stones deeper in water experience stronger forces
+            const depthFactor = Math.min(1.0, (distanceFromCenter - waveStartDistance) / (worldHalfSize * 0.1));
+            
             // Calculate direction toward center
             const magnitude = Math.sqrt(this.position.x * this.position.x + this.position.z * this.position.z);
             const dirX = -this.position.x / magnitude;
             const dirZ = -this.position.z / magnitude;
             
-            // Apply wave force
-            this.velocity.x += dirX * CONFIG.STONE.waveStrength * multiplier;
-            this.velocity.z += dirZ * CONFIG.STONE.waveStrength * multiplier;
-            this.velocity.y += CONFIG.STONE.waveStrength * (multiplier * 0.16); // Upward bias
+            // Apply wave force with depth factor
+            this.velocity.x += dirX * CONFIG.STONE.waveStrength * multiplier * depthFactor;
+            this.velocity.z += dirZ * CONFIG.STONE.waveStrength * multiplier * depthFactor;
+            this.velocity.y += CONFIG.STONE.waveStrength * (multiplier * 0.16) * depthFactor; // Upward bias
         }
         
         // Get ground height and calculate slope
