@@ -547,6 +547,11 @@ function createRandomStone() {
     return stone;
 }
 
+// Add this function to generate IDs
+function generateId(prefix = '') {
+    return prefix + Math.random().toString(36).substr(2, 9);
+}
+
 // Cloud class for server
 class Cloud {
     constructor(id = null, position = { x: 0, y: 0, z: 0 }) {
