@@ -588,7 +588,31 @@ const Game = {
     },
 
     // Add to Game object
-    activeEffects: []
+    activeEffects: [],
+
+    // Add the updateEffects method to your Game object
+    updateEffects(deltaTime) {
+        // Update active effects and remove completed ones
+        if (this.activeEffects) {
+            for (let i = this.activeEffects.length - 1; i >= 0; i--) {
+                const effect = this.activeEffects[i];
+                
+                // Call update method
+                const completed = effect.update(deltaTime);
+                
+                // Remove if completed
+                if (completed) {
+                    // Call clean-up method if available
+                    if (effect.remove) {
+                        effect.remove();
+                    }
+                    
+                    // Remove from active effects
+                    this.activeEffects.splice(i, 1);
+                }
+            }
+        }
+    }
 };
 
 // Initialize game when page loads
