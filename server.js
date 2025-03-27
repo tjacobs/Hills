@@ -690,7 +690,7 @@ const gameState = {
     stones: new Map(),
     clouds: [],
     lastStoneSpawnTime: 0,
-    stoneSpawnInterval: 1000
+    stoneSpawnInterval: 10000
 };
 
 // Initialize clouds
