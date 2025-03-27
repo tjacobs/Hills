@@ -419,6 +419,11 @@ const Network = {
                 heldStones: message.heldStones
             });            
             player.lastUpdate = Date.now();
+        
+            // Update king status if included in message
+            if (message.isKing !== undefined) {
+                player.setKingStatus(message.isKing);
+            }
         }
     },
     
@@ -997,6 +1002,32 @@ const Network = {
                     return progress >= 1.0;
                 }
             });
+        }
+    
+    // Handle king status update from server
+    handleKingStatus(message) {
+        const kingId = message.kingId;
+        
+        // Update all players' king status
+        for (const playerId in Game.players) {
+            const player = Game.players[playerId];
+            const isKing = playerId === kingId;
+            
+            // Update king status
+            player.setKingStatus(isKing);
+        }
+        
+        // Update UI
+        updateUI();
+        
+        // Log king change if it's a new king
+        if (kingId) {
+            const kingName = kingId === Game.localPlayer.id ? 
+                'You are' : 
+                `${kingId} is`;
+            log(`${kingName} now the king!`, 'info');
+        } else {
+            log('The kingdom is vacant! Climb the tallest tower to become king.', 'info');
         }
     }
 }; 
