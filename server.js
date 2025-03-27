@@ -26,6 +26,9 @@ const connections = new Map();
 // King status tracking
 let currentKingId = null;
 
+// Add this variable at the top where other timing variables are declared
+let lastKingCheckTime = 0;
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   let playerId = null;
@@ -847,8 +850,11 @@ setInterval(() => {
         console.log(`Stone stats: total=${totalStones}, held=${heldStones}, static=${staticStones}, thrown=${thrownStones}`);
     }
 
-    // Check for king status
-    updateKingStatus();
+    // Check for king status only once per second
+    if (now - lastKingCheckTime > 1000) {  // 1000ms = 1 second
+        updateKingStatus();
+        lastKingCheckTime = now;
+    }
 }, TICK_TIME);
 
 function checkTowerCreation() {
@@ -1342,14 +1348,18 @@ function updateKingStatus() {
         const towerTopY = tallestTower.position.y + (tallestTower.level * 4 * CONFIG.STONE.depth);
         const playerY = player.position.y - CONFIG.PLAYER.height;
         
+        // Increase the tolerances
+        const distanceTolerance = 15.0;  // Increased from 3.9 (CONFIG.TOWER.baseRadius * 1.3)
+        const heightTolerance = 5.0;     // Increased from 1.0
+        
         console.log(`Player ${playerId}: position=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
         console.log(`  Distance to tallest tower: ${distance.toFixed(2)}, height diff: ${Math.abs(playerY - towerTopY).toFixed(2)}`);
-        console.log(`  Tower radius check: ${distance < CONFIG.TOWER.baseRadius * 1.3 ? 'PASS' : 'FAIL'}, height check: ${Math.abs(playerY - towerTopY) < 1.0 ? 'PASS' : 'FAIL'}`);
+        console.log(`  Tower radius check: ${distance < distanceTolerance ? 'PASS' : 'FAIL'}, height check: ${Math.abs(playerY - towerTopY) < heightTolerance ? 'PASS' : 'FAIL'}`);
         
-        // Check if player is on top of the tallest tower
-        if (distance < CONFIG.TOWER.baseRadius * 1.3 && 
-            Math.abs(playerY - towerTopY) < 1.0) {
-            console.log(`Player ${playerId} is on the tallest tower and is the king!`);
+        // Check if player is near the tallest tower with more tolerance
+        if (distance < distanceTolerance && 
+            Math.abs(playerY - towerTopY) < heightTolerance) {
+            console.log(`Player ${playerId} is on/near the tallest tower and is the king!`);
             newKingId = playerId;
             break; // First player found on the tower becomes king
         }
