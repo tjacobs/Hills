@@ -725,17 +725,26 @@ setInterval(() => {
                 const playerStones = Array.from(gameState.stones.values()).filter(s => s.heldBy === player.playerId);
                 const stackIndex = playerStones.indexOf(stone);
 
-                // Calculate right-hand side position based on player rotation
-                // Right is 90 degrees (π/2) clockwise from forward direction
-                const rightAngle = player.rotation.y - Math.PI/2;
-                
-                // Position stone to the center-right side and stack vertically
+                // Position stone to the right side and more forward for better visibility
                 stone.position = {
-                    x: player.position.x + (Math.sin(rightAngle) * 1.7) - (Math.cos(player.rotation.y) * 1.7),
-                    y: player.position.y + (-1.0 + (stackIndex * 1.1)),
-                    z: player.position.z + (Math.cos(rightAngle) * 1.7) - (Math.cos(player.rotation.y) * 1.7)
+                    // Use player's forward direction and right vector for consistent positioning
+                    // Move forward by -1.0 units and right by 1.2 units
+                    x: player.position.x - (Math.sin(player.rotation.y) * 1.0) + (Math.sin(player.rotation.y + Math.PI/2) * 1.2),
+                    // Adjust vertical position with good spacing between stones
+                    y: player.position.y + (-0.5 + (stackIndex * 0.4)),
+                    // Same forward and right calculation for z component
+                    z: player.position.z - (Math.cos(player.rotation.y) * 1.0) + (Math.cos(player.rotation.y + Math.PI/2) * 1.2)
                 };
-                stone.velocity = { x: 0, y: 0, z: 0 };
+
+                // Set stone rotation to match player's view - point the same face toward player
+                stone.rotation = {
+                    // Keep a slight tilt for visual interest
+                    x: 0.1,
+                    // Match player's y rotation, offset by 90 degrees so face points to player
+                    y: player.rotation.y + Math.PI/2,
+                    // Keep a slight tilt for visual interest
+                    z: 0.1
+                };
             }
         } else {
             // Only update non-held stones with physics
