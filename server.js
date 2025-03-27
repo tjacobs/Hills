@@ -914,74 +914,90 @@ function handleTowerDestack(ws, data) {
     // Log request
     console.log(`Tower destack request from ${playerId} for tower ${towerId}`);
     
-    // Find the tower
+    // Validate tower exists
     const towerIndex = gameState.towers.findIndex(tower => tower.id === towerId);
-    
     if (towerIndex === -1) {
         console.warn(`Tower ${towerId} not found`);
         return;
     }
-    
     const tower = gameState.towers[towerIndex];
     
-    // Check if tower has more than one level
-    if (tower.level <= 1) {
-        console.warn(`Tower ${towerId} has only one level, cannot destack`);
-        return;
-    }
-    
-    // Check if player is near the tower
+    // Validate player exists
     const player = gameState.players[playerId];
     if (!player) {
         console.warn(`Player ${playerId} not found`);
         return;
     }
     
-    // Calculate horizontal distance to tower
-    const dx = player.position.x - tower.position.x;
-    const dz = player.position.z - tower.position.z;
-    const distance = Math.sqrt(dx * dx + dz * dz);
-    
-    // If player is too far from tower
+    // Validate player is close enough to tower
+    const distance = getHorizontalDistance(player.position, tower.position);
     if (distance > CONFIG.TOWER.baseRadius) {
         console.warn(`Player ${playerId} is too far from tower ${towerId}`);
         return;
     }
     
-    // Lower tower level
-    tower.level -= 1;
+    // Create stones regardless of tower level
+    createStonesFromTower(tower.position);
     
-    // Notify all clients about the tower level change first
-    broadcastToAll({
-        type: 'tower_update',
-        towerId: tower.id,
-        newLevel: tower.level,
-        wasDestacked: true // Add a flag to indicate this was a destack operation
-    });
+    // Handle differently based on tower level
+    if (tower.level === 1) {
+        // Remove the tower entirely
+        gameState.towers.splice(towerIndex, 1);
+        
+        // Notify clients of tower removal
+        broadcastToAll({
+            type: 'tower_destroyed',
+            index: towerIndex
+        });
+        
+        console.log(`Tower ${towerId} was level 1 and has been completely removed`);
+    } else {
+        // Lower tower level
+        tower.level -= 1;
+        
+        // Notify clients of level decrease
+        broadcastToAll({
+            type: 'tower_update',
+            towerId: tower.id,
+            newLevel: tower.level,
+            wasDestacked: true
+        });
+        
+        console.log(`Tower ${towerId} was destacked to level ${tower.level}`);
+    }
+}
+
+// Helper function to create stones at a position
+function createStonesFromTower(position, count = 4) {
+    const stones = [];
     
-    // Create stones at the tower's position
-    for (let i = 0; i < 4; i++) {
-        // Calculate position with some spread
-        const angle = Math.PI * 2 * (i / 4);
+    for (let i = 0; i < count; i++) {
+        // Calculate position with circular spread
+        const angle = Math.PI * 2 * (i / count);
         const radius = 2;
-        const position = {
-            x: tower.position.x + Math.cos(angle) * radius,
-            y: tower.position.y + 2, // Place stones above the tower
-            z: tower.position.z + Math.sin(angle) * radius
+        const stonePosition = {
+            x: position.x + Math.cos(angle) * radius,
+            y: position.y + 2, // Place stones above the tower
+            z: position.z + Math.sin(angle) * radius
         };
         
         // Create stone with position and no initial velocity
-        const stone = new Stone(null, position, { x: 0, y: 0, z: 0 });
+        const stone = new Stone(null, stonePosition, { x: 0, y: 0, z: 0 });
         
         // Add stone to game state
         gameState.stones.set(stone.id, stone);
         
-        // Broadcast each new stone to clients
+        // Add to result array
+        stones.push(stone);
+        
+        // Broadcast new stone to clients
         broadcastToAll({
             type: 'stone_spawned',
             stone: stone.serialize()
         });
     }
+    
+    return stones;
 }
 
 // Start server
