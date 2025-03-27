@@ -261,13 +261,6 @@ function handleDisconnect(ws) {
             stone.throwTime = Date.now();
             stone.isStatic = false;
             stone.velocity = { x: 0, y: 0, z: 0 };
-            
-            // Broadcast stone drop to all clients
-//            broadcastToAll({
-//                type: 'stone_dropped',
-//                stoneId: stone.id,
-//                playerId: ws.playerId
-//            });
         }
     }
 }
@@ -448,9 +441,9 @@ class Stone {
         const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
         const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
         
-        // Ground collision handling - add stabilization logic
+        // Ground collision handling
         if (this.position.y < collisionThreshold) {
-            // Set position exactly at ground level for stability
+            // Set position exactly at ground level
             this.position.y = collisionThreshold;
             
             // Handle bounce
@@ -780,21 +773,21 @@ setInterval(() => {
                 stone.position = {
                     // Use player's forward direction and right vector for consistent positioning
                     // Move forward by -1.0 units and right by 1.2 units
-                    x: player.position.x - (Math.sin(player.rotation.y) * 1.0) + (Math.sin(player.rotation.y + Math.PI/2) * 1.2),
+                    x: player.position.x - (Math.sin(player.rotation.y) * 1.0) + (Math.sin(player.rotation.y + Math.PI/2) * 0.9),
                     // Adjust vertical position with good spacing between stones
-                    y: player.position.y + (-0.5 + (stackIndex * 0.4)),
+                    y: player.position.y + (-0.5 + (stackIndex * 0.9)),
                     // Same forward and right calculation for z component
-                    z: player.position.z - (Math.cos(player.rotation.y) * 1.0) + (Math.cos(player.rotation.y + Math.PI/2) * 1.2)
+                    z: player.position.z - (Math.cos(player.rotation.y) * 1.0) + (Math.cos(player.rotation.y + Math.PI/2) * 0.9)
                 };
 
                 // Set stone rotation to match player's view - point the same face toward player
                 stone.rotation = {
                     // Keep a slight tilt for visual interest
-                    x: 0.1,
+                    x: 0.2,
                     // Match player's y rotation, offset by 90 degrees so face points to player
                     y: player.rotation.y + Math.PI/2,
                     // Keep a slight tilt for visual interest
-                    z: 0.1
+                    z: 0.2
                 };
             }
         } else {
@@ -842,7 +835,7 @@ setInterval(() => {
     }
 
     // Check for king status only once per second
-    if (now - lastKingCheckTime > 1000) {  // 1000ms = 1 second
+    if (now - lastKingCheckTime > 1000) {
         updateKingStatus();
         lastKingCheckTime = now;
     }
@@ -907,8 +900,7 @@ function checkTowerCreation() {
                 removedStoneIds: usedStones.map(s => s.id)
             });
             
-            // Remove used stones from the stationaryStones consideration
-            // for any further tower creation/leveling
+            // Remove used stones from the stationaryStones for any further tower creation/leveling
             for (const stone of usedStones) {
                 const index = stationaryStones.indexOf(stone);
                 if (index !== -1) {
@@ -970,6 +962,7 @@ function checkTowerCreation() {
             const stonesNeeded = CONFIG.TOWER.stonesPerLevel - 1; // -1 because we already have 'stone'
             const usedStones = [stone, ...nearbyStones.slice(0, stonesNeeded)];
             
+            // Remove the used stones
             usedStones.forEach(s => {
                 console.log(`Removing stone ${s.id}`);
                 gameState.stones.delete(s.id);
@@ -1064,8 +1057,9 @@ function handleTowerDestack(ws, data) {
             type: 'tower_destroyed',
             index: towerIndex
         });
-        
-        console.log(`Tower ${towerId} was level 1 and has been completely removed`);
+
+        // Log the removal
+        console.log(`Tower ${towerId} was level 1 and has been removed`);
     } else {
         // Lower tower level
         tower.level -= 1;
@@ -1078,6 +1072,7 @@ function handleTowerDestack(ws, data) {
             wasDestacked: true
         });
         
+        // Log the destacking
         console.log(`Tower ${towerId} was destacked to level ${tower.level}`);
     }
 }
@@ -1085,14 +1080,13 @@ function handleTowerDestack(ws, data) {
 // Helper function to create stones at a position
 function createStonesFromTower(position, count = CONFIG.TOWER.stonesPerLevel) {
     const stones = [];
-    
     for (let i = 0; i < count; i++) {
         // Calculate position with circular spread
         const angle = Math.PI * 2 * (i / count);
         const radius = 2;
         const stonePosition = {
             x: position.x + Math.cos(angle) * radius,
-            y: position.y + 2, // Place stones above the tower
+            y: position.y + position.y,
             z: position.z + Math.sin(angle) * radius
         };
         
@@ -1112,13 +1106,9 @@ function createStonesFromTower(position, count = CONFIG.TOWER.stonesPerLevel) {
         });
     }
     
+    // Return the stones
     return stones;
 }
-
-// Start server
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
 
 // Add this function to handle the cloud destruction sequence
 function initiateCloudDestructionSequence(cloud, towerIndex) {
@@ -1392,3 +1382,9 @@ function broadcastKingStatus(kingId) {
     // Always log when king status is broadcast
     console.log(`King status updated: ${kingId || 'No king'}`);
 }
+
+// Start server
+server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+  
