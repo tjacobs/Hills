@@ -841,15 +841,6 @@ setInterval(() => {
         broadcastCloudPositions();
     }
 
-    // Log stone states every 10 seconds
-    if (false && now % 10000 < TICK_TIME) {
-        const totalStones = gameState.stones.size;
-        const heldStones = Array.from(gameState.stones.values()).filter(s => s.isHeld).length;
-        const staticStones = Array.from(gameState.stones.values()).filter(s => s.isStatic).length;
-        const thrownStones = Array.from(gameState.stones.values()).filter(s => s.isThrown).length;
-        console.log(`Stone stats: total=${totalStones}, held=${heldStones}, static=${staticStones}, thrown=${thrownStones}`);
-    }
-
     // Check for king status only once per second
     if (now - lastKingCheckTime > 1000) {  // 1000ms = 1 second
         updateKingStatus();
@@ -1329,7 +1320,7 @@ function updateKingStatus() {
         return;
     }
     
-    console.log(`Tallest tower: id=${tallestTower.id}, level=${tallestTower.level}, height=${maxHeight.toFixed(2)}`);
+//    console.log(`Tallest tower: id=${tallestTower.id}, level=${tallestTower.level}, height=${maxHeight.toFixed(2)}`);
     
     // Check which player is on the tallest tower
     let newKingId = null;
@@ -1348,9 +1339,9 @@ function updateKingStatus() {
         const towerTopY = tallestTower.position.y + (tallestTower.level * 4 * CONFIG.STONE.depth);
         const playerY = player.position.y - CONFIG.PLAYER.height;
         
-        // Increase the tolerances
-        const distanceTolerance = 15.0;  // Increased from 3.9 (CONFIG.TOWER.baseRadius * 1.3)
-        const heightTolerance = 5.0;     // Increased from 1.0
+        // Tolerances
+        const distanceTolerance = CONFIG.TOWER.baseRadius * 1.3;
+        const heightTolerance = 3.0;
         
         console.log(`Player ${playerId}: position=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
         console.log(`  Distance to tallest tower: ${distance.toFixed(2)}, height diff: ${Math.abs(playerY - towerTopY).toFixed(2)}`);
