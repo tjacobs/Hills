@@ -29,6 +29,11 @@ let currentKingId = null;
 // Add this variable at the top where other timing variables are declared
 let lastKingCheckTime = 0;
 
+// Add this flag near the top where other configuration variables are declared
+const DEBUG = {
+  kingStatus: false  // Set to true to enable king status logging
+};
+
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
   let playerId = null;
@@ -1291,18 +1296,22 @@ function updateCloudReturnPaths() {
 
 // Determine which player is the king
 function updateKingStatus() {
-    console.log("--- Checking king status ---");
+    if (DEBUG.kingStatus) console.log("--- Checking king status ---");
     
     // Find the tallest tower
     let tallestTower = null;
     let maxHeight = -Infinity;
     
-    // Log all towers
-    console.log(`Total towers: ${gameState.towers.length}`);
+    // Log all towers if debug is enabled
+    if (DEBUG.kingStatus) console.log(`Total towers: ${gameState.towers.length}`);
+    
     for (let i = 0; i < gameState.towers.length; i++) {
         const tower = gameState.towers[i];
         const towerHeight = tower.position.y + (tower.level * 4 * CONFIG.STONE.depth);
-        console.log(`Tower ${i}: id=${tower.id}, level=${tower.level}, height=${towerHeight.toFixed(2)}, position=(${tower.position.x.toFixed(1)}, ${tower.position.y.toFixed(1)}, ${tower.position.z.toFixed(1)})`);
+        
+        if (DEBUG.kingStatus) {
+            console.log(`Tower ${i}: id=${tower.id}, level=${tower.level}, height=${towerHeight.toFixed(2)}, position=(${tower.position.x.toFixed(1)}, ${tower.position.y.toFixed(1)}, ${tower.position.z.toFixed(1)})`);
+        }
         
         if (towerHeight > maxHeight) {
             maxHeight = towerHeight;
@@ -1312,7 +1321,8 @@ function updateKingStatus() {
     
     // If no towers, no king
     if (!tallestTower) {
-        console.log("No towers found, no king possible");
+        if (DEBUG.kingStatus) console.log("No towers found, no king possible");
+        
         if (currentKingId) {
             currentKingId = null;
             broadcastKingStatus(null);
@@ -1320,13 +1330,12 @@ function updateKingStatus() {
         return;
     }
     
-//    console.log(`Tallest tower: id=${tallestTower.id}, level=${tallestTower.level}, height=${maxHeight.toFixed(2)}`);
-    
     // Check which player is on the tallest tower
     let newKingId = null;
     
-    // Log all players
-    console.log(`Total players: ${Object.keys(gameState.players).length}`);
+    // Log all players if debug is enabled
+    if (DEBUG.kingStatus) console.log(`Total players: ${Object.keys(gameState.players).length}`);
+    
     for (const playerId in gameState.players) {
         const player = gameState.players[playerId];
         
@@ -1343,33 +1352,36 @@ function updateKingStatus() {
         const distanceTolerance = CONFIG.TOWER.baseRadius * 1.3;
         const heightTolerance = 3.0;
         
-        console.log(`Player ${playerId}: position=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
-        console.log(`  Distance to tallest tower: ${distance.toFixed(2)}, height diff: ${Math.abs(playerY - towerTopY).toFixed(2)}`);
-        console.log(`  Tower radius check: ${distance < distanceTolerance ? 'PASS' : 'FAIL'}, height check: ${Math.abs(playerY - towerTopY) < heightTolerance ? 'PASS' : 'FAIL'}`);
+        if (DEBUG.kingStatus) {
+            console.log(`Player ${playerId}: position=(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)}, ${player.position.z.toFixed(1)})`);
+            console.log(`  Distance to tallest tower: ${distance.toFixed(2)}, height diff: ${Math.abs(playerY - towerTopY).toFixed(2)}`);
+            console.log(`  Tower radius check: ${distance < distanceTolerance ? 'PASS' : 'FAIL'}, height check: ${Math.abs(playerY - towerTopY) < heightTolerance ? 'PASS' : 'FAIL'}`);
+        }
         
         // Check if player is near the tallest tower with more tolerance
         if (distance < distanceTolerance && 
             Math.abs(playerY - towerTopY) < heightTolerance) {
-            console.log(`Player ${playerId} is on/near the tallest tower and is the king!`);
+            if (DEBUG.kingStatus) console.log(`Player ${playerId} is on/near the tallest tower and is the king!`);
             newKingId = playerId;
             break; // First player found on the tower becomes king
         }
     }
     
-    if (!newKingId) {
+    if (!newKingId && DEBUG.kingStatus) {
         console.log("No player is on the tallest tower");
     }
     
     // If king has changed, broadcast the change
     if (newKingId !== currentKingId) {
+        // This log is important enough to keep even when debug is off
         console.log(`King status changed: ${currentKingId || 'none'} -> ${newKingId || 'none'}`);
         currentKingId = newKingId;
         broadcastKingStatus(newKingId);
-    } else {
+    } else if (DEBUG.kingStatus) {
         console.log(`King status unchanged: ${currentKingId || 'none'}`);
     }
     
-    console.log("--- King status check complete ---");
+    if (DEBUG.kingStatus) console.log("--- King status check complete ---");
 }
 
 // Send king status to all clients
@@ -1382,5 +1394,6 @@ function broadcastKingStatus(kingId) {
     // Use the existing broadcastToAll function
     broadcastToAll(message);
     
+    // Always log when king status is broadcast
     console.log(`King status updated: ${kingId || 'No king'}`);
 }
