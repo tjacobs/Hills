@@ -63,3 +63,8 @@ const CONFIG = {
         maxReconnectAttempts: 5
     }
 }; 
+
+// Export for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CONFIG;
+}
