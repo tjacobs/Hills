@@ -211,14 +211,18 @@ const Input = {
     },
     
     handleTouchEnd(event) {
-        this.isTouching = false;
-        
-        // Reset controls
-        if (Game.localPlayer) {
-            Game.localPlayer.controls.forward = false;
-            Game.localPlayer.controls.backward = false;
-            Game.localPlayer.controls.left = false;
-            Game.localPlayer.controls.right = false;
+        // Only stop movement if the touch that ended was the main movement touch
+        // Check if there are still touches active
+        if (event.touches.length === 0) {
+            this.isTouching = false;
+            
+            // Reset controls only if no touches remain
+            if (Game.localPlayer) {
+                Game.localPlayer.controls.forward = false;
+                Game.localPlayer.controls.backward = false;
+                Game.localPlayer.controls.left = false;
+                Game.localPlayer.controls.right = false;
+            }
         }
     },
     
@@ -247,10 +251,19 @@ const Input = {
         // Use touchstart/end instead of click for better mobile response
         button.addEventListener('touchstart', (e) => {
             e.preventDefault();
+            // Set jump but don't interfere with movement controls
             if (Game.localPlayer) {
-                Game.localPlayer.handleSpaceBar();
+                Game.localPlayer.controls.jump = true;
             }
         }, { passive: false });
+        
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            // Reset jump without affecting movement
+            if (Game.localPlayer) {
+                Game.localPlayer.controls.jump = false;
+            }
+        });
         
         document.body.appendChild(button);
     },
