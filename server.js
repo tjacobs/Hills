@@ -637,7 +637,7 @@ function checkTowerCreation() {
             const distance = Math.sqrt(dx * dx + dz * dz);
             
             // If stone is close enough to tower
-            if (distance < CONFIG.TOWER.baseRadius) {
+            if (distance < CONFIG.TOWER.groupRadius) {
                 console.log(`Stone ${stone.id} landed near tower ${tower.id}, leveling up tower`);
                 
                 // Level up tower
@@ -671,7 +671,7 @@ function checkTowerCreation() {
             const dx = stone.position.x - otherStone.position.x;
             const dz = stone.position.z - otherStone.position.z;
             const distance = Math.sqrt(dx * dx + dz * dz);
-            return distance < CONFIG.TOWER.baseRadius;
+            return distance < CONFIG.TOWER.groupRadius;
         });
 
         // If enough stones are nearby (3 total including this one)
