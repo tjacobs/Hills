@@ -4,6 +4,9 @@ const http = require('http');
 const express = require('express');
 const path = require('path');
 
+// Load shared config
+const CONFIG = require('./public/js/config.js');
+
 // Create app
 const app = express();
 const port = process.env.PORT || 3000;
@@ -19,37 +22,6 @@ const wss = new WebSocket.Server({ server });
 
 // Connections, map playerId to WebSocket connection
 const connections = new Map();
-
-// Game configuration
-const CONFIG = {
-    STONE: {
-        maxCount: 10,           // Maximum number of stones in world
-        bounce: 0.5,            // How bouncy stones are on collision
-        friction: 0.7,          // How much friction stones have
-        rollFactor: 0.5,        // How easily stones roll on slopes
-        maxVelocity: 0.5,       // Maximum stone velocity
-        stopThreshold: 0.2,     // Velocity threshold for coming to rest
-        waveStrength: 0.05,     // Strength of water wave effect
-        radius: 0.5             // Stone collision radius
-    },
-    WORLD: {
-        gravity: -9.8,          // World gravity constant
-        size: 200,              // World size (ground plane dimensions)
-        maxTerrainHeight: 5,    // Maximum height of terrain
-        terrainXScale: 8,       // Terrain scale X
-        terrainYScale: 8,       // Terrain scale Z
-        minTerrainHeight: -2,   // Minimum height of terrain
-        edgeFalloff: 5,         // Edge falloff factor for terrain
-        shoreRadius: 0.9        // Radius where beach turns to water (0-1)
-    },
-    PHYSICS: {
-        speedMultiplier: 10     // Global physics speed multiplier
-    },
-    TOWER: {
-        baseRadius: 5         // Base radius for tower creation
-    }
-};
-
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
