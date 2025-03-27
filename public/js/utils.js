@@ -66,6 +66,15 @@ function updateUI() {
 Stones: ${Game.stones.length}<br>
 Towers: ${Game.towers.length}`;
     }
+    
+    // Update instructions on the right side
+    const instructionsContainer = document.getElementById('instructions-container');
+    if (instructionsContainer) {
+        instructionsContainer.innerHTML = `<b></b>
+• Collect four stones to make a tower<br>
+• Climb the tallest tower to be the king<br>
+• Touch a cloud to destroy another tower`;
+    }
 }
 
 // Load texture
