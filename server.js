@@ -435,34 +435,48 @@ class Stone {
         const slopeZ = (heightNorth - heightSouth) / (2 * sampleDistance);
         const slopeMagnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
         
-        // Ground collision
+        // Ground collision handling - add stabilization logic
         if (this.position.y < collisionThreshold) {
+            // Set position exactly at ground level for stability
             this.position.y = collisionThreshold;
             
-            // Bounce with damping
+            // Handle bounce
             if (this.velocity.y < -0.05) {
                 this.velocity.y = -this.velocity.y * CONFIG.STONE.bounce;
             } else {
+                // Zero out small vertical velocities completely to prevent tiny bounces
                 this.velocity.y = 0;
             }
             
-            // Apply friction to help stones come to rest
+            // Get the current horizontal velocity magnitude
+            const horizontalVelocity = Math.sqrt(
+                this.velocity.x * this.velocity.x + 
+                this.velocity.z * this.velocity.z
+            );
+            
+            // Apply friction to horizontal movement
             const frictionFactor = CONFIG.STONE.friction;
             this.velocity.x *= frictionFactor;
             this.velocity.z *= frictionFactor;
             
-            // Apply slope forces
-            this.velocity.x += slopeX * CONFIG.STONE.rollFactor * multiplier;
-            this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * multiplier;
+            // If horizontal velocity is very small, zero it out completely
+            if (horizontalVelocity < CONFIG.STONE.stopThreshold * 0.5) {
+                this.velocity.x = 0;
+                this.velocity.z = 0;
+                
+                // If stone has very low velocity in all directions, set it as completely static
+                if (!this.isStatic && Math.abs(this.velocity.y) < 0.01) {
+                    this.isStatic = true;
+                    
+                    // Once static, snap to exact ground height to prevent floating point issues
+                    this.position.y = collisionThreshold;
+                }
+            }
             
-            // Extra downhill acceleration on steep slopes
-            if (false && slopeMagnitude > 0.05) {
-                const magnitude = Math.sqrt(slopeX * slopeX + slopeZ * slopeZ);
-                const downhillX = slopeX / magnitude;
-                const downhillZ = slopeZ / magnitude;
-                const downhillFactor = slopeMagnitude * (multiplier * 0.02);
-                this.velocity.x += downhillX * downhillFactor;
-                this.velocity.z += downhillZ * downhillFactor;
+            // Apply slope forces - only if the stone still has some momentum
+            if (horizontalVelocity > CONFIG.STONE.stopThreshold * 0.5) {
+                this.velocity.x += slopeX * CONFIG.STONE.rollFactor * multiplier;
+                this.velocity.z += slopeZ * CONFIG.STONE.rollFactor * multiplier;
             }
         }
         
