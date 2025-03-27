@@ -36,7 +36,7 @@ const CONFIG = {
         heightSmoothness: 0.05,   // How smoothly player follows terrain
         
         // Interaction parameters
-        maxStones: 5,              // Maximum number of stones player can hold
+        maxStones: 4,              // Maximum number of stones player can hold
         stonePickupRadius: 4,      // Radius for picking up stones
     },
     
