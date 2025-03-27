@@ -52,7 +52,7 @@ const CONFIG = {
         throwUpward: 0.2,
 
         // Server: Stone physics parameters
-        maxCount: 10,           // Maximum number of stones in world
+        maxCount: 100,          // Maximum number of stones in world
         bounce: 0.5,            // How bouncy stones are on collision
         friction: 0.7,          // How much friction stones have
         rollFactor: 0.5,        // How easily stones roll on slopes
