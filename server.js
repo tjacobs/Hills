@@ -178,7 +178,7 @@ function handleRequestState(ws) {
 // Handle stone messages
 function handleStonePickup(data) {
     // Log
-    console.log('Stone pickup request:', {
+    console.log('Stone pickup:', {
         stoneId: data.stoneId,
         playerId: data.playerId
     });
@@ -856,13 +856,13 @@ function checkTowerCreation() {
             // Remove used stones
             const usedStones = [stone, ...nearbyStones];
             usedStones.forEach(s => {
-                console.log(`Removing stone ${s.id} from game state`);
+                console.log(`Removing stone ${s.id}`);
                 gameState.stones.delete(s.id);
             });
             
             // Add tower
             gameState.towers.push(tower);
-            console.log(`Added tower ${tower.id} to game state, total towers: ${gameState.towers.length}`);
+            console.log(`Added tower ${tower.id}, total towers: ${gameState.towers.length}`);
             
             // Notify all clients
             const message = {
@@ -870,7 +870,6 @@ function checkTowerCreation() {
                 tower: tower,
                 removedStones: usedStones.map(s => s.id)
             };
-            console.log('Broadcasting tower creation:', message);
             broadcastToAll(message);
             
             // Only create one tower for now
