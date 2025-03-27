@@ -111,6 +111,9 @@ const Network = {
                     case 'cloud_positions':
                         this.handleCloudPositions(data);
                         break;
+                    case 'tower_destroyed':
+                        this.handleTowerDestroyed(data);
+                        break;
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }
@@ -437,13 +440,19 @@ const Network = {
     
     // Handle tower destroyed message
     handleTowerDestroyed(message) {
-        log(`Tower ${message.towerIndex} destroyed by player ${message.playerId}`);
-        
-        // Destroy tower
-        Game.destroyTower(message.towerIndex, false); // Don't notify network
-        
-        // Update UI
-        updateUI();
+        // Check if index is valid
+        if (message.index >= 0 && message.index < Game.towers.length) {
+            // Use the Game's destroy tower method
+            Game.destroyTower(message.index, false); // false to prevent network loop
+            
+            // Log the tower destruction
+            log('Tower was destroyed!', 'info');
+            
+            // Update UI
+            updateUI();
+        } else {
+            console.warn(`Received invalid tower index for destruction: ${message.index}`);
+        }
     },
     
     // Handle stone picked up message
