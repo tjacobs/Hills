@@ -60,80 +60,17 @@ class Cloud {
     }
     
     update(deltaTime) {
-        // Move cloud
-        this.position.x += this.direction.x * this.speed * deltaTime;
-        this.position.z += this.direction.z * this.speed * deltaTime;
-        
-        // Update mesh position
+        // The server will handle position updates, we just sync mesh position
         this.mesh.position.copy(this.position);
         
-        // Make cloud circles face the camera (billboarding)
+        // Handle billboarding (make cloud circles face the camera)
         if (Game.camera) {
             for (const child of this.mesh.children) {
                 child.lookAt(Game.camera.position);
             }
         }
         
-        // Check world boundaries
-        const worldSize = CONFIG.WORLD.size / 2;
-        let bounced = false;
-        if (this.position.x > worldSize) {
-            this.direction.x = -Math.abs(this.direction.x);
-            bounced = true;
-        } else if (this.position.x < -worldSize) {
-            this.direction.x = Math.abs(this.direction.x);
-            bounced = true;
-        }
-        if (this.position.z > worldSize) {
-            this.direction.z = -Math.abs(this.direction.z);
-            bounced = true;
-        } else if (this.position.z < -worldSize) {
-            this.direction.z = Math.abs(this.direction.z);
-            bounced = true;
-        }
-        
-        // If bounced, slightly change direction
-        if (bounced) {
-            this.direction.x += (Math.random() * 0.2 - 0.1);
-            this.direction.z += (Math.random() * 0.2 - 0.1);
-            this.direction.normalize();
-        }
-        
-        // Check for tower destruction
-        this.checkTowerDestruction();
-    }
-    
-    checkTowerDestruction() {
-        // Get local player
-        const player = Game.localPlayer;
-        if (!player) return;
-        
-        // Check if player is on a tower
-        let playerTower = null;
-        let playerTowerIndex = -1;
-        for (let i = 0; i < Game.towers.length; i++) {
-            const tower = Game.towers[i];
-            const horizontalDistance = new THREE.Vector2(
-                player.position.x - tower.position.x,
-                player.position.z - tower.position.z
-            ).length();
-            if (horizontalDistance < CONFIG.TOWER.baseRadius) {
-                playerTower = tower;
-                playerTowerIndex = i;
-                break;
-            }
-        }
-
-        // If player is on a tower and close to cloud
-        if (playerTower) {
-            const distanceToCloud = player.position.distanceTo(this.position);
-            
-            // If player is close enough to the cloud
-            if (distanceToCloud < 15) {
-                // Destroy the tower
-                Game.destroyTower(playerTowerIndex);
-            }
-        }
+        // Tower destruction is now handled on the server
     }
     
     toJSON() {

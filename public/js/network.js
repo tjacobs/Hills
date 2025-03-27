@@ -108,6 +108,9 @@ const Network = {
                     case 'player_disconnected':
                         this.handlePlayerDisconnected(data);
                         break;
+                    case 'cloud_positions':
+                        this.handleCloudPositions(data);
+                        break;
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }
@@ -685,6 +688,37 @@ const Network = {
             
             // Remove player from game
             Game.removePlayer(data.playerId);
+        }
+    },
+    
+    handleCloudPositions(message) {
+        if (!message.clouds || !Array.isArray(message.clouds)) return;
+        
+        // Update existing clouds or create new ones
+        for (const cloudData of message.clouds) {
+            let cloud = Game.clouds.find(c => c.id === cloudData.id);
+            
+            if (cloud) {
+                // Update existing cloud position and direction
+                cloud.position.set(cloudData.position.x, cloudData.position.y, cloudData.position.z);
+                cloud.direction.set(cloudData.direction.x, cloudData.direction.y, cloudData.direction.z);
+                cloud.speed = cloudData.speed;
+                cloud.mesh.position.copy(cloud.position);
+            } else {
+                // Create new cloud
+                cloud = Cloud.fromJSON(cloudData);
+                Game.addCloud(cloud);
+            }
+        }
+        
+        // Remove clouds that don't exist on server
+        const serverCloudIds = message.clouds.map(c => c.id);
+        for (let i = Game.clouds.length - 1; i >= 0; i--) {
+            if (!serverCloudIds.includes(Game.clouds[i].id)) {
+                const cloud = Game.clouds[i];
+                Game.scene.remove(cloud.mesh);
+                Game.clouds.splice(i, 1);
+            }
         }
     },
     

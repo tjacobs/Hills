@@ -329,21 +329,10 @@ const Game = {
         this.groundSize = CONFIG.WORLD.size;
     },
     
-    // Create clouds
+    // Create clouds (modified to not actually create any - they'll come from server)
     createClouds() {
-        // Create some clouds
-        for (let i = 0; i < 10; i++) {
-            // Create cloud
-            const position = new THREE.Vector3(
-                (Math.random() * 2 - 1) * CONFIG.WORLD.size / 2,
-                CONFIG.WORLD.cloudHeight + (Math.random() * 10 - 5),
-                (Math.random() * 2 - 1) * CONFIG.WORLD.size / 2
-            );
-            const cloud = new Cloud(null, position);
-
-            // Add to game
-            this.addCloud(cloud);
-        }
+        // Clouds will be created on the server and sent to the client
+        this.clouds = [];
     },
     
     // Update game
@@ -389,6 +378,11 @@ const Game = {
             if (id !== this.localPlayer.id) {
                 this.players[id].update(deltaTime);
             }
+        }
+        
+        // Update clouds
+        for (const cloud of this.clouds) {
+            cloud.update(deltaTime);
         }        
     },
     
