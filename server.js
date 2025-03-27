@@ -1086,7 +1086,7 @@ function createStonesFromTower(position, count = CONFIG.TOWER.stonesPerLevel) {
         const radius = 2;
         const stonePosition = {
             x: position.x + Math.cos(angle) * radius,
-            y: position.y + position.y,
+            y: position.y + 2, // Place stones above the tower
             z: position.z + Math.sin(angle) * radius
         };
         
