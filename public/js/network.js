@@ -214,7 +214,11 @@ const Network = {
             type: 'player_update',
             playerId: Game.localPlayer.id,
             position: Game.localPlayer.position,
-            rotation: Game.localPlayer.rotation,
+            rotation: {
+                x: Game.localPlayer.rotation.x,
+                y: Game.localPlayer.rotation.y,
+                z: Game.localPlayer.rotation.z
+            },
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
         });
     },
