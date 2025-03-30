@@ -153,7 +153,6 @@ function handlePlayerJoin(ws, data) {
 function handlePlayerUpdate(ws, data) {
   // Get player ID
   const playerId = data.playerId;
-  console.log(`Player update received for ${playerId}:`, data);
 
   // Ensure player exists in game state
   if (!gameState.players[playerId]) {
@@ -164,7 +163,6 @@ function handlePlayerUpdate(ws, data) {
   // Update player data
   gameState.players[playerId].position = data.position;
   gameState.players[playerId].rotation = data.rotation;
-  console.log('Player update ' + playerId + ' ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z);
   gameState.players[playerId].lastUpdate = Date.now();
   
   // Broadcast update to all other clients
@@ -766,7 +764,6 @@ setInterval(() => {
                 const stackIndex = playerStones.indexOf(stone);
 
                 // Position stone to the right side and more forward for better visibility
-                console.log('Player update ' + player.rotation.x + ' ' + player.rotation.y + ' ' + player.rotation.z);
                 stone.position = {
                     // Move forward by -1.0 units and right
                     x: player.position.x - (Math.sin(player.rotation.y) * 1.0) + (Math.sin(player.rotation.y + Math.PI/2) * 0.9),
@@ -846,8 +843,7 @@ function checkTowerCreation() {
     const stationaryStones = Array.from(gameState.stones.values()).filter(stone => !stone.isHeld && stone.isThrown && stone.isStatic);
     
     // First phase: track stones near towers for potential level ups
-    const stonesNearTowers = new Map(); // Map of towerId -> array of nearby stones
-    
+    const stonesNearTowers = new Map(); // Map of towerId -> array of nearby stones    
     for (const stone of stationaryStones) {
         // Check each tower
         for (let i = 0; i < gameState.towers.length; i++) {
