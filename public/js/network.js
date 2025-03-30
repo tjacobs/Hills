@@ -451,7 +451,7 @@ const Network = {
         // Create explosion effect
         this.createTowerDestructionEffect(tower);
 
-        // Destroy tower (doesn't send network message)
+        // Destroy tower
         Game.destroyTower(index, false);
 
         // Log tower destruction
