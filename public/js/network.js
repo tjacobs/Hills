@@ -77,7 +77,7 @@ const Network = {
 
                     // Stone events
                     case 'stone_spawned':
-                        //this.handleStoneSpawned(data);
+                        this.handleStoneSpawned(data);
                         break;
                     case 'stone_update':
                         this.handleStoneUpdate(data);
@@ -86,7 +86,7 @@ const Network = {
                         this.handleStonePickup(data);
                         break;
                     case 'stone_throw':
-                        //this.handleStoneThrow(data);
+                        this.handleStoneThrow(data);
                         break;
 
                     // Cloud events
@@ -310,6 +310,7 @@ const Network = {
         });
     },
 
+    // Stone pickup
     handleStonePickup(data) {
         const stone = Game.getStoneById(data.stoneId);
         if (stone) {
@@ -323,6 +324,26 @@ const Network = {
             }
         }
     },
+
+    // Handle stone thrown message
+    handleStoneThrow(data) {
+        const stone = Game.getStoneById(data.stoneId);
+        if (stone) {
+            stone.position.copy(data.position);
+            stone.velocity.copy(data.velocity);
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
+
+            // Only remove from local player's held stones
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.removeHeldStone(stone);
+            }
+        }
+    },
+
     // Stone spawned
     handleStoneSpawned(data) {
         const stone = new Stone(data.stone.id);
