@@ -247,9 +247,6 @@ const Network = {
         // Get player ID
         const playerId = message.playerId;
         
-        // Skip if this is our own update
-        if (playerId === Game.localPlayer.id) return;
-        
         // Get player from Game
         let player = Game.getPlayerById(playerId);
         if (!player) {
