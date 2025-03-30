@@ -1042,14 +1042,9 @@ function handleTowerDestack(ws, data) {
     
     // Handle differently based on tower level
     if (tower.level === 1) {
-        // Remove the tower entirely
-        gameState.towers.splice(towerIndex, 1);
-        
-        // Notify clients of tower removal
-        broadcastToAll({
-            type: 'tower_destroyed',
-            index: towerIndex
-        });
+
+        // Remove the tower
+        destroyTower(towerIndex);
 
         // Log the removal
         console.log(`Tower ${towerId} was level 1 and has been removed`);
