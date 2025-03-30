@@ -163,7 +163,7 @@ function handlePlayerUpdate(ws, data) {
   // Update player data
   gameState.players[playerId].position = data.position;
   gameState.players[playerId].rotation = data.rotation;
-  log('Player update ' + playerId + ' ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z);
+  console.log('Player update ' + playerId + ' ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z);
   gameState.players[playerId].lastUpdate = Date.now();
   
   // Broadcast update to all other clients
