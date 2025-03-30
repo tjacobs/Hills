@@ -163,6 +163,7 @@ function handlePlayerUpdate(ws, data) {
   // Update player data
   gameState.players[playerId].position = data.position;
   gameState.players[playerId].rotation = data.rotation;
+  log('Player update ' + playerId + ' ' + data.rotation.x + ' ' + data.rotation.y + ' ' + data.rotation.z);
   gameState.players[playerId].lastUpdate = Date.now();
   
   // Broadcast update to all other clients
@@ -764,6 +765,7 @@ setInterval(() => {
                 const stackIndex = playerStones.indexOf(stone);
 
                 // Position stone to the right side and more forward for better visibility
+                console.log('Player update ' + player.rotation.x + ' ' + player.rotation.y + ' ' + player.rotation.z);
                 stone.position = {
                     // Move forward by -1.0 units and right
                     x: player.position.x - (Math.sin(player.rotation.y) * 1.0) + (Math.sin(player.rotation.y + Math.PI/2) * 0.9),
