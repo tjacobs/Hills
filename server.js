@@ -556,7 +556,7 @@ function createRandomStone() {
     const stone = new Stone(null, position, velocity);
     
     // Log initial position
-    console.log(`New stone spawned at edge ${edge}: pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
+    //console.log(`New stone spawned at edge ${edge}: pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)})`);
     
     // Return stone
     return stone;

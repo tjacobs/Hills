@@ -95,7 +95,6 @@ class Stone {
     // Update stone from server data
     updateFromData(data) {
         // Update position
-        if (data.isHeld) console.log('Updating stone from data:', data);
         this.position.set(data.position.x, data.position.y, data.position.z);
         this.mesh.position.copy(this.position);
         

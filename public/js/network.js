@@ -96,13 +96,13 @@ const Network = {
 
                     // Tower events
                     case 'tower_create':
-                        //this.handleTowerCreate(data);
-                        break;
-                    case 'tower_destroy':
-                        //this.handleTowerDestroy(data);
+                        this.handleTowerCreate(data);
                         break;
                     case 'tower_update':
                         this.handleTowerUpdate(data);
+                        break;
+                    case 'tower_destroy':
+                        this.handleTowerDestroy(data);
                         break;
                     case 'tower_start_destruction':
                         this.handleTowerStartDestruction(data);
@@ -408,13 +408,66 @@ const Network = {
         }
     },
     
+    // Handle tower create message
+    handleTowerCreate(message) {
+        // Skip if this is our own tower
+        if (message.createdBy === Game.localPlayer.id) return;
+
+        log(`Player ${message.createdBy} created a tower`);
+
+        // Remove stones that were used to create the tower
+        message.removedStones.forEach(stoneId => {
+            const stone = Game.getStoneById(stoneId);
+            if (stone) {
+                Game.removeStone(stone);
+            }
+        });
+
+        // Create tower from data
+        const tower = Tower.fromJSON(message.tower);
+
+        // Add to game
+        Game.addTower(tower, false);
+
+        // Update UI
+        updateUI();
+    },
+
+    // Handle tower destroy message
+    handleTowerDestroy(message) {
+        // Find the tower index
+        const index = message.index;
+        if (index < 0 || index >= Game.towers.length) {
+            console.warn(`Invalid tower index: ${index}`);
+            return;
+        }
+
+        // Get the tower before removing
+        const tower = Game.towers[index];
+
+        // Play destruction sound
+        playSound('towerDestroy', 1.0, false);
+
+        // Create explosion effect
+        this.createTowerDestructionEffect(tower);
+
+        // Destroy tower (doesn't send network message)
+        Game.destroyTower(index, false);
+
+        // Log tower destruction
+        log(`A tower has been destroyed!`, 'warning');
+    },
+
     // Tower update
     handleTowerUpdate(message) {
         const tower = Game.getTowerById(message.towerId);
         if (tower) {
             // Update tower level
             tower.level = message.newLevel;
-            
+
+            // Create explosion effect
+            this.createTowerDestructionEffect(tower);
+
             // Refresh the tower mesh
             tower.createTowerMesh();
             
