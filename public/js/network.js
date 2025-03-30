@@ -83,7 +83,7 @@ const Network = {
                         this.handleStoneUpdate(data);
                         break;
                     case 'stone_pickup':
-                        //this.handleStonePickup(data);
+                        this.handleStonePickup(data);
                         break;
                     case 'stone_throw':
                         //this.handleStoneThrow(data);
@@ -310,6 +310,19 @@ const Network = {
         });
     },
 
+    handleStonePickup(data) {
+        const stone = Game.getStoneById(data.stoneId);
+        if (stone) {
+            stone.isHeld = true;
+            stone.heldBy = data.playerId;
+            stone.isStatic = false;
+            
+            // Only track held stones for local player
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.addHeldStone(stone);
+            }
+        }
+    },
     // Stone spawned
     handleStoneSpawned(data) {
         const stone = new Stone(data.stone.id);
