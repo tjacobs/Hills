@@ -153,6 +153,7 @@ function handlePlayerJoin(ws, data) {
 function handlePlayerUpdate(ws, data) {
   // Get player ID
   const playerId = data.playerId;
+  console.log(`Player update received for ${playerId}:`, data);
 
   // Ensure player exists in game state
   if (!gameState.players[playerId]) {
