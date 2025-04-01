@@ -1,10 +1,13 @@
 // Network communication
 const Network = {
+    // Server host
+    SERVER_HOST: 'ramparty.fly.dev',
+
     // WebSocket connection
     socket: null,
     isConnected: false,
     reconnectAttempts: 0,
-    enabled: true, // Flag to enable/disable network
+    enabled: true,
     
     // Initialize network
     init() {        
@@ -15,16 +18,15 @@ const Network = {
     
     // Connect to server
     connect() {
-        if (!this.enabled) return;
-        
         // Close existing connection if any
         if (this.socket) {
             this.socket.close();
         }
-        
+
+        // Connect to server
         try {
-            // Use protocol and host from current window location, fallback to localhost if not available
-            const host = window.location.host || 'ramparty.fly.dev';
+            // Use protocol and host from current window location
+            const host = window.location.host || this.SERVER_HOST;
             const wsUrl = `wss://${host}`;
             console.log('Connecting to:', wsUrl);
             this.socket = new WebSocket(wsUrl);
@@ -38,9 +40,6 @@ const Network = {
                 
                 // Send join message with player ID right after connection
                 this.sendJoin();
-                
-                // Call onConnect callback if exists
-                if (this.onConnect) this.onConnect();
             };
         } catch (error) {
             console.error('WebSocket connection failed:', error);
@@ -49,80 +48,75 @@ const Network = {
     },
     
     setupSocketHandlers() {
+        // Handle connection close
         this.socket.onclose = () => this.handleDisconnect();
-        this.socket.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            // Clear stones on socket error as well
-            Game.clearAllStones();
-        };
         
+        // Handle incoming messages
         this.socket.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                // Comment out the log
-                // console.log('Received message:', data);
-                
                 switch (data.type) {
+                    // Game events
                     case 'welcome':
-                        this.handleWelcome(data);
-                        break;
-                    case 'player_joined':
-                        this.handlePlayerJoined(data);
-                        break;
-                    case 'player_left':
-                        this.handlePlayerLeft(data);
-                        break;
-                    case 'player_update':
-                        this.handlePlayerUpdate(data);
+                        //this.handleWelcome(data);
                         break;
                     case 'initial_state':
                         this.handleInitialState(data);
                         break;
-                    case 'stone_update':
-                        this.handleStoneUpdate(data);
+
+                    // Player events
+                    case 'player_join':
+                        //this.handlePlayerJoin(data);
                         break;
-                    case 'tower_update':
-                        this.handleTowerUpdate(data);
+                    case 'player_leave':
+                        this.handlePlayerLeave(data);
                         break;
+                    case 'player_update':
+                        this.handlePlayerUpdate(data);
+                        break;
+
+                    // Stone events
                     case 'stone_spawned':
                         this.handleStoneSpawned(data);
                         break;
-                    case 'player_updated':
-                        this.handlePlayerUpdated(data);
-                        break;
-                    case 'stone_positions':
-                        this.handleStonePositions(data);
-                        break;
-                    case 'tower_removed':
-                        this.handleTowerRemoved(data);
-                        break;
-                    case 'stone_throw':
-                        this.handleStoneThrow(data);
-                        break;
-                    case 'tower_created':
-                        this.handleTowerCreated(data);
+                    case 'stone_update':
+                        this.handleStoneUpdate(data);
                         break;
                     case 'stone_pickup':
                         this.handleStonePickup(data);
                         break;
-                    case 'player_disconnected':
-                        this.handlePlayerDisconnected(data);
+                    case 'stone_throw':
+                        this.handleStoneThrow(data);
                         break;
-                    case 'cloud_positions':
-                        this.handleCloudPositions(data);
+
+                    // Cloud events
+                    case 'cloud_update':
+                        this.handleCloudUpdate(data);
                         break;
-                    case 'tower_destroyed':
-                        this.handleTowerDestroyed(data);
+
+                    // Tower events
+                    case 'tower_create':
+                        this.handleTowerCreate(data);
                         break;
-                    case 'tower_destruction_start':
-                        this.handleTowerDestructionStart(data);
+                    case 'tower_update':
+                        this.handleTowerUpdate(data);
                         break;
-                    case 'tower_destruction_phase':
-                        this.handleTowerDestructionPhase(data);
+                    case 'tower_destroy':
+                        this.handleTowerDestroy(data);
                         break;
-                    case 'king_status':
-                        this.handleKingStatus(data);
+                    case 'tower_start_destruction':
+                        this.handleTowerStartDestruction(data);
                         break;
+                    case 'tower_update_destruction':
+                        this.handleTowerUpdateDestruction(data);
+                        break;
+
+                    // King events
+                    case 'king_update':
+                        this.handleKingUpdate(data);
+                        break;
+
+                    // Unknown message
                     default:
                         console.warn(`Unknown message type: ${data.type}`);
                 }
@@ -131,14 +125,33 @@ const Network = {
             }
         };
     },
+        
+    // Helper to send messages
+    sendMessage(message) {
+        // Check if connected
+        if (!this.isConnected) return;
+
+        // Send message
+        try {
+            const json = JSON.stringify(message);
+            this.socket.send(json);
+        } catch (e) {
+            console.error('Error sending message:', e);
+        }
+    },
     
+    // Handle disconnect
     handleDisconnect() {
         console.log('Disconnected from server');
         this.isConnected = false;
         
-        // Clear all stones immediately on disconnect
+        // Clear all on disconnect
         Game.clearAllStones();
-        
+        //Game.clearAllTowers();
+        //Game.clearAllClouds();
+        //Game.clearAllPlayers();
+        //Game.clearAllEffects();
+
         // Try to reconnect
         if (this.reconnectAttempts < CONFIG.NETWORK.maxReconnectAttempts) {
             this.reconnectAttempts++;
@@ -151,6 +164,7 @@ const Network = {
         }
     },
     
+    // Handle initial state
     handleInitialState(message) {
         // Handle players
         message.players.forEach(playerData => {
@@ -159,6 +173,7 @@ const Network = {
                 return;
             }
             
+            // Create new player
             const player = new Player(playerData.playerId, playerData.username);
             player.position.set(
                 playerData.position.x,
@@ -193,348 +208,19 @@ const Network = {
     // Send regular updates for local player
     sendPlayerUpdate() {
         if (!this.isConnected || !Game.localPlayer) return;
-        
-        const updateData = {
+
+        // Send player update
+        this.sendMessage({
             type: 'player_update',
             playerId: Game.localPlayer.id,
-            position: {
-                x: Game.localPlayer.position.x,
-                y: Game.localPlayer.position.y,
-                z: Game.localPlayer.position.z
-            },
+            position: Game.localPlayer.position,
             rotation: {
                 x: Game.localPlayer.rotation.x,
                 y: Game.localPlayer.rotation.y,
                 z: Game.localPlayer.rotation.z
             },
             heldStones: Game.localPlayer.heldStones.map(stone => stone.id)
-        };
-        
-        this.sendMessage(updateData);
-    },
-    
-    // Send stone updates when thrown or picked up
-    sendStoneUpdate(stone) {
-        if (!this.isConnected) return;
-        this.sendMessage({
-            type: 'stone_update',
-            id: stone.id,
-            position: stone.mesh.position.toJSON(),
-            velocity: stone.velocity?.toJSON(),
-            isStatic: stone.isStatic
         });
-    },
-    
-    // Send tower updates when created or modified
-    sendTowerUpdate(tower) {
-        if (!this.isConnected) return;
-        
-        this.sendMessage({
-            type: 'tower_update',
-            tower: {
-                id: tower.id,
-                position: {
-                    x: tower.mesh.position.x,
-                    y: tower.mesh.position.y,
-                    z: tower.mesh.position.z
-                },
-                level: tower.level
-            }
-        });
-    },
-    
-    // Helper to send messages
-    sendMessage(message) {
-        if (!this.isConnected) return;
-        
-        try {
-            // Comment out the log
-            // console.log(`Sending message type: ${message.type}`);
-            
-            const json = JSON.stringify(message);
-            this.socket.send(json);
-        } catch (e) {
-            console.error('Error sending message:', e);
-        }
-    },
-    
-    // Handle welcome message
-    handleWelcome(message) {
-        // Update local player's ID with server-assigned ID
-        Game.localPlayer.id = message.playerId;
-
-        // Add existing players if provided
-        if (message.players) {
-            message.players.forEach(playerData => {
-                // Skip if this is our local player or if player already exists
-                if (playerData.playerId === message.playerId || Game.getPlayerById(playerData.playerId)) {
-                    return;
-                }
-                
-                const player = new Player(playerData.playerId, playerData.username);
-                player.position.copy(playerData.position);
-                player.rotation.copy(playerData.rotation);
-                Game.addPlayer(player);
-            });
-        }
-
-        // Request initial state for other game objects
-        this.sendMessage({
-            type: 'request_state'
-        });
-    },
-    
-    // Handle full state message
-    handleFullState(message) {
-        log('Received game state');
-        
-        // Update players
-        if (message.players && Array.isArray(message.players)) {
-            for (const playerData of message.players) {
-                // Skip local player
-                if (playerData.id === Game.localPlayer.id) continue;
-                
-                // Create or update remote player
-                let player = Game.players[playerData.id];
-                if (!player) {
-                    player = new Player(playerData.id, playerData.username);
-                    Game.addPlayer(player);
-                }
-                
-                // Update player position and rotation
-                player.position.set(
-                    playerData.position.x,
-                    playerData.position.y,
-                    playerData.position.z
-                );
-                player.rotation.set(
-                    playerData.rotation.x,
-                    playerData.rotation.y,
-                    playerData.rotation.z
-                );
-                
-                // Update held stones
-                player.heldStones = playerData.heldStones || [];
-            }
-        }
-        
-        // Update towers
-        if (message.towers && Array.isArray(message.towers)) {
-            // Add new towers
-            for (const towerData of message.towers) {
-                const tower = Tower.fromJSON(towerData);
-                Game.addTower(tower);
-            }
-        }
-        
-        // Update stones
-        if (message.stones) {
-            // Ensure stones is an array before iterating
-            const stonesArray = Array.isArray(message.stones) ? message.stones : [];
-            
-            // Clear existing stones
-            for (const stone of Game.stones) {
-                if (stone.mesh && stone.mesh.parent) {
-                    stone.mesh.parent.remove(stone.mesh);
-                }
-            }
-            Game.stones = [];
-            
-            // Add new stones
-            for (const stoneData of stonesArray) {
-                const stone = Stone.fromJSON(stoneData);
-                Game.addStone(stone);
-            }
-        }
-        
-        // Update clouds
-        if (message.clouds) {
-            // Ensure clouds is an array before iterating
-            const cloudsArray = Array.isArray(message.clouds) ? message.clouds : [];
-            
-            // Clear existing clouds
-            for (const cloud of Game.clouds) {
-                if (cloud.mesh && cloud.mesh.parent) {
-                    cloud.mesh.parent.remove(cloud.mesh);
-                }
-            }
-            Game.clouds = [];
-            
-            // Add new clouds
-            for (const cloudData of cloudsArray) {
-                const cloud = Cloud.fromJSON(cloudData);
-                Game.addCloud(cloud);
-            }
-        }
-        
-        // Update UI
-        updateUI();
-    },
-    
-    // Handle player joined message
-    handlePlayerJoined(message) {
-        const playerId = message.playerId;
-        
-        // Skip if this is our own join message or if player already exists
-        if (playerId === Game.localPlayer.id || Game.getPlayerById(playerId)) {
-            console.log(`Skipping player join: ${playerId}`);
-            return;
-        }
-        
-        // Create new player
-        //console.log(`Adding player from join: ${playerId}`);
-        const player = new Player(playerId, message.username);
-        player.position.set(
-            message.position.x,
-            message.position.y,
-            message.position.z
-        );
-        player.rotation.set(
-            message.rotation.x,
-            message.rotation.y,
-            message.rotation.z,
-            'YXZ'
-        );
-        
-        // Add player to game
-        Game.addPlayer(player);
-    },
-    
-    // Handle player left message
-    handlePlayerLeft(message) {
-        const playerId = message.playerId;
-        Game.removePlayer(playerId);
-    },
-    
-    // Handle player update message
-    handlePlayerUpdate(message) {
-        // Skip local player
-        if (message.playerId === Game.localPlayer.id) return;
-        
-        const player = Game.players[message.playerId];
-        if (player) {
-            player.updateFromData({
-                position: message.position,
-                rotation: message.rotation,
-                heldStones: message.heldStones
-            });            
-            player.lastUpdate = Date.now();
-        
-            // Update king status if included in message
-            if (message.isKing !== undefined) {
-                player.setKingStatus(message.isKing);
-            }
-        }
-    },
-    
-    // Handle tower created message
-    handleTowerCreated(message) {
-        // Skip if this is our own tower
-        if (message.createdBy === Game.localPlayer.id) return;
-        
-        log(`Player ${message.createdBy} created a tower`);
-        
-        // Remove stones that were used to create the tower
-        message.removedStones.forEach(stoneId => {
-            const stone = Game.getStoneById(stoneId);
-            if (stone) {
-                Game.removeStone(stone);
-            }
-        });
-        
-        // Create tower from data
-        const tower = Tower.fromJSON(message.tower);
-        
-        // Add to game
-        Game.addTower(tower, false);
-        
-        // Update UI
-        updateUI();
-    },
-    
-    // Handle tower destroyed message
-    handleTowerDestroyed(message) {
-        // Find the tower index
-        const index = message.index;
-        if (index < 0 || index >= Game.towers.length) {
-            console.warn(`Invalid tower index: ${index}`);
-            return;
-        }
-        
-        // Get the tower before removing
-        const tower = Game.towers[index];
-        
-        // Play destruction sound
-        playSound('towerDestroy', 1.0, false);
-        
-        // Create explosion effect
-        this.createTowerDestructionEffect(tower);
-        
-        // Destroy tower (doesn't send network message)
-        Game.destroyTower(index, false);
-        
-        // Log tower destruction
-        log(`A tower has been destroyed!`, 'warning');
-    },
-    
-    // Handle stone picked up message
-    handleStonePickup(data) {
-        const stone = Game.getStoneById(data.stoneId);
-        if (stone) {
-            stone.isHeld = true;
-            stone.heldBy = data.playerId;
-            stone.isStatic = false;
-            
-            // Only track held stones for local player
-            if (data.playerId === Game.localPlayer.id) {
-                Game.localPlayer.addHeldStone(stone);
-            }
-        }
-    },
-    
-    // Handle stone dropped message
-    handleStoneDropped(message) {
-        // Skip if this is our own action
-        if (message.playerId === Game.localPlayer.id) return;
-        
-        log(`Player ${message.playerId} dropped a stone`);
-        
-        // Create or update stone
-        const stone = Stone.fromJSON(message.stone);
-        
-        // Add to game
-        Game.addStone(stone);
-        
-        // Update remote player's held stones
-        const player = Game.getPlayerById(message.playerId);
-        
-        if (player) {
-            // Remove stone from player's held stones
-            const index = player.heldStones.indexOf(stone.id);
-            
-            if (index !== -1) {
-                player.heldStones.splice(index, 1);
-            }
-        }
-    },
-    
-    // Handle stone thrown message
-    handleStoneThrow(data) {
-        const stone = Game.getStoneById(data.stoneId);
-        if (stone) {
-            stone.position.copy(data.position);
-            stone.velocity.copy(data.velocity);
-            stone.isHeld = false;
-            stone.heldBy = null;
-            stone.isThrown = true;
-            stone.throwTime = Date.now();
-            stone.isStatic = false;
-            
-            // Only remove from local player's held stones
-            if (data.playerId === Game.localPlayer.id) {
-                Game.localPlayer.removeHeldStone(stone);
-            }
-        }
     },
     
     // Send join message
@@ -555,36 +241,49 @@ const Network = {
             }
         });
     },
-    
-    // Send tower created
-    sendTowerCreated(tower) {
-        if (!this.isConnected) return;
+
+    // Handle player updates from server
+    handlePlayerUpdate(message) {
+        // Get player ID
+        const playerId = message.playerId;
         
-        this.sendMessage({
-            type: 'tower_created',
-            tower: {
-                id: tower.id,
-                position: {
-                    x: tower.mesh.position.x,
-                    y: tower.mesh.position.y,
-                    z: tower.mesh.position.z
-                },
-                level: tower.level,
-                createdBy: tower.createdBy
-            }
+        // Get player from Game
+        let player = Game.getPlayerById(playerId);
+        if (!player) {
+            // Create new player if we don't have them yet
+            console.log(`Creating player from update: ${playerId}`);
+            player = new Player(playerId, '');
+            Game.addPlayer(player);
+        }
+        
+        // Update player position and rotation
+        player.updateFromData({
+            position: message.position,
+            rotation: message.rotation,
+            heldStones: message.heldStones
         });
     },
-    
-    // Send tower destroyed
-    sendTowerDestroyed(towerIndex) {
-        this.sendMessage({
-            type: 'tower_destroyed',
-            playerId: Game.localPlayer.id,
-            towerIndex: towerIndex
-        });
+
+    // Player leaves
+    handlePlayerLeave(data) {
+        // Get player
+        const player = Game.getPlayerById(data.playerId);
+        if (player) {
+            // Drop all stones held by disconnected player
+            player.heldStones.forEach(stone => {
+                stone.isHeld = false;
+                stone.heldBy = null;
+                stone.isThrown = false;
+                stone.throwTime = Date.now();
+                stone.isStatic = false;
+            });
+            
+            // Remove player from game
+            Game.removePlayer(data.playerId);
+        }
     },
-    
-    // Send stone picked up
+        
+    // Send stone pickup
     sendStonePickup(stoneId) {
         this.sendMessage({
             type: 'stone_pickup',
@@ -593,16 +292,7 @@ const Network = {
         });
     },
     
-    // Send stone dropped
-    sendStoneDropped(stone) {
-        this.sendMessage({
-            type: 'stone_dropped',
-            playerId: Game.localPlayer.id,
-            stone: stone.toJSON()
-        });
-    },
-    
-    // Send stone thrown
+    // Send stone throw
     sendStoneThrow(stone) {
         this.sendMessage({
             type: 'stone_throw',
@@ -620,33 +310,42 @@ const Network = {
             }
         });
     },
-    
-    // Handle player updated message
-    handlePlayerUpdated(message) {
-        const playerId = message.playerId;
-        
-        // Skip if this is our own update
-        if (playerId === Game.localPlayer.id) return;
-        
-        // Get player from Game
-        let player = Game.getPlayerById(playerId);
-        
-        if (!player) {
-            // Create new player if we don't have them yet
-            console.log(`Creating player from update: ${playerId}`);
-            player = new Player(playerId, 'Player');  // Default username until we get a proper join
-            Game.addPlayer(player);
+
+    // Stone pickup
+    handleStonePickup(data) {
+        const stone = Game.getStoneById(data.stoneId);
+        if (stone) {
+            stone.isHeld = true;
+            stone.heldBy = data.playerId;
+            stone.isStatic = false;
+            
+            // Only track held stones for local player
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.addHeldStone(stone);
+            }
         }
-        
-        // Update player position and rotation with interpolation
-        player.updateFromData({
-            position: message.position,
-            rotation: message.rotation,
-            heldStones: message.heldStones
-        });
     },
-    
-    // Handle stone spawned message
+
+    // Handle stone thrown message
+    handleStoneThrow(data) {
+        const stone = Game.getStoneById(data.stoneId);
+        if (stone) {
+            stone.position.copy(data.position);
+            stone.velocity.copy(data.velocity);
+            stone.isHeld = false;
+            stone.heldBy = null;
+            stone.isThrown = true;
+            stone.throwTime = Date.now();
+            stone.isStatic = false;
+
+            // Only remove from local player's held stones
+            if (data.playerId === Game.localPlayer.id) {
+                Game.localPlayer.removeHeldStone(stone);
+            }
+        }
+    },
+
+    // Stone spawned
     handleStoneSpawned(data) {
         const stone = new Stone(data.stone.id);
         stone.position.set(data.stone.position.x, data.stone.position.y, data.stone.position.z);
@@ -654,11 +353,14 @@ const Network = {
         Game.addStone(stone);
     },
     
-    // Handle stone positions message
-    handleStonePositions(data) {
+    // Update stones
+    handleStoneUpdate(data) {
+        // Update stones
         data.stones.forEach(stoneData => {
+            // Get stone
             let stone = Game.getStoneById(stoneData.id);
             if (stone) {
+                // Update stone from data
                 stone.updateFromData(stoneData);
             } else {
                 // Create new stone if we don't have it
@@ -673,83 +375,15 @@ const Network = {
             }
         });
     },
-    
-    // Add tower update handler
-    handleTowerUpdate(message) {
-        const tower = Game.getTowerById(message.towerId);
-        if (tower) {
-            // Update tower level
-            tower.level = message.newLevel;
-            
-            // Refresh the tower mesh
-            tower.createTowerMesh();
-            
-            // Handle regular tower update (from a level up)
-            if (message.removedStoneIds && Array.isArray(message.removedStoneIds)) {
-                // Remove all stones that were used to level up the tower
-                message.removedStoneIds.forEach(stoneId => {
-                    const stone = Game.getStoneById(stoneId);
-                    if (stone) {
-                        Game.removeStone(stone);
-                    }
-                });
-                
-                // Log the level up
-                log(`Tower leveled up to level ${message.newLevel}!`, 'info');
-            }
-            // Handle single stone update (for backward compatibility)
-            else if (message.removedStoneId) {
-                const stone = Game.getStoneById(message.removedStoneId);
-                if (stone) {
-                    Game.removeStone(stone);
-                }
-                
-                // Log the level up
-                log(`Tower leveled up to level ${message.newLevel}!`, 'info');
-            }
-            // Handle destack operation
-            else if (message.wasDestacked) {
-                // Log the destack
-                log(`Tower destacked to level ${message.newLevel}!`, 'info');
-            }
-            
-            // Update UI
-            updateUI();
-        }
-    },
-    
-    // Add tower removal handler
-    handleTowerRemoved(message) {
-        const tower = Game.getTowerById(message.towerId);
-        if (tower) {
-            Game.removeTower(tower);
-        }
-    },
-    
-    handlePlayerDisconnected(data) {
-        const player = Game.getPlayerById(data.playerId);
-        if (player) {
-            // Drop all stones held by disconnected player
-            player.heldStones.forEach(stone => {
-                stone.isHeld = false;
-                stone.heldBy = null;
-                stone.isThrown = true;
-                stone.throwTime = Date.now();
-                stone.isStatic = false;
-            });
-            
-            // Remove player from game
-            Game.removePlayer(data.playerId);
-        }
-    },
-    
-    handleCloudPositions(message) {
+        
+    // Cloud updates
+    handleCloudUpdate(message) {
+        // Check message
         if (!message.clouds || !Array.isArray(message.clouds)) return;
         
         // Update existing clouds or create new ones
         for (const cloudData of message.clouds) {
             let cloud = Game.clouds.find(c => c.id === cloudData.id);
-            
             if (cloud) {
                 // Update existing cloud position and direction
                 cloud.position.set(cloudData.position.x, cloudData.position.y, cloudData.position.z);
@@ -774,38 +408,114 @@ const Network = {
         }
     },
     
-    disconnect() {
-        if (this.socket) {
-            this.socket.disconnect();
-            this.isConnected = false;
+    // Handle tower create message
+    handleTowerCreate(message) {
+        // Skip if this is our own tower
+        if (message.createdBy === Game.localPlayer.id) return;
+
+        log(`Player ${message.createdBy} created a tower`);
+
+        // Remove stones that were used to create the tower
+        message.removedStones.forEach(stoneId => {
+            const stone = Game.getStoneById(stoneId);
+            if (stone) {
+                Game.removeStone(stone);
+            }
+        });
+
+        // Create tower from data
+        const tower = Tower.fromJSON(message.tower);
+
+        // Add to game
+        Game.addTower(tower, false);
+
+        // Update UI
+        updateUI();
+    },
+
+    // Handle tower destroy message
+    handleTowerDestroy(message) {
+        // Find the tower index
+        const index = message.index;
+        if (index < 0 || index >= Game.towers.length) {
+            console.warn(`Invalid tower index: ${index}`);
+            return;
+        }
+
+        // Get the tower before removing
+        const tower = Game.towers[index];
+
+        // Play destruction sound
+        playSound('towerDestroy', 1.0, false);
+
+        // Create explosion effect
+        this.createTowerDestructionEffect(tower);
+
+        // Destroy tower
+        Game.destroyTower(index, false);
+
+        // Log tower destruction
+        log(`A tower has been destroyed!`, 'warning');
+    },
+
+    // Tower update
+    handleTowerUpdate(message) {
+        const tower = Game.getTowerById(message.towerId);
+        if (tower) {
+            // Update tower level
+            tower.level = message.newLevel;
+
+            // Create explosion effect
+            this.createTowerDestructionEffect(tower);
+
+            // Refresh the tower mesh
+            tower.createTowerMesh();
             
-            // Clear all stones when disconnected
-            Game.clearAllStones();
+            // Handle tower level up
+            if (message.removedStoneIds && Array.isArray(message.removedStoneIds)) {
+                // Remove all stones that were used to level up the tower
+                message.removedStoneIds.forEach(stoneId => {
+                    const stone = Game.getStoneById(stoneId);
+                    if (stone) {
+                        Game.removeStone(stone);
+                    }
+                });
+                
+                // Log the level up
+                log(`Tower leveled up to level ${message.newLevel}!`);
+            }
+            // Handle level down
+            else if (message.wasDestacked) {
+                // Log the destack
+                log(`Tower leveled down to level ${message.newLevel}!`);
+            }
             
-            // Log disconnection
-            log('Disconnected from server', 'error');
+            // Update UI
+            updateUI();
         }
     },
-    
-    // Add this method to the Network object
+
+    // Player is on a tower and wants to level it down and grab the stones from it
     sendTowerDestack(towerId) {
+        // Check if connected
         if (!this.isConnected) return;
-        
+
+        // Send tower destack
         this.socket.send(JSON.stringify({
             type: 'tower_destack',
             playerId: Game.localPlayer.id,
             towerId: towerId
         }));
         
+        // Log
         log('Sent tower destack request');
     },
     
-    // Add these handler methods
-    handleTowerDestructionStart(message) {
+    // Handle tower start destruction
+    handleTowerStartDestruction(message) {
         // Get the cloud and tower
         const cloud = Game.clouds.find(c => c.id === message.sequence.cloud);
-        const tower = Game.getTowerById(message.sequence.tower);
-        
+        const tower = Game.getTowerById(message.sequence.tower);        
         if (!cloud || !tower) {
             console.warn('Could not find cloud or tower for destruction sequence');
             return;
@@ -814,38 +524,46 @@ const Network = {
         // Log the event
         log(`Cloud is attacking a level ${tower.level} tower!`, 'warning');
         
-        // Make the camera look at the tower if it's far away
-        this.maybeShowTowerDestruction(tower);
-        
         // Clouds will just follow server position, no need to animate movement
         cloud.startDestructionAnimation('moving', tower.id);
     },
 
-    handleTowerDestructionPhase(message) {
+    handleTowerUpdateDestruction(message) {
         // Find the cloud
         const cloud = Game.clouds.find(c => c.id === message.cloudId);
         if (!cloud) return;
         
         // Update animation phase
         cloud.startDestructionAnimation(message.phase, message.towerId);
-        
+
+        // Play sound
         if (message.phase === 'raining') {
             // Play rain sound
-            playSound('rain', 0.5, false);
+            playSound('rain', 0.7, false);
             
             // Log status
-            log(`Cloud is raining on the tower!`, 'info');
+            log(`Cloud is raining on the tower!`);
         } 
         else if (message.phase === 'flooding') {
             // Play flood sound
             playSound('flood', 0.7, false);
             
             // Log status
-            log(`Tower is being flooded!`, 'warning');
+            log(`Tower is being flooded!`);
+        }
+        else if (message.phase === 'exploding') {
+            // Play explosion sound
+            playSound('explosion', 1.0, false);
+            
+            // Log status
+            log(`Tower is exploding!`);
+
+            // Explode the tower
+            createTowerDestructionEffect(message.towerId);
         }
     },
 
-    // Add method to create tower destruction explosion
+    // Create tower destruction explosion
     createTowerDestructionEffect(tower) {
         if (!tower || !tower.mesh) return;
         
@@ -880,7 +598,6 @@ const Network = {
                 z: Math.sin(angle) * speed
             });
         }
-        
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         
         // Create particle system
@@ -932,85 +649,14 @@ const Network = {
         });
     },
 
-    // Add method to move camera to view tower destruction
-    maybeShowTowerDestruction(tower) {
-        // Only show if tower is far away
-        const distToPlayer = tower.position.distanceTo(Game.localPlayer.position);
-        if (distToPlayer > 50) {
-            // Create a temporary camera position to view the destruction
-            const lookDirection = new THREE.Vector3().subVectors(tower.position, Game.camera.position).normalize();
-            const distance = 30; // Distance to view from
-            
-            const cameraPos = new THREE.Vector3().copy(tower.position).sub(
-                lookDirection.multiplyScalar(distance)
-            );
-            
-            // Raise camera up to look down at tower
-            cameraPos.y += 20;
-            
-            // Store original camera state
-            const originalPos = Game.camera.position.clone();
-            const originalRot = Game.camera.rotation.clone();
-            
-            // Add to active effects
-            if (!Game.activeEffects) Game.activeEffects = [];
-            Game.activeEffects.push({
-                type: 'cameraMove',
-                startTime: Date.now(),
-                duration: 5000, // 5 seconds
-                targetPos: cameraPos,
-                targetTower: tower.position.clone(),
-                originalPos: originalPos,
-                originalRot: originalRot,
-                update: function(deltaTime) {
-                    const elapsed = Date.now() - this.startTime;
-                    const duration = this.duration;
-                    const progress = Math.min(1.0, elapsed / duration);
-                    
-                    // Move to view tower for first half
-                    if (progress < 0.5) {
-                        const p = progress * 2; // Scale to 0-1
-                        // Smooth transition
-                        const t = 0.5 - 0.5 * Math.cos(p * Math.PI);
-                        
-                        // Interpolate position
-                        Game.camera.position.lerpVectors(this.originalPos, this.targetPos, t);
-                        
-                        // Look at tower
-                        Game.camera.lookAt(this.targetTower);
-                    }
-                    // Return to player in second half
-                    else {
-                        const p = (progress - 0.5) * 2; // Scale to 0-1
-                        // Smooth transition
-                        const t = 0.5 - 0.5 * Math.cos(p * Math.PI);
-                        
-                        // Interpolate back to original position
-                        Game.camera.position.lerpVectors(this.targetPos, this.originalPos, t);
-                        
-                        // Interpolate back to original rotation
-                        if (p > 0.8) {
-                            const rotProgress = (p - 0.8) * 5; // Scale 0.8-1.0 to 0-1
-                            Game.camera.rotation.set(
-                                this.originalRot.x * rotProgress,
-                                this.originalRot.y * rotProgress,
-                                this.originalRot.z * rotProgress
-                            );
-                        }
-                    }
-                    
-                    return progress >= 1.0;
-                }
-            });
-        }
-    },
-    
-    // Handle king status update from server
-    handleKingStatus(message) {
+    // Handle king status update
+    handleKingUpdate(message) {
+        // Get king ID
         const kingId = message.kingId;
         
         // Update all players' king status
         for (const playerId in Game.players) {
+            // Get player
             const player = Game.players[playerId];
             const isKing = playerId === kingId;
             
@@ -1026,9 +672,9 @@ const Network = {
             const kingName = kingId === Game.localPlayer.id ? 
                 'You are' : 
                 `${kingId} is`;
-            log(`${kingName} now the king!`, 'info');
+            log(`${kingName} now the king!`);
         } else {
-            log('The kingdom is vacant! Climb the tallest tower to become king.', 'info');
+            log('The kingdom is vacant! Climb the tallest tower to become king.');
         }
     }
-}; 
+};

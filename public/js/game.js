@@ -375,6 +375,7 @@ const Game = {
         // Update local player
         if (this.localPlayer) {
             this.localPlayer.update(deltaTime);
+
             // Send network update
             Network.sendPlayerUpdate();
         }
@@ -442,6 +443,7 @@ const Game = {
     destroyTower(index, notify = true) {
         // Check if index is valid
         if (index < 0 || index >= this.towers.length) {
+            log(`Invalid tower index: ${index}`, 'error');
             return;
         }
         
@@ -450,19 +452,17 @@ const Game = {
         
         // Remove tower
         this.scene.remove(tower.mesh);
+        log(`Tower at index ${index} removed from scene`, 'info');
         
         // Remove from towers array
         if (index !== -1) {
             this.towers.splice(index, 1);
+            log(`Tower at index ${index} removed from towers array`, 'info');
         }
         
         // Update UI when tower is removed
         updateUI(); 
-
-        // Notify network if requested
-        if (notify && Network.isConnected) {
-            Network.sendTowerDestroyed(index);
-        }
+        log(`UI updated after tower removal`, 'info');
     },
     
     // Add cloud to game
