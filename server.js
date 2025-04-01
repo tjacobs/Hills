@@ -76,7 +76,7 @@ wss.on('connection', (ws) => {
     console.log(`Player disconnected: ${playerId}`);
     
     // Remove player from game state
-    removePlayer(playerId);
+    removePlayer(ws, playerId);
   });
 });
 
@@ -91,7 +91,7 @@ function broadcastToAll(message, excludeWs = null) {
 }
 
 // Remove player from game state
-function removePlayer(playerId) {
+function removePlayer(ws, playerId) {
     // Remove from connections
     connections.delete(playerId);
 
