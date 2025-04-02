@@ -354,9 +354,9 @@ const Game = {
     createStartPortal() {
         // Create portal group to contain all portal elements
         const startPortalGroup = new THREE.Group();
-        startPortalGroup.position.set(-CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at west edge, 10% inland
+        startPortalGroup.position.set(-CONFIG.WORLD.size/2 * 0.90, 10, 0); // Position at west edge, 10% inland, raised height
         startPortalGroup.rotation.x = 0.35;
-        startPortalGroup.rotation.y = Math.PI; // Face north
+        startPortalGroup.rotation.y = Math.PI/2; // Face east
 
         // Create portal effect
         const startPortalGeometry = new THREE.TorusGeometry(15, 2, 16, 100);
@@ -439,9 +439,9 @@ const Game = {
     createExitPortal() {
         // Create portal group to contain all portal elements
         const exitPortalGroup = new THREE.Group();
-        exitPortalGroup.position.set(CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at east edge, 10% inland
+        exitPortalGroup.position.set(CONFIG.WORLD.size/2 * 0.90, 10, 0); // Position at east edge, 10% inland, raised height
         exitPortalGroup.rotation.x = 0.35;
-        exitPortalGroup.rotation.y = 0; // Face south
+        exitPortalGroup.rotation.y = -Math.PI/2; // Face west
 
         // Create portal effect
         const exitPortalGeometry = new THREE.TorusGeometry(15, 2, 16, 100);
