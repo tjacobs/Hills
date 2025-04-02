@@ -354,7 +354,7 @@ const Game = {
     createStartPortal() {
         // Create portal group to contain all portal elements
         const startPortalGroup = new THREE.Group();
-        startPortalGroup.position.set(-CONFIG.WORLD.size/2 * 0.90, 10, 0); // Position at west edge, 10% inland, raised height
+        startPortalGroup.position.set(-CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at west edge, 10% inland, ground level
         startPortalGroup.rotation.x = 0.35;
         startPortalGroup.rotation.y = Math.PI/2; // Face east
 
@@ -439,7 +439,7 @@ const Game = {
     createExitPortal() {
         // Create portal group to contain all portal elements
         const exitPortalGroup = new THREE.Group();
-        exitPortalGroup.position.set(CONFIG.WORLD.size/2 * 0.90, 10, 0); // Position at east edge, 10% inland, raised height
+        exitPortalGroup.position.set(CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at east edge, 10% inland, ground level
         exitPortalGroup.rotation.x = 0.35;
         exitPortalGroup.rotation.y = -Math.PI/2; // Face west
 
@@ -825,22 +825,14 @@ const Game = {
 
         // Check start portal collision if it exists
         if (this.startPortal && this.startPortalBox) {
-            const playerBox = new THREE.Box3().setFromObject(this.localPlayer.mesh);
-            const playerCenter = playerBox.getCenter(new THREE.Vector3());
             const portalCenter = this.startPortalBox.getCenter(new THREE.Vector3());
-            const portalDistance = playerCenter.distanceTo(portalCenter);
-            
-            console.log('Start Portal Distance:', portalDistance.toFixed(2));
-            console.log('Player Position:', playerCenter.toFixed(2));
-            console.log('Start Portal Position:', portalCenter.toFixed(2));
+            const portalDistance = this.localPlayer.position.distanceTo(portalCenter);
             
             if (portalDistance < 50) {
-                console.log('Player near start portal!');
                 // Get ref from URL params
                 const urlParams = new URLSearchParams(window.location.search);
                 const refUrl = urlParams.get('ref');
                 if (refUrl) {
-                    console.log('Found ref URL:', refUrl);
                     // Add https if not present and include query params
                     let url = refUrl;
                     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -855,27 +847,17 @@ const Game = {
                     }
                     const paramString = newParams.toString();
                     const finalUrl = url + (paramString ? '?' + paramString : '');
-                    console.log('Redirecting to:', finalUrl);
                     window.location.href = finalUrl;
-                } else {
-                    console.log('No ref URL found in parameters');
                 }
             }
         }
 
         // Check exit portal collision
         if (this.exitPortal && this.exitPortalBox) {
-            const playerBox = new THREE.Box3().setFromObject(this.localPlayer.mesh);
-            const playerCenter = playerBox.getCenter(new THREE.Vector3());
             const portalCenter = this.exitPortalBox.getCenter(new THREE.Vector3());
-            const portalDistance = playerCenter.distanceTo(portalCenter);
-            
-            console.log('Exit Portal Distance:', portalDistance.toFixed(2));
-            console.log('Player Position:', playerCenter.toFixed(2));
-            console.log('Exit Portal Position:', portalCenter.toFixed(2));
+            const portalDistance = this.localPlayer.position.distanceTo(portalCenter);
             
             if (portalDistance < 50) {
-                console.log('Player near exit portal!');
                 // Start loading the next page in the background
                 const currentParams = new URLSearchParams(window.location.search);
                 const newParams = new URLSearchParams();
@@ -889,11 +871,9 @@ const Game = {
                 }
                 const paramString = newParams.toString();
                 const nextPage = 'http://portal.pieter.com' + (paramString ? '?' + paramString : '');
-                console.log('Next page URL:', nextPage);
 
                 // Create hidden iframe to preload next page
                 if (!document.getElementById('preloadFrame')) {
-                    console.log('Creating preload iframe');
                     const iframe = document.createElement('iframe');
                     iframe.id = 'preloadFrame';
                     iframe.style.display = 'none';
@@ -902,11 +882,8 @@ const Game = {
                 }
 
                 // Only redirect once actually in the portal
-                if (playerBox.intersectsBox(this.exitPortalBox)) {
-                    console.log('Player intersecting exit portal, redirecting...');
+                if (portalDistance < 5) {
                     window.location.href = nextPage;
-                } else {
-                    console.log('Player not yet intersecting portal box');
                 }
             }
         }
