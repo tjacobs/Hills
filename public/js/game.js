@@ -356,10 +356,10 @@ const Game = {
         const startPortalGroup = new THREE.Group();
         startPortalGroup.position.set(-CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at west edge, 10% inland
         startPortalGroup.rotation.x = 0.35;
-        startPortalGroup.rotation.y = Math.PI/2; // Face east
+        startPortalGroup.rotation.y = Math.PI; // Face north
 
         // Create portal effect
-        const startPortalGeometry = new THREE.TorusGeometry(7.5, 1, 16, 100); // Half size
+        const startPortalGeometry = new THREE.TorusGeometry(15, 2, 16, 100);
         const startPortalMaterial = new THREE.MeshPhongMaterial({
             color: 0xff0000,
             emissive: 0xff0000,
@@ -370,7 +370,7 @@ const Game = {
         startPortalGroup.add(startPortal);
                         
         // Create portal inner surface
-        const startPortalInnerGeometry = new THREE.CircleGeometry(6.5, 32); // Half size
+        const startPortalInnerGeometry = new THREE.CircleGeometry(13, 32);
         const startPortalInnerMaterial = new THREE.MeshBasicMaterial({
             color: 0xff0000,
             transparent: true,
@@ -389,10 +389,10 @@ const Game = {
         for (let i = 0; i < startPortalParticleCount * 3; i += 3) {
             // Create particles in a ring around the portal
             const angle = Math.random() * Math.PI * 2;
-            const radius = 7.5 + (Math.random() - 0.5) * 2; // Half size
+            const radius = 15 + (Math.random() - 0.5) * 4;
             startPortalPositions[i] = Math.cos(angle) * radius;
             startPortalPositions[i + 1] = Math.sin(angle) * radius;
-            startPortalPositions[i + 2] = (Math.random() - 0.5) * 2; // Half size
+            startPortalPositions[i + 2] = (Math.random() - 0.5) * 4;
 
             // Red color with slight variation
             startPortalColors[i] = 0.8 + Math.random() * 0.2;
@@ -404,7 +404,7 @@ const Game = {
         startPortalParticles.setAttribute('color', new THREE.BufferAttribute(startPortalColors, 3));
 
         const startPortalParticleMaterial = new THREE.PointsMaterial({
-            size: 0.1, // Half size
+            size: 0.2,
             vertexColors: true,
             transparent: true,
             opacity: 0.6
@@ -441,10 +441,10 @@ const Game = {
         const exitPortalGroup = new THREE.Group();
         exitPortalGroup.position.set(CONFIG.WORLD.size/2 * 0.90, 2, 0); // Position at east edge, 10% inland
         exitPortalGroup.rotation.x = 0.35;
-        exitPortalGroup.rotation.y = -Math.PI/2; // Face west
+        exitPortalGroup.rotation.y = 0; // Face south
 
         // Create portal effect
-        const exitPortalGeometry = new THREE.TorusGeometry(7.5, 1, 16, 100); // Half size
+        const exitPortalGeometry = new THREE.TorusGeometry(15, 2, 16, 100);
         const exitPortalMaterial = new THREE.MeshPhongMaterial({
             color: 0x00ff00,
             emissive: 0x00ff00,
@@ -455,7 +455,7 @@ const Game = {
         exitPortalGroup.add(exitPortal);
 
         // Create portal inner surface
-        const exitPortalInnerGeometry = new THREE.CircleGeometry(6.5, 32); // Half size
+        const exitPortalInnerGeometry = new THREE.CircleGeometry(13, 32);
         const exitPortalInnerMaterial = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
             transparent: true,
@@ -475,14 +475,14 @@ const Game = {
         context.textAlign = 'center';
         context.fillText('VIBEVERSE PORTAL', canvas.width/2, canvas.height/2);
         const texture = new THREE.CanvasTexture(canvas);
-        const labelGeometry = new THREE.PlaneGeometry(15, 2.5); // Half size
+        const labelGeometry = new THREE.PlaneGeometry(30, 5);
         const labelMaterial = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             side: THREE.DoubleSide
         });
         const label = new THREE.Mesh(labelGeometry, labelMaterial);
-        label.position.y = 10; // Half size
+        label.position.y = 20;
         exitPortalGroup.add(label);
 
         // Create particle system for portal effect
@@ -494,10 +494,10 @@ const Game = {
         for (let i = 0; i < exitPortalParticleCount * 3; i += 3) {
             // Create particles in a ring around the portal
             const angle = Math.random() * Math.PI * 2;
-            const radius = 7.5 + (Math.random() - 0.5) * 2; // Half size
+            const radius = 15 + (Math.random() - 0.5) * 4;
             exitPortalPositions[i] = Math.cos(angle) * radius;
             exitPortalPositions[i + 1] = Math.sin(angle) * radius;
-            exitPortalPositions[i + 2] = (Math.random() - 0.5) * 2; // Half size
+            exitPortalPositions[i + 2] = (Math.random() - 0.5) * 4;
 
             // Green color with slight variation
             exitPortalColors[i] = 0;
@@ -509,7 +509,7 @@ const Game = {
         exitPortalParticles.setAttribute('color', new THREE.BufferAttribute(exitPortalColors, 3));
 
         const exitPortalParticleMaterial = new THREE.PointsMaterial({
-            size: 0.1, // Half size
+            size: 0.2,
             vertexColors: true,
             transparent: true,
             opacity: 0.6
