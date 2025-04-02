@@ -826,13 +826,21 @@ const Game = {
         // Check start portal collision if it exists
         if (this.startPortal && this.startPortalBox) {
             const playerBox = new THREE.Box3().setFromObject(this.localPlayer.mesh);
-            const portalDistance = playerBox.getCenter(new THREE.Vector3()).distanceTo(this.startPortalBox.getCenter(new THREE.Vector3()));
+            const playerCenter = playerBox.getCenter(new THREE.Vector3());
+            const portalCenter = this.startPortalBox.getCenter(new THREE.Vector3());
+            const portalDistance = playerCenter.distanceTo(portalCenter);
+            
+            console.log('Start Portal Distance:', portalDistance.toFixed(2));
+            console.log('Player Position:', playerCenter.toFixed(2));
+            console.log('Start Portal Position:', portalCenter.toFixed(2));
             
             if (portalDistance < 50) {
+                console.log('Player near start portal!');
                 // Get ref from URL params
                 const urlParams = new URLSearchParams(window.location.search);
                 const refUrl = urlParams.get('ref');
                 if (refUrl) {
+                    console.log('Found ref URL:', refUrl);
                     // Add https if not present and include query params
                     let url = refUrl;
                     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -846,7 +854,11 @@ const Game = {
                         }
                     }
                     const paramString = newParams.toString();
-                    window.location.href = url + (paramString ? '?' + paramString : '');
+                    const finalUrl = url + (paramString ? '?' + paramString : '');
+                    console.log('Redirecting to:', finalUrl);
+                    window.location.href = finalUrl;
+                } else {
+                    console.log('No ref URL found in parameters');
                 }
             }
         }
@@ -854,9 +866,16 @@ const Game = {
         // Check exit portal collision
         if (this.exitPortal && this.exitPortalBox) {
             const playerBox = new THREE.Box3().setFromObject(this.localPlayer.mesh);
-            const portalDistance = playerBox.getCenter(new THREE.Vector3()).distanceTo(this.exitPortalBox.getCenter(new THREE.Vector3()));
+            const playerCenter = playerBox.getCenter(new THREE.Vector3());
+            const portalCenter = this.exitPortalBox.getCenter(new THREE.Vector3());
+            const portalDistance = playerCenter.distanceTo(portalCenter);
+            
+            console.log('Exit Portal Distance:', portalDistance.toFixed(2));
+            console.log('Player Position:', playerCenter.toFixed(2));
+            console.log('Exit Portal Position:', portalCenter.toFixed(2));
             
             if (portalDistance < 50) {
+                console.log('Player near exit portal!');
                 // Start loading the next page in the background
                 const currentParams = new URLSearchParams(window.location.search);
                 const newParams = new URLSearchParams();
@@ -870,9 +889,11 @@ const Game = {
                 }
                 const paramString = newParams.toString();
                 const nextPage = 'http://portal.pieter.com' + (paramString ? '?' + paramString : '');
+                console.log('Next page URL:', nextPage);
 
                 // Create hidden iframe to preload next page
                 if (!document.getElementById('preloadFrame')) {
+                    console.log('Creating preload iframe');
                     const iframe = document.createElement('iframe');
                     iframe.id = 'preloadFrame';
                     iframe.style.display = 'none';
@@ -882,7 +903,10 @@ const Game = {
 
                 // Only redirect once actually in the portal
                 if (playerBox.intersectsBox(this.exitPortalBox)) {
+                    console.log('Player intersecting exit portal, redirecting...');
                     window.location.href = nextPage;
+                } else {
+                    console.log('Player not yet intersecting portal box');
                 }
             }
         }
